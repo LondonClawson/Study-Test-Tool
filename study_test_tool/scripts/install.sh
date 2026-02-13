@@ -67,17 +67,27 @@ fi
 
 # ── Python 3 ──────────────────────────────────────────────────
 
-info "Checking for Python 3..."
-if brew list python@3 &>/dev/null || brew list python@3.13 &>/dev/null || brew list python@3.12 &>/dev/null; then
-    ok "Already installed via Homebrew"
-else
-    info "Installing Python 3..."
-    brew install python@3
-    ok "Installed"
+info "Checking for python.org Python..."
+
+PYTHON_BIN="/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
+
+if [ ! -x "$PYTHON_BIN" ]; then
+    fail "Python 3.13 from python.org not found. Install it from python.org first."
 fi
 
-# Verify python3 and pip3 work
-python3 --version || fail "python3 not found after install"
+ok "Using python.org Python"
+
+# info "Checking for Python 3..."
+# if brew list python@3 &>/dev/null || brew list python@3.13 &>/dev/null || brew list python@3.12 &>/dev/null; then
+#     ok "Already installed via Homebrew"
+# else
+#     info "Installing Python 3..."
+#     brew install python@3
+#     ok "Installed"
+# fi
+
+# # Verify python3 and pip3 work
+# python3 --version || fail "python3 not found after install"
 
 # ── Clone Repository ──────────────────────────────────────────
 
@@ -103,7 +113,8 @@ cd "$CODE_DIR"
 
 info "Setting up Python environment..."
 if [ ! -d "venv" ]; then
-    python3 -m venv venv
+    "$PYTHON_BIN" -m venv venv
+    # python3 -m venv venv
     ok "Virtual environment created"
 else
     ok "Virtual environment already exists"
