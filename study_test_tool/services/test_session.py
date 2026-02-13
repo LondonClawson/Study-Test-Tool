@@ -9,9 +9,12 @@ from models.question import Question
 class TestSession:
     """Manages the state of an active test-taking session."""
 
-    def __init__(self, test_id: int, questions: List[Question]) -> None:
+    def __init__(
+        self, test_id: int, questions: List[Question], mode: str = "test"
+    ) -> None:
         self.test_id: int = test_id
         self.questions: List[Question] = questions
+        self.mode: str = mode
         self.current_index: int = 0
         self.responses: Dict[int, str] = {}  # question_id → answer text
         self.flagged: Set[int] = set()  # question_ids

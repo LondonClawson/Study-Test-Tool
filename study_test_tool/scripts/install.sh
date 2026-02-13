@@ -65,29 +65,36 @@ else
     ok "Installed"
 fi
 
-# ── Python 3 ──────────────────────────────────────────────────
+# ── Python 3 (python.org install required for tkinter) ───────
+# Homebrew Python does NOT include tkinter, which this app needs.
+# The python.org installer bundles tkinter and works out of the box.
 
-info "Checking for python.org Python..."
+info "Checking for python.org Python (>= 3.9)..."
 
-PYTHON_BIN="/Library/Frameworks/Python.framework/Versions/3.13/bin/python3"
+PYTHON_BIN=""
+# Check python.org framework versions from newest to oldest
+for ver_dir in /Library/Frameworks/Python.framework/Versions/3.*; do
+    candidate="$ver_dir/bin/python3"
+    if [ -x "$candidate" ]; then
+        minor=$("$candidate" -c "import sys; print(sys.version_info.minor)" 2>/dev/null)
+        if [ -n "$minor" ] && [ "$minor" -ge 9 ]; then
+            PYTHON_BIN="$candidate"
+        fi
+    fi
+done
 
-if [ ! -x "$PYTHON_BIN" ]; then
-    fail "Python 3.13 from python.org not found. Install it from python.org first."
+if [ -z "$PYTHON_BIN" ]; then
+    fail "Python >= 3.9 from python.org not found.
+
+    This app requires the python.org installer (Homebrew Python
+    doesn't include tkinter, which the GUI needs).
+
+    Download it from:  https://www.python.org/downloads/
+
+    Then re-run this installer."
 fi
 
-ok "Using python.org Python"
-
-# info "Checking for Python 3..."
-# if brew list python@3 &>/dev/null || brew list python@3.13 &>/dev/null || brew list python@3.12 &>/dev/null; then
-#     ok "Already installed via Homebrew"
-# else
-#     info "Installing Python 3..."
-#     brew install python@3
-#     ok "Installed"
-# fi
-
-# # Verify python3 and pip3 work
-# python3 --version || fail "python3 not found after install"
+ok "Using $PYTHON_BIN ($($PYTHON_BIN --version 2>&1))"
 
 # ── Clone Repository ──────────────────────────────────────────
 
@@ -114,7 +121,6 @@ cd "$CODE_DIR"
 info "Setting up Python environment..."
 if [ ! -d "venv" ]; then
     "$PYTHON_BIN" -m venv venv
-    # python3 -m venv venv
     ok "Virtual environment created"
 else
     ok "Virtual environment already exists"

@@ -1,15 +1,19 @@
 """Test-taking screen — the core test experience."""
 
 import tkinter.messagebox as messagebox
+from typing import List, Optional
 
 import customtkinter as ctk
 
 from config.settings import (
+    COLOR_CORRECT,
     COLOR_FLAGGED,
+    COLOR_INCORRECT,
     COLOR_WARNING,
     FONT_FAMILY,
     FONT_SIZE_BODY,
     FONT_SIZE_HEADING,
+    FONT_SIZE_SMALL,
     FONT_SIZE_TITLE,
 )
 from gui.components.progress_bar import ProgressBar
@@ -19,7 +23,7 @@ from services.question_service import QuestionService
 from services.scoring_service import ScoringService
 from services.test_service import TestService
 from services.test_session import TestSession
-from utils.constants import SCREEN_HOME, SCREEN_RESULTS
+from utils.constants import MODE_PRACTICE, MODE_TEST, SCREEN_HOME, SCREEN_RESULTS
 
 
 class TestTakingFrame(ctk.CTkFrame):
@@ -32,9 +36,11 @@ class TestTakingFrame(ctk.CTkFrame):
         self.question_service = QuestionService()
         self.scoring_service = ScoringService()
 
-        self._session = None
-        self._question_widget = None
-        self._progress_bar = None
+        self._session: Optional[TestSession] = None
+        self._question_widget: Optional[QuestionWidget] = None
+        self._progress_bar: Optional[ProgressBar] = None
+        self._mode: str = MODE_TEST
+        self._feedback_frame: Optional[ctk.CTkFrame] = None
 
         self._build_ui()
 
@@ -99,6 +105,16 @@ class TestTakingFrame(ctk.CTkFrame):
         )
         self.next_btn.pack(side="left", padx=5)
 
+        # Check Answer button (practice mode only, hidden by default)
+        self.check_btn = ctk.CTkButton(
+            nav_frame,
+            text="Check Answer",
+            width=120,
+            fg_color="#2fa572",
+            hover_color="#258a5e",
+            command=self._on_check_answer,
+        )
+
         self.finish_btn = ctk.CTkButton(
             nav_frame,
             text="Finish Test",
@@ -113,27 +129,67 @@ class TestTakingFrame(ctk.CTkFrame):
         self.progress_container = ctk.CTkFrame(bottom_frame, fg_color="transparent")
         self.progress_container.pack(fill="x", pady=5)
 
-    def on_show(self, test_id=None, **kwargs) -> None:
-        """Initialize the test-taking session."""
-        if test_id is None:
-            return
+    def on_show(
+        self,
+        test_id: Optional[int] = None,
+        mode: str = MODE_TEST,
+        review_question_ids: Optional[List[int]] = None,
+        **kwargs,
+    ) -> None:
+        """Initialize the test-taking session.
 
-        test = self.test_service.get_test_by_id(test_id)
-        if not test:
-            messagebox.showerror("Error", "Test not found.")
-            self.controller.show_frame(SCREEN_HOME)
-            return
+        Args:
+            test_id: The test to take.
+            mode: "test" or "practice".
+            review_question_ids: Specific question IDs for review sessions.
+        """
+        self._mode = mode
 
-        questions = self.question_service.get_questions_for_test(
-            test_id, randomize=True
-        )
-        if not questions:
-            messagebox.showwarning("No Questions", "This test has no questions.")
-            self.controller.show_frame(SCREEN_HOME)
-            return
+        # Configure UI for mode
+        if mode == MODE_PRACTICE:
+            self.check_btn.pack(side="right", padx=5)
+            self.finish_btn.configure(text="Finish Practice")
+        else:
+            self.check_btn.pack_forget()
+            self.finish_btn.configure(text="Finish Test")
 
-        self.test_name_label.configure(text=test.name)
-        self._session = TestSession(test_id, questions)
+        # Load questions for review or normal test
+        if review_question_ids:
+            questions = self._load_review_questions(review_question_ids)
+            if not questions:
+                messagebox.showwarning(
+                    "No Questions", "Could not load review questions."
+                )
+                self.controller.show_frame(SCREEN_HOME)
+                return
+            # Use the test_id from the first question if not provided
+            if test_id is None:
+                test_id = questions[0].test_id
+            self.test_name_label.configure(text="Review Session")
+            self._session = TestSession(test_id, questions, mode=mode)
+        else:
+            if test_id is None:
+                return
+
+            test = self.test_service.get_test_by_id(test_id)
+            if not test:
+                messagebox.showerror("Error", "Test not found.")
+                self.controller.show_frame(SCREEN_HOME)
+                return
+
+            questions = self.question_service.get_questions_for_test(
+                test_id, randomize=True
+            )
+            if not questions:
+                messagebox.showwarning(
+                    "No Questions", "This test has no questions."
+                )
+                self.controller.show_frame(SCREEN_HOME)
+                return
+
+            self.test_name_label.configure(text=test.name)
+            self._session = TestSession(test_id, questions, mode=mode)
+
         self._session.start()
 
         # Rebuild progress bar
@@ -142,13 +198,25 @@ class TestTakingFrame(ctk.CTkFrame):
 
         self._progress_bar = ProgressBar(
             self.progress_container,
-            total=len(questions),
+            total=len(self._session.questions),
             on_click=self._on_progress_click,
         )
         self._progress_bar.pack()
 
         self.timer_widget.start()
         self._display_question()
+
+    def _load_review_questions(self, question_ids: List[int]):
+        """Load specific questions by ID for review sessions."""
+        from database.db_manager import DatabaseManager
+
+        db = DatabaseManager()
+        questions = []
+        for qid in question_ids:
+            q = db.get_question_by_id(qid)
+            if q:
+                questions.append(q)
+        return questions
 
     def _display_question(self) -> None:
         """Show the current question."""
@@ -181,6 +249,7 @@ class TestTakingFrame(ctk.CTkFrame):
         # Rebuild question widget
         for widget in self.question_area.winfo_children():
             widget.destroy()
+        self._feedback_frame = None
 
         self._question_widget = QuestionWidget(
             self.question_area, question
@@ -220,6 +289,69 @@ class TestTakingFrame(ctk.CTkFrame):
             self._session.flagged,
             question_ids,
         )
+
+    def _on_check_answer(self) -> None:
+        """Check the current answer (practice mode)."""
+        if self._session is None or self._question_widget is None:
+            return
+
+        self._save_current_answer()
+        question = self._session.get_current_question()
+        if question is None:
+            return
+
+        user_answer = self._session.responses.get(question.id)
+        is_correct = self.scoring_service.score_question(question, user_answer)
+        self._show_feedback(question, user_answer, is_correct)
+
+    def _show_feedback(self, question, user_answer, is_correct) -> None:
+        """Display correct/incorrect feedback below the question widget."""
+        # Remove existing feedback if any
+        if self._feedback_frame is not None:
+            self._feedback_frame.destroy()
+
+        self._feedback_frame = ctk.CTkFrame(self.question_area, corner_radius=8)
+        self._feedback_frame.pack(fill="x", padx=10, pady=(5, 10))
+
+        if is_correct is None:
+            # Essay question
+            ctk.CTkLabel(
+                self._feedback_frame,
+                text="Essay — Compare with expected answer:",
+                font=(FONT_FAMILY, FONT_SIZE_BODY, "bold"),
+                text_color="gray",
+            ).pack(anchor="w", padx=15, pady=(8, 2))
+
+            if question.correct_answer:
+                ctk.CTkLabel(
+                    self._feedback_frame,
+                    text=question.correct_answer,
+                    font=(FONT_FAMILY, FONT_SIZE_SMALL),
+                    wraplength=550,
+                    justify="left",
+                    anchor="nw",
+                ).pack(fill="x", padx=15, pady=(2, 8))
+        elif is_correct:
+            ctk.CTkLabel(
+                self._feedback_frame,
+                text="Correct!",
+                font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
+                text_color=COLOR_CORRECT,
+            ).pack(anchor="w", padx=15, pady=8)
+        else:
+            ctk.CTkLabel(
+                self._feedback_frame,
+                text="Incorrect",
+                font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
+                text_color=COLOR_INCORRECT,
+            ).pack(anchor="w", padx=15, pady=(8, 2))
+
+            ctk.CTkLabel(
+                self._feedback_frame,
+                text=f"Correct answer: {question.correct_answer}",
+                font=(FONT_FAMILY, FONT_SIZE_BODY),
+                text_color=COLOR_CORRECT,
+            ).pack(anchor="w", padx=15, pady=(2, 8))
 
     def _on_previous(self) -> None:
         """Navigate to the previous question."""
@@ -266,13 +398,15 @@ class TestTakingFrame(ctk.CTkFrame):
         unanswered = self._session.get_unanswered_count()
         flagged = self._session.get_flagged_count()
 
-        msg = "Are you sure you want to finish this test?"
+        label = "practice" if self._mode == MODE_PRACTICE else "test"
+        msg = f"Are you sure you want to finish this {label}?"
         if unanswered > 0:
             msg += f"\n\n{unanswered} question(s) unanswered."
         if flagged > 0:
             msg += f"\n{flagged} question(s) flagged."
 
-        if not messagebox.askyesno("Finish Test", msg):
+        title = "Finish Practice" if self._mode == MODE_PRACTICE else "Finish Test"
+        if not messagebox.askyesno(title, msg):
             return
 
         # Score and save
@@ -281,7 +415,7 @@ class TestTakingFrame(ctk.CTkFrame):
 
         score_data = self.scoring_service.score_test(self._session)
         attempt_id = self.scoring_service.save_attempt(
-            self._session.test_id, score_data
+            self._session.test_id, score_data, mode=self._mode
         )
 
         self.controller.show_frame(

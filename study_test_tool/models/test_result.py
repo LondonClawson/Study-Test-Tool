@@ -26,6 +26,7 @@ class TestAttempt:
     total_questions: int = 0
     percentage: float = 0.0
     time_taken: Optional[int] = None  # seconds
+    mode: str = "test"  # "test" or "practice"
     completed_at: Optional[str] = None
     id: Optional[int] = None
     test_name: Optional[str] = None  # populated via JOIN for display

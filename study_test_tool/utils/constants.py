@@ -6,6 +6,12 @@ SCREEN_EDITOR = "editor"
 SCREEN_TEST_TAKING = "test_taking"
 SCREEN_RESULTS = "results"
 SCREEN_HISTORY = "history"
+SCREEN_REVIEW = "review"
+SCREEN_ANALYTICS = "analytics"
+
+# Test-taking modes
+MODE_TEST = "test"
+MODE_PRACTICE = "practice"
 
 # File extensions
 JSON_EXTENSION = ".json"

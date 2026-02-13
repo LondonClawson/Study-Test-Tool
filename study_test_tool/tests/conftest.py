@@ -87,3 +87,88 @@ def populated_db(db):
     db.add_question(q3)
 
     return db, test_id
+
+
+@pytest.fixture
+def db_with_attempts(populated_db):
+    """Provide a database with sample attempts and question responses.
+
+    Creates two attempts (one correct, one incorrect) with responses
+    for each multiple-choice question.
+    """
+    from models.test_result import QuestionResponse, TestAttempt
+
+    db, test_id = populated_db
+
+    # Get question IDs
+    questions = db.get_questions_for_test(test_id)
+    mc_questions = [q for q in questions if q.type == "multiple_choice"]
+
+    # Attempt 1: all correct (test mode)
+    attempt1 = TestAttempt(
+        test_id=test_id,
+        score=2,
+        total_questions=3,
+        percentage=100.0,
+        time_taken=120,
+        mode="test",
+    )
+    attempt1_id = db.save_attempt(attempt1)
+
+    for q in mc_questions:
+        db.save_response(
+            QuestionResponse(
+                attempt_id=attempt1_id,
+                question_id=q.id,
+                user_answer=q.correct_answer,
+                is_correct=True,
+            )
+        )
+
+    # Attempt 2: first question wrong (practice mode)
+    attempt2 = TestAttempt(
+        test_id=test_id,
+        score=1,
+        total_questions=3,
+        percentage=50.0,
+        time_taken=90,
+        mode="practice",
+    )
+    attempt2_id = db.save_attempt(attempt2)
+
+    for i, q in enumerate(mc_questions):
+        is_correct = i > 0  # First MC question wrong
+        user_answer = q.correct_answer if is_correct else "wrong answer"
+        db.save_response(
+            QuestionResponse(
+                attempt_id=attempt2_id,
+                question_id=q.id,
+                user_answer=user_answer,
+                is_correct=is_correct,
+            )
+        )
+
+    # Attempt 3: first question wrong again (test mode) - for frequency data
+    attempt3 = TestAttempt(
+        test_id=test_id,
+        score=1,
+        total_questions=3,
+        percentage=50.0,
+        time_taken=95,
+        mode="test",
+    )
+    attempt3_id = db.save_attempt(attempt3)
+
+    for i, q in enumerate(mc_questions):
+        is_correct = i > 0
+        user_answer = q.correct_answer if is_correct else "wrong answer"
+        db.save_response(
+            QuestionResponse(
+                attempt_id=attempt3_id,
+                question_id=q.id,
+                user_answer=user_answer,
+                is_correct=is_correct,
+            )
+        )
+
+    return db, test_id

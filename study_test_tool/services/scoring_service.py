@@ -83,12 +83,15 @@ class ScoringService:
             "responses": scored_responses,
         }
 
-    def save_attempt(self, test_id: int, score_data: Dict) -> int:
+    def save_attempt(
+        self, test_id: int, score_data: Dict, mode: str = "test"
+    ) -> int:
         """Persist a test attempt and its responses to the database.
 
         Args:
             test_id: The test that was taken.
             score_data: The dict returned by score_test().
+            mode: "test" or "practice".
 
         Returns:
             The id of the saved test attempt.
@@ -99,6 +102,7 @@ class ScoringService:
             total_questions=score_data["total_questions"],
             percentage=score_data["percentage"],
             time_taken=score_data["time_taken"],
+            mode=mode,
         )
         attempt_id = self._db.save_attempt(attempt)
 

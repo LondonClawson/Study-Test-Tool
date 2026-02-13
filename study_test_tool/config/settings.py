@@ -45,6 +45,14 @@ FONT_SIZE_SMALL = 12
 QUESTION_TYPE_MC = "multiple_choice"
 QUESTION_TYPE_ESSAY = "essay"
 
+# Topic health colors
+COLOR_TOPIC_WEAK = "#d9534f"
+COLOR_TOPIC_MODERATE = "#f0ad4e"
+COLOR_TOPIC_STRONG = "#2fa572"
+
+# Weak topic threshold
+WEAK_TOPIC_THRESHOLD = 70.0
+
 # Default values
 DEFAULT_OPTIONS_COUNT = 4
 

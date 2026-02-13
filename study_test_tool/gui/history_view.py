@@ -51,7 +51,7 @@ class HistoryViewFrame(ctk.CTkFrame):
             font=(FONT_FAMILY, FONT_SIZE_TITLE, "bold"),
         ).pack(side="left", padx=20)
 
-        # Filter
+        # Filter row
         filter_frame = ctk.CTkFrame(self, fg_color="transparent")
         filter_frame.pack(fill="x", padx=30, pady=(0, 10))
 
@@ -71,6 +71,22 @@ class HistoryViewFrame(ctk.CTkFrame):
         )
         self.filter_menu.pack(side="left")
 
+        ctk.CTkLabel(
+            filter_frame,
+            text="Mode:",
+            font=(FONT_FAMILY, FONT_SIZE_BODY),
+        ).pack(side="left", padx=(20, 10))
+
+        self.mode_filter_var = ctk.StringVar(value="All Modes")
+        self.mode_filter_menu = ctk.CTkOptionMenu(
+            filter_frame,
+            variable=self.mode_filter_var,
+            values=["All Modes", "Test", "Practice"],
+            command=self._on_filter_change,
+            width=150,
+        )
+        self.mode_filter_menu.pack(side="left")
+
         # Loading indicator
         self.loading_label = ctk.CTkLabel(
             self,
@@ -83,7 +99,14 @@ class HistoryViewFrame(ctk.CTkFrame):
         self.table_header = ctk.CTkFrame(self, fg_color="transparent")
         self.table_header.pack(fill="x", padx=30)
 
-        headers = [("Date", 180), ("Test Name", 250), ("Score", 80), ("%", 70), ("Time", 80)]
+        headers = [
+            ("Date", 160),
+            ("Test Name", 200),
+            ("Mode", 80),
+            ("Score", 80),
+            ("%", 60),
+            ("Time", 70),
+        ]
         for text, width in headers:
             ctk.CTkLabel(
                 self.table_header,
@@ -132,7 +155,7 @@ class HistoryViewFrame(ctk.CTkFrame):
         test_names = ["All Tests"] + [t.name for t in tests]
         self.filter_menu.configure(values=test_names)
 
-        self._display_attempts(self._all_attempts)
+        self._apply_filters()
 
     def _on_load_error(self, error: str) -> None:
         """Handle loading errors."""
@@ -140,12 +163,23 @@ class HistoryViewFrame(ctk.CTkFrame):
         messagebox.showerror("Error", f"Failed to load history: {error}")
 
     def _on_filter_change(self, value: str) -> None:
-        """Filter attempts by the selected test name."""
-        if value == "All Tests":
-            self._display_attempts(self._all_attempts)
-        else:
-            filtered = [a for a in self._all_attempts if a.test_name == value]
-            self._display_attempts(filtered)
+        """Apply all active filters."""
+        self._apply_filters()
+
+    def _apply_filters(self) -> None:
+        """Filter attempts by test name and mode."""
+        filtered = self._all_attempts
+
+        test_filter = self.filter_var.get()
+        if test_filter != "All Tests":
+            filtered = [a for a in filtered if a.test_name == test_filter]
+
+        mode_filter = self.mode_filter_var.get()
+        if mode_filter != "All Modes":
+            mode_val = mode_filter.lower()
+            filtered = [a for a in filtered if a.mode == mode_val]
+
+        self._display_attempts(filtered)
 
     def _clear_table(self) -> None:
         """Remove all rows from the table."""
@@ -181,12 +215,15 @@ class HistoryViewFrame(ctk.CTkFrame):
         if len(date_str) > 16:
             date_str = date_str[:16]
 
+        mode_label = attempt.mode.capitalize() if attempt.mode else "Test"
+
         values = [
-            (date_str, 180),
-            (attempt.test_name or "Unknown", 250),
+            (date_str, 160),
+            (attempt.test_name or "Unknown", 200),
+            (mode_label, 80),
             (f"{attempt.score}/{attempt.total_questions}", 80),
-            (f"{attempt.percentage}%", 70),
-            (self._format_time(attempt.time_taken), 80),
+            (f"{attempt.percentage}%", 60),
+            (self._format_time(attempt.time_taken), 70),
         ]
 
         for text, width in values:

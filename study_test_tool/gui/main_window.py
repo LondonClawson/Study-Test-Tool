@@ -11,16 +11,20 @@ from config.settings import (
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
 )
+from gui.analytics_view import AnalyticsViewFrame
 from gui.history_view import HistoryViewFrame
 from gui.results_view import ResultsViewFrame
+from gui.review_view import ReviewViewFrame
 from gui.test_editor import TestEditorFrame
 from gui.test_selector import TestSelectorFrame
 from gui.test_taking import TestTakingFrame
 from utils.constants import (
+    SCREEN_ANALYTICS,
     SCREEN_EDITOR,
     SCREEN_HISTORY,
     SCREEN_HOME,
     SCREEN_RESULTS,
+    SCREEN_REVIEW,
     SCREEN_TEST_TAKING,
 )
 
@@ -52,6 +56,8 @@ class App(ctk.CTk):
             (SCREEN_TEST_TAKING, TestTakingFrame),
             (SCREEN_RESULTS, ResultsViewFrame),
             (SCREEN_HISTORY, HistoryViewFrame),
+            (SCREEN_REVIEW, ReviewViewFrame),
+            (SCREEN_ANALYTICS, AnalyticsViewFrame),
         ]:
             frame = FrameClass(self.container, self)
             frame.grid(row=0, column=0, sticky="nsew")

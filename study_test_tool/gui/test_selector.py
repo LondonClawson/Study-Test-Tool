@@ -15,12 +15,15 @@ from config.settings import (
     FONT_SIZE_SMALL,
     FONT_SIZE_TITLE,
 )
+from gui.components.mode_dialog import ModeSelectionDialog
 from services.import_service import ImportService
 from services.test_service import TestService
 from utils.constants import (
     IMPORT_FILE_TYPES,
+    SCREEN_ANALYTICS,
     SCREEN_EDITOR,
     SCREEN_HISTORY,
+    SCREEN_REVIEW,
     SCREEN_TEST_TAKING,
 )
 
@@ -54,21 +57,39 @@ class TestSelectorFrame(ctk.CTkFrame):
             btn_frame,
             text="Import Test",
             command=self._on_import,
-            width=140,
+            width=120,
         ).pack(side="left", padx=5)
 
         ctk.CTkButton(
             btn_frame,
             text="New Test",
             command=self._on_new_test,
-            width=140,
+            width=120,
         ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="Analytics",
+            command=self._on_analytics,
+            width=120,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+        ).pack(side="right", padx=5)
 
         ctk.CTkButton(
             btn_frame,
             text="View History",
             command=self._on_view_history,
-            width=140,
+            width=120,
+        ).pack(side="right", padx=5)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="Review Missed",
+            command=self._on_review_missed,
+            width=120,
+            fg_color="#f0ad4e",
+            hover_color="#d9972d",
         ).pack(side="right", padx=5)
 
         # Scrollable test list
@@ -200,9 +221,21 @@ class TestSelectorFrame(ctk.CTkFrame):
         """Navigate to history view."""
         self.controller.show_frame(SCREEN_HISTORY)
 
+    def _on_review_missed(self) -> None:
+        """Navigate to missed questions review."""
+        self.controller.show_frame(SCREEN_REVIEW)
+
+    def _on_analytics(self) -> None:
+        """Navigate to analytics view."""
+        self.controller.show_frame(SCREEN_ANALYTICS)
+
     def _on_take_test(self, test) -> None:
-        """Navigate to test-taking for the selected test."""
-        self.controller.show_frame(SCREEN_TEST_TAKING, test_id=test.id)
+        """Show mode dialog, then navigate to test-taking."""
+        dialog = ModeSelectionDialog(self.winfo_toplevel())
+        mode = dialog.get_mode()
+        if mode is None:
+            return
+        self.controller.show_frame(SCREEN_TEST_TAKING, test_id=test.id, mode=mode)
 
     def _on_edit_test(self, test) -> None:
         """Navigate to editor for an existing test."""

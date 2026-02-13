@@ -34,6 +34,7 @@ CREATE TABLE IF NOT EXISTS test_attempts (
     total_questions INTEGER NOT NULL DEFAULT 0,
     percentage REAL NOT NULL DEFAULT 0.0,
     time_taken INTEGER,
+    mode TEXT DEFAULT 'test',
     completed_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (test_id) REFERENCES tests (id) ON DELETE CASCADE
 );
@@ -56,6 +57,8 @@ CREATE INDEX IF NOT EXISTS idx_question_options_question_id ON question_options 
 CREATE INDEX IF NOT EXISTS idx_test_attempts_test_id ON test_attempts (test_id);
 CREATE INDEX IF NOT EXISTS idx_test_attempts_completed_at ON test_attempts (completed_at);
 CREATE INDEX IF NOT EXISTS idx_question_responses_attempt_id ON question_responses (attempt_id);
+CREATE INDEX IF NOT EXISTS idx_question_responses_question_id ON question_responses (question_id);
+CREATE INDEX IF NOT EXISTS idx_question_responses_is_correct ON question_responses (is_correct);
 
 -- Trigger to update the updated_at column on tests
 CREATE TRIGGER IF NOT EXISTS update_tests_timestamp

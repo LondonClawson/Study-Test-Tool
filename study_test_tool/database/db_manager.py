@@ -252,13 +252,14 @@ class DatabaseManager:
         try:
             cursor = conn.execute(
                 "INSERT INTO test_attempts (test_id, score, total_questions, "
-                "percentage, time_taken) VALUES (?, ?, ?, ?, ?)",
+                "percentage, time_taken, mode) VALUES (?, ?, ?, ?, ?, ?)",
                 (
                     attempt.test_id,
                     attempt.score,
                     attempt.total_questions,
                     attempt.percentage,
                     attempt.time_taken,
+                    attempt.mode,
                 ),
             )
             conn.commit()
@@ -298,7 +299,8 @@ class DatabaseManager:
         try:
             rows = conn.execute(
                 "SELECT a.id, a.test_id, a.score, a.total_questions, "
-                "a.percentage, a.time_taken, a.completed_at, t.name as test_name "
+                "a.percentage, a.time_taken, a.mode, a.completed_at, "
+                "t.name as test_name "
                 "FROM test_attempts a JOIN tests t ON a.test_id = t.id "
                 "WHERE a.test_id = ? ORDER BY a.completed_at DESC",
                 (test_id,),
@@ -313,7 +315,8 @@ class DatabaseManager:
         try:
             rows = conn.execute(
                 "SELECT a.id, a.test_id, a.score, a.total_questions, "
-                "a.percentage, a.time_taken, a.completed_at, t.name as test_name "
+                "a.percentage, a.time_taken, a.mode, a.completed_at, "
+                "t.name as test_name "
                 "FROM test_attempts a JOIN tests t ON a.test_id = t.id "
                 "ORDER BY a.completed_at DESC"
             ).fetchall()
@@ -327,7 +330,8 @@ class DatabaseManager:
         try:
             row = conn.execute(
                 "SELECT a.id, a.test_id, a.score, a.total_questions, "
-                "a.percentage, a.time_taken, a.completed_at, t.name as test_name "
+                "a.percentage, a.time_taken, a.mode, a.completed_at, "
+                "t.name as test_name "
                 "FROM test_attempts a JOIN tests t ON a.test_id = t.id "
                 "WHERE a.id = ?",
                 (attempt_id,),
@@ -379,9 +383,309 @@ class DatabaseManager:
         finally:
             conn.close()
 
+    def get_attempts_by_mode(
+        self, mode: str, test_id: Optional[int] = None
+    ) -> List[TestAttempt]:
+        """Get attempts filtered by mode, optionally by test."""
+        conn = self._conn()
+        try:
+            if test_id is not None:
+                rows = conn.execute(
+                    "SELECT a.id, a.test_id, a.score, a.total_questions, "
+                    "a.percentage, a.time_taken, a.mode, a.completed_at, "
+                    "t.name as test_name "
+                    "FROM test_attempts a JOIN tests t ON a.test_id = t.id "
+                    "WHERE a.mode = ? AND a.test_id = ? "
+                    "ORDER BY a.completed_at DESC",
+                    (mode, test_id),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT a.id, a.test_id, a.score, a.total_questions, "
+                    "a.percentage, a.time_taken, a.mode, a.completed_at, "
+                    "t.name as test_name "
+                    "FROM test_attempts a JOIN tests t ON a.test_id = t.id "
+                    "WHERE a.mode = ? ORDER BY a.completed_at DESC",
+                    (mode,),
+                ).fetchall()
+            return [self._row_to_attempt(row) for row in rows]
+        finally:
+            conn.close()
+
+    # ── Missed Questions ──────────────────────────────────────
+
+    def get_missed_questions(
+        self, test_id: Optional[int] = None
+    ) -> List[Dict]:
+        """Get questions that have been answered incorrectly at least once.
+
+        Returns list of dicts with question info and miss statistics.
+        """
+        conn = self._conn()
+        try:
+            base_query = (
+                "SELECT q.id as question_id, q.question_text, q.question_type, "
+                "q.correct_answer, q.category, q.test_id, t.name as test_name, "
+                "COUNT(qr.id) as total_attempts, "
+                "SUM(CASE WHEN qr.is_correct = 0 THEN 1 ELSE 0 END) as times_missed "
+                "FROM questions q "
+                "JOIN question_responses qr ON q.id = qr.question_id "
+                "JOIN tests t ON q.test_id = t.id "
+                "WHERE qr.is_correct IS NOT NULL "
+            )
+            if test_id is not None:
+                base_query += "AND q.test_id = ? "
+                base_query += (
+                    "GROUP BY q.id HAVING times_missed > 0 "
+                    "ORDER BY times_missed DESC"
+                )
+                rows = conn.execute(base_query, (test_id,)).fetchall()
+            else:
+                base_query += (
+                    "GROUP BY q.id HAVING times_missed > 0 "
+                    "ORDER BY times_missed DESC"
+                )
+                rows = conn.execute(base_query).fetchall()
+
+            return [
+                {
+                    "question_id": row["question_id"],
+                    "question_text": row["question_text"],
+                    "question_type": row["question_type"],
+                    "correct_answer": row["correct_answer"],
+                    "category": row["category"],
+                    "test_id": row["test_id"],
+                    "test_name": row["test_name"],
+                    "total_attempts": row["total_attempts"],
+                    "times_missed": row["times_missed"],
+                }
+                for row in rows
+            ]
+        finally:
+            conn.close()
+
+    def get_frequently_missed_questions(
+        self,
+        test_id: Optional[int] = None,
+        min_attempts: int = 3,
+        miss_threshold: float = 0.5,
+    ) -> List[Dict]:
+        """Get questions frequently answered incorrectly.
+
+        Args:
+            test_id: Optional filter by test.
+            min_attempts: Minimum attempts before considering frequency.
+            miss_threshold: Minimum miss rate (0.0-1.0) to be 'frequent'.
+        """
+        conn = self._conn()
+        try:
+            base_query = (
+                "SELECT q.id as question_id, q.question_text, q.question_type, "
+                "q.correct_answer, q.category, q.test_id, t.name as test_name, "
+                "COUNT(qr.id) as total_attempts, "
+                "SUM(CASE WHEN qr.is_correct = 0 THEN 1 ELSE 0 END) as times_missed "
+                "FROM questions q "
+                "JOIN question_responses qr ON q.id = qr.question_id "
+                "JOIN tests t ON q.test_id = t.id "
+                "WHERE qr.is_correct IS NOT NULL "
+            )
+            params = []
+            if test_id is not None:
+                base_query += "AND q.test_id = ? "
+                params.append(test_id)
+
+            base_query += (
+                "GROUP BY q.id "
+                "HAVING total_attempts >= ? "
+                "AND CAST(times_missed AS REAL) / total_attempts >= ? "
+                "ORDER BY CAST(times_missed AS REAL) / total_attempts DESC"
+            )
+            params.extend([min_attempts, miss_threshold])
+
+            rows = conn.execute(base_query, params).fetchall()
+
+            return [
+                {
+                    "question_id": row["question_id"],
+                    "question_text": row["question_text"],
+                    "question_type": row["question_type"],
+                    "correct_answer": row["correct_answer"],
+                    "category": row["category"],
+                    "test_id": row["test_id"],
+                    "test_name": row["test_name"],
+                    "total_attempts": row["total_attempts"],
+                    "times_missed": row["times_missed"],
+                }
+                for row in rows
+            ]
+        finally:
+            conn.close()
+
+    def get_question_by_id(self, question_id: int) -> Optional[Question]:
+        """Get a single question with its options."""
+        conn = self._conn()
+        try:
+            row = conn.execute(
+                "SELECT id, test_id, question_text, question_type, "
+                "correct_answer, category, created_at "
+                "FROM questions WHERE id = ?",
+                (question_id,),
+            ).fetchone()
+            if not row:
+                return None
+
+            question = Question(
+                id=row["id"],
+                test_id=row["test_id"],
+                text=row["question_text"],
+                type=row["question_type"],
+                correct_answer=row["correct_answer"],
+                category=row["category"],
+                created_at=row["created_at"],
+            )
+
+            o_rows = conn.execute(
+                "SELECT id, question_id, option_text, is_correct "
+                "FROM question_options WHERE question_id = ? ORDER BY id",
+                (question_id,),
+            ).fetchall()
+
+            question.options = [
+                QuestionOption(
+                    id=o_row["id"],
+                    question_id=o_row["question_id"],
+                    text=o_row["option_text"],
+                    is_correct=bool(o_row["is_correct"]),
+                )
+                for o_row in o_rows
+            ]
+            return question
+        finally:
+            conn.close()
+
+    # ── Analytics ─────────────────────────────────────────────
+
+    def get_scores_over_time(
+        self, test_id: Optional[int] = None, mode: str = "test"
+    ) -> List[Dict]:
+        """Get chronological score list for trend charts."""
+        conn = self._conn()
+        try:
+            if test_id is not None:
+                rows = conn.execute(
+                    "SELECT a.id, a.percentage, a.completed_at, "
+                    "t.name as test_name "
+                    "FROM test_attempts a JOIN tests t ON a.test_id = t.id "
+                    "WHERE a.mode = ? AND a.test_id = ? "
+                    "ORDER BY a.completed_at ASC",
+                    (mode, test_id),
+                ).fetchall()
+            else:
+                rows = conn.execute(
+                    "SELECT a.id, a.percentage, a.completed_at, "
+                    "t.name as test_name "
+                    "FROM test_attempts a JOIN tests t ON a.test_id = t.id "
+                    "WHERE a.mode = ? ORDER BY a.completed_at ASC",
+                    (mode,),
+                ).fetchall()
+            return [
+                {
+                    "id": row["id"],
+                    "percentage": row["percentage"],
+                    "completed_at": row["completed_at"],
+                    "test_name": row["test_name"],
+                }
+                for row in rows
+            ]
+        finally:
+            conn.close()
+
+    def get_average_scores_by_test(self, mode: str = "test") -> List[Dict]:
+        """Get average/best/count per test for comparison charts."""
+        conn = self._conn()
+        try:
+            rows = conn.execute(
+                "SELECT t.name as test_name, "
+                "AVG(a.percentage) as avg_score, "
+                "MAX(a.percentage) as best_score, "
+                "COUNT(a.id) as attempt_count "
+                "FROM test_attempts a JOIN tests t ON a.test_id = t.id "
+                "WHERE a.mode = ? "
+                "GROUP BY a.test_id ORDER BY t.name",
+                (mode,),
+            ).fetchall()
+            return [
+                {
+                    "test_name": row["test_name"],
+                    "avg_score": round(row["avg_score"], 1),
+                    "best_score": round(row["best_score"], 1),
+                    "attempt_count": row["attempt_count"],
+                }
+                for row in rows
+            ]
+        finally:
+            conn.close()
+
+    def get_attempt_frequency(self, days: int = 30) -> List[Dict]:
+        """Get daily attempt counts for activity charts."""
+        conn = self._conn()
+        try:
+            rows = conn.execute(
+                "SELECT DATE(completed_at) as day, COUNT(*) as count "
+                "FROM test_attempts "
+                "WHERE completed_at >= DATE('now', ?)"
+                "GROUP BY DATE(completed_at) ORDER BY day ASC",
+                (f"-{days} days",),
+            ).fetchall()
+            return [
+                {"day": row["day"], "count": row["count"]}
+                for row in rows
+            ]
+        finally:
+            conn.close()
+
+    def get_category_performance(
+        self, test_id: Optional[int] = None
+    ) -> List[Dict]:
+        """Get correct/total/percentage grouped by category."""
+        conn = self._conn()
+        try:
+            base_query = (
+                "SELECT q.category, "
+                "COUNT(qr.id) as total, "
+                "SUM(CASE WHEN qr.is_correct = 1 THEN 1 ELSE 0 END) as correct "
+                "FROM questions q "
+                "JOIN question_responses qr ON q.id = qr.question_id "
+                "WHERE q.category != '' AND qr.is_correct IS NOT NULL "
+            )
+            params = []
+            if test_id is not None:
+                base_query += "AND q.test_id = ? "
+                params.append(test_id)
+
+            base_query += "GROUP BY q.category ORDER BY q.category"
+            rows = conn.execute(base_query, params).fetchall()
+
+            return [
+                {
+                    "category": row["category"],
+                    "total": row["total"],
+                    "correct": row["correct"],
+                    "percentage": round(
+                        row["correct"] / row["total"] * 100, 1
+                    )
+                    if row["total"] > 0
+                    else 0.0,
+                }
+                for row in rows
+            ]
+        finally:
+            conn.close()
+
     @staticmethod
     def _row_to_attempt(row: sqlite3.Row) -> TestAttempt:
         """Convert a database row to a TestAttempt."""
+        keys = row.keys()
         return TestAttempt(
             id=row["id"],
             test_id=row["test_id"],
@@ -389,6 +693,7 @@ class DatabaseManager:
             total_questions=row["total_questions"],
             percentage=row["percentage"],
             time_taken=row["time_taken"],
+            mode=row["mode"] if "mode" in keys else "test",
             completed_at=row["completed_at"],
-            test_name=row["test_name"] if "test_name" in row.keys() else None,
+            test_name=row["test_name"] if "test_name" in keys else None,
         )
