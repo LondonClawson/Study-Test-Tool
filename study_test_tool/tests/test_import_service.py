@@ -7,15 +7,17 @@ import tempfile
 import pytest
 
 from config.database import initialize_database
-from database.db_manager import DatabaseManager
 from services.import_service import ImportService
 
 
 @pytest.fixture
 def import_svc():
-    """ImportService with in-memory DB."""
-    initialize_database(":memory:")
-    return ImportService(":memory:")
+    """ImportService backed by a temporary SQLite file."""
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    initialize_database(path)
+    yield ImportService(path)
+    os.unlink(path)
 
 
 class TestJsonImport:
@@ -104,9 +106,6 @@ class TestJsonImport:
 
         try:
             test_id = import_svc.import_from_json(path)
-            db = DatabaseManager(":memory:")
-            # Can't verify questions directly since different connection,
-            # but the import didn't raise
             assert test_id > 0
         finally:
             os.unlink(path)

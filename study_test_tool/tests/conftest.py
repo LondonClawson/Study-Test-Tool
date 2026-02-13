@@ -1,6 +1,8 @@
 """Shared test fixtures."""
 
+import os
 import sys
+import tempfile
 from pathlib import Path
 
 import pytest
@@ -8,19 +10,28 @@ import pytest
 # Ensure project root is on path
 sys.path.insert(0, str(Path(__file__).resolve().parent.parent))
 
-from config.database import get_connection, initialize_database
+from config.database import initialize_database
 from database.db_manager import DatabaseManager
 
 
 @pytest.fixture
 def db_path():
-    """Return in-memory SQLite path."""
-    return ":memory:"
+    """Return a temporary SQLite file path (cleaned up after test).
+
+    Using :memory: doesn't work because each sqlite3.connect(":memory:")
+    creates a separate database — the schema created in one connection
+    is invisible to the next.  A temp file lets multiple connections
+    share the same database.
+    """
+    fd, path = tempfile.mkstemp(suffix=".db")
+    os.close(fd)
+    yield path
+    os.unlink(path)
 
 
 @pytest.fixture
 def db(db_path):
-    """Provide a fresh in-memory database with schema applied."""
+    """Provide a fresh database with schema applied."""
     initialize_database(db_path)
     return DatabaseManager(db_path)
 
