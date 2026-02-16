@@ -33,6 +33,7 @@ class TestEditorFrame(ctk.CTkFrame):
 
         self._test_id = None
         self._editing_question_id = None
+        self._clean_snapshot = None
 
         self._build_ui()
 
@@ -438,8 +439,31 @@ class TestEditorFrame(ctk.CTkFrame):
         self._reset_form()
         self._refresh_question_list()
 
+    def _get_form_snapshot(self) -> tuple:
+        """Return a tuple capturing the current state of all form fields."""
+        question_text = self.question_text.get("1.0", "end-1c")
+        q_type = self.type_var.get()
+        correct_idx = self.correct_var.get()
+        option_texts = [entry.get() for entry in self.option_entries]
+        essay_text = self.essay_answer.get("1.0", "end-1c")
+        category = self.category_entry.get()
+        return (question_text, q_type, correct_idx, tuple(option_texts),
+                essay_text, category)
+
+    def _form_is_dirty(self) -> bool:
+        """Return True if the form has been modified since last clean state."""
+        if self._clean_snapshot is None:
+            return False
+        return self._get_form_snapshot() != self._clean_snapshot
+
     def _on_edit_question(self, question: Question) -> None:
         """Populate the form with a question's data for editing."""
+        if self._form_is_dirty():
+            if not messagebox.askyesno(
+                "Unsaved Changes",
+                "You have unsaved changes. Discard and edit this question?",
+            ):
+                return
         self._editing_question_id = question.id
         self.form_title.configure(text="Edit Question")
         self.add_btn.configure(text="Update Question")
@@ -471,6 +495,8 @@ class TestEditorFrame(ctk.CTkFrame):
         self.category_entry.delete(0, "end")
         self.category_entry.insert(0, question.category or "")
 
+        self._clean_snapshot = self._get_form_snapshot()
+
     def _on_delete_question(self, question: Question) -> None:
         """Confirm and delete a question."""
         if messagebox.askyesno(
@@ -500,7 +526,15 @@ class TestEditorFrame(ctk.CTkFrame):
         self.essay_answer.delete("1.0", "end")
         self.category_entry.delete(0, "end")
         self._editing_question_id = None
+        self._clean_snapshot = self._get_form_snapshot()
 
     def _on_back(self) -> None:
         """Navigate back to home screen."""
+        if self._form_is_dirty():
+            if not messagebox.askyesno(
+                "Unsaved Changes",
+                "You have unsaved changes to the current question. "
+                "Discard changes and go back?",
+            ):
+                return
         self.controller.show_frame(SCREEN_HOME)

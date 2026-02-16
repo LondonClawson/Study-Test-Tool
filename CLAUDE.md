@@ -14,9 +14,10 @@ Study Testing Tool — a Python 3.9+ desktop application for importing, taking, 
 # Setup
 python3 -m venv venv
 source venv/bin/activate
-pip install -r requirements.txt
+pip install -r study_test_tool/requirements.txt
 
-# Run
+# Run (from the study_test_tool directory)
+cd study_test_tool
 python main.py
 
 # Test
