@@ -23,3 +23,9 @@ IMPORT_FILE_TYPES = [
     ("Text files", "*.txt"),
     ("All files", "*.*"),
 ]
+
+# Export file types for file dialog
+EXPORT_FILE_TYPES = [
+    ("JSON files", "*.json"),
+    ("All files", "*.*"),
+]

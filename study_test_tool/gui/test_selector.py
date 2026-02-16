@@ -16,10 +16,12 @@ from config.settings import (
     FONT_SIZE_TITLE,
 )
 from gui.components.mode_dialog import ModeSelectionDialog
+from services.export_service import ExportService
 from services.import_service import ImportService
 from services.question_service import QuestionService
 from services.test_service import TestService
 from utils.constants import (
+    EXPORT_FILE_TYPES,
     IMPORT_FILE_TYPES,
     SCREEN_ANALYTICS,
     SCREEN_EDITOR,
@@ -38,6 +40,7 @@ class TestSelectorFrame(ctk.CTkFrame):
         self.test_service = TestService()
         self.question_service = QuestionService()
         self.import_service = ImportService()
+        self.export_service = ExportService()
 
         self._sort_by = "Last Updated"
 
@@ -255,6 +258,15 @@ class TestSelectorFrame(ctk.CTkFrame):
 
         ctk.CTkButton(
             btn_frame,
+            text="Export",
+            width=70,
+            fg_color="#5cb85c",
+            hover_color="#449d44",
+            command=lambda t=test: self._on_export_test(t),
+        ).pack(side="left", padx=3)
+
+        ctk.CTkButton(
+            btn_frame,
             text="Delete",
             width=70,
             fg_color=COLOR_DANGER,
@@ -323,6 +335,36 @@ class TestSelectorFrame(ctk.CTkFrame):
     def _on_edit_test(self, test) -> None:
         """Navigate to editor for an existing test."""
         self.controller.show_frame(SCREEN_EDITOR, test_id=test.id)
+
+    def _on_export_test(self, test) -> None:
+        """Validate and export a test to a JSON file."""
+        try:
+            warnings = self.export_service.validate_test(test.id)
+        except ValueError as e:
+            messagebox.showerror("Export Error", str(e))
+            return
+
+        if warnings:
+            msg = "The following issues were found:\n\n"
+            msg += "\n".join(f"  - {w}" for w in warnings)
+            msg += "\n\nDo you want to export anyway?"
+            if not messagebox.askyesno("Export Warnings", msg):
+                return
+
+        file_path = filedialog.asksaveasfilename(
+            title="Export Test",
+            defaultextension=".json",
+            filetypes=EXPORT_FILE_TYPES,
+            initialfile=f"{test.name}.json",
+        )
+        if not file_path:
+            return
+
+        try:
+            self.export_service.export_to_json(test.id, file_path)
+            messagebox.showinfo("Success", "Test exported successfully!")
+        except Exception as e:
+            messagebox.showerror("Export Error", f"Unexpected error: {e}")
 
     def _on_delete_test(self, test) -> None:
         """Confirm and delete a test."""
