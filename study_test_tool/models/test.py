@@ -12,6 +12,7 @@ class Test:
 
     name: str
     description: str = ""
+    group_name: str = ""
     id: Optional[int] = None
     created_at: Optional[str] = None
     updated_at: Optional[str] = None

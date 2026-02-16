@@ -12,9 +12,11 @@ class TestService:
     def __init__(self, db_path: Optional[str] = None) -> None:
         self._db = DatabaseManager(db_path)
 
-    def create_test(self, name: str, description: str = "") -> int:
+    def create_test(
+        self, name: str, description: str = "", group_name: str = ""
+    ) -> int:
         """Create a new test and return its id."""
-        test = Test(name=name, description=description)
+        test = Test(name=name, description=description, group_name=group_name)
         return self._db.create_test(test)
 
     def get_all_tests(self) -> List[Test]:

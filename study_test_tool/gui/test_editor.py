@@ -80,13 +80,24 @@ class TestEditorFrame(ctk.CTkFrame):
         self.desc_entry = ctk.CTkEntry(meta_frame, width=400)
         self.desc_entry.grid(row=1, column=1, sticky="w", padx=10, pady=3)
 
+        ctk.CTkLabel(
+            meta_frame,
+            text="Group (optional):",
+            font=(FONT_FAMILY, FONT_SIZE_BODY),
+        ).grid(row=2, column=0, sticky="w", pady=3)
+
+        self.group_entry = ctk.CTkEntry(
+            meta_frame, width=400, placeholder_text="e.g. Week 1, Cert Prep"
+        )
+        self.group_entry.grid(row=2, column=1, sticky="w", padx=10, pady=3)
+
         ctk.CTkButton(
             meta_frame,
             text="Save Test",
             width=100,
             fg_color=COLOR_SUCCESS,
             command=self._on_save_test,
-        ).grid(row=0, column=2, rowspan=2, padx=20, pady=3)
+        ).grid(row=0, column=2, rowspan=3, padx=20, pady=3)
 
         # Divider
         ctk.CTkFrame(self, height=2, fg_color="gray").pack(
@@ -240,10 +251,13 @@ class TestEditorFrame(ctk.CTkFrame):
                 self.name_entry.insert(0, test.name)
                 self.desc_entry.delete(0, "end")
                 self.desc_entry.insert(0, test.description or "")
+                self.group_entry.delete(0, "end")
+                self.group_entry.insert(0, test.group_name or "")
         else:
             self.title_label.configure(text="New Test")
             self.name_entry.delete(0, "end")
             self.desc_entry.delete(0, "end")
+            self.group_entry.delete(0, "end")
 
         self._refresh_question_list()
 
@@ -348,13 +362,21 @@ class TestEditorFrame(ctk.CTkFrame):
             return
 
         description = self.desc_entry.get().strip()
+        group_name = self.group_entry.get().strip()
 
         if self._test_id is None:
-            self._test_id = self.test_service.create_test(name, description)
+            self._test_id = self.test_service.create_test(
+                name, description, group_name
+            )
             self.title_label.configure(text="Edit Test")
             messagebox.showinfo("Success", "Test created! Now add questions.")
         else:
-            test = Test(id=self._test_id, name=name, description=description)
+            test = Test(
+                id=self._test_id,
+                name=name,
+                description=description,
+                group_name=group_name,
+            )
             self.test_service.update_test(test)
             messagebox.showinfo("Success", "Test updated.")
 

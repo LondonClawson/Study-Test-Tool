@@ -2,7 +2,7 @@
 
 I would like to be able to have a test that is a ransom selection from several different tests that I have setup (I have 4 weeks of tests for a class that I have been working on a week at a time but now I need to prep for the mid-term and its all 4 weeks. I want to get maybe 10 questions selected accross all of the tests that I select to be put into a test, if the analitics could still identify my pass rate for the origin test that would be nice)
 
-It would be nice if the tests could be organized (sort the tests by name, creation date, etc... Possibly group them as well, class, cert, etc...)
+[DONE] It would be nice if the tests could be organized (sort the tests by name, creation date, etc... Possibly group them as well, class, cert, etc...)
 
 [DONE] Questions should have a warning flagg or give some kind of feedback if there is no answer set.
 

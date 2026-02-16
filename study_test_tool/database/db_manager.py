@@ -15,10 +15,29 @@ class DatabaseManager:
     def __init__(self, db_path: Optional[str] = None) -> None:
         """Initialize with optional db_path override for testing."""
         self._db_path = db_path
+        self._run_migrations()
 
     def _conn(self) -> sqlite3.Connection:
         """Get a new database connection."""
         return get_connection(self._db_path)
+
+    def _run_migrations(self) -> None:
+        """Run schema migrations for columns added after initial release."""
+        conn = self._conn()
+        try:
+            columns = [
+                row["name"]
+                for row in conn.execute("PRAGMA table_info(tests)").fetchall()
+            ]
+            if "group_name" not in columns:
+                conn.execute(
+                    "ALTER TABLE tests ADD COLUMN group_name TEXT DEFAULT ''"
+                )
+                conn.commit()
+        except sqlite3.OperationalError:
+            pass
+        finally:
+            conn.close()
 
     # ── Test CRUD ──────────────────────────────────────────────
 
@@ -27,8 +46,9 @@ class DatabaseManager:
         conn = self._conn()
         try:
             cursor = conn.execute(
-                "INSERT INTO tests (name, description) VALUES (?, ?)",
-                (test.name, test.description),
+                "INSERT INTO tests (name, description, group_name) "
+                "VALUES (?, ?, ?)",
+                (test.name, test.description, test.group_name),
             )
             conn.commit()
             return cursor.lastrowid
@@ -40,7 +60,8 @@ class DatabaseManager:
         conn = self._conn()
         try:
             rows = conn.execute(
-                "SELECT id, name, description, created_at, updated_at "
+                "SELECT id, name, description, group_name, "
+                "created_at, updated_at "
                 "FROM tests ORDER BY updated_at DESC"
             ).fetchall()
             return [
@@ -48,6 +69,7 @@ class DatabaseManager:
                     id=row["id"],
                     name=row["name"],
                     description=row["description"],
+                    group_name=row["group_name"] or "",
                     created_at=row["created_at"],
                     updated_at=row["updated_at"],
                 )
@@ -61,7 +83,8 @@ class DatabaseManager:
         conn = self._conn()
         try:
             row = conn.execute(
-                "SELECT id, name, description, created_at, updated_at "
+                "SELECT id, name, description, group_name, "
+                "created_at, updated_at "
                 "FROM tests WHERE id = ?",
                 (test_id,),
             ).fetchone()
@@ -72,6 +95,7 @@ class DatabaseManager:
                 id=row["id"],
                 name=row["name"],
                 description=row["description"],
+                group_name=row["group_name"] or "",
                 created_at=row["created_at"],
                 updated_at=row["updated_at"],
             )
@@ -81,12 +105,13 @@ class DatabaseManager:
             conn.close()
 
     def update_test(self, test: Test) -> None:
-        """Update test name and description."""
+        """Update test name, description, and group_name."""
         conn = self._conn()
         try:
             conn.execute(
-                "UPDATE tests SET name = ?, description = ? WHERE id = ?",
-                (test.name, test.description, test.id),
+                "UPDATE tests SET name = ?, description = ?, "
+                "group_name = ? WHERE id = ?",
+                (test.name, test.description, test.group_name, test.id),
             )
             conn.commit()
         finally:

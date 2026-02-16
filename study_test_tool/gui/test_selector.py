@@ -39,6 +39,8 @@ class TestSelectorFrame(ctk.CTkFrame):
         self.question_service = QuestionService()
         self.import_service = ImportService()
 
+        self._sort_by = "Last Updated"
+
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -94,6 +96,31 @@ class TestSelectorFrame(ctk.CTkFrame):
             hover_color="#d9972d",
         ).pack(side="right", padx=5)
 
+        # Sort toolbar
+        sort_frame = ctk.CTkFrame(self, fg_color="transparent")
+        sort_frame.pack(fill="x", padx=30, pady=(0, 5))
+
+        ctk.CTkLabel(
+            sort_frame,
+            text="Sort by:",
+            font=(FONT_FAMILY, FONT_SIZE_SMALL),
+        ).pack(side="left", padx=(0, 5))
+
+        self._sort_menu = ctk.CTkOptionMenu(
+            sort_frame,
+            values=[
+                "Last Updated",
+                "Name (A-Z)",
+                "Name (Z-A)",
+                "Date Created",
+                "Group",
+            ],
+            width=150,
+            command=self._on_sort_changed,
+        )
+        self._sort_menu.set(self._sort_by)
+        self._sort_menu.pack(side="left")
+
         # Scrollable test list
         self.test_list_frame = ctk.CTkScrollableFrame(self)
         self.test_list_frame.pack(fill="both", expand=True, padx=30, pady=(0, 20))
@@ -110,6 +137,26 @@ class TestSelectorFrame(ctk.CTkFrame):
         """Refresh the test list when this screen is shown."""
         self._refresh_test_list()
 
+    def _on_sort_changed(self, value: str) -> None:
+        """Handle sort dropdown change."""
+        self._sort_by = value
+        self._refresh_test_list()
+
+    def _sort_tests(self, tests):
+        """Sort the test list based on current sort selection."""
+        if self._sort_by == "Name (A-Z)":
+            return sorted(tests, key=lambda t: t.name.lower())
+        if self._sort_by == "Name (Z-A)":
+            return sorted(tests, key=lambda t: t.name.lower(), reverse=True)
+        if self._sort_by == "Date Created":
+            return sorted(tests, key=lambda t: t.created_at or "", reverse=True)
+        if self._sort_by == "Group":
+            return sorted(
+                tests, key=lambda t: (t.group_name or "", t.name.lower())
+            )
+        # Default: "Last Updated" — already sorted by DB query
+        return tests
+
     def _refresh_test_list(self) -> None:
         """Reload and display all tests."""
         # Clear existing cards
@@ -125,8 +172,26 @@ class TestSelectorFrame(ctk.CTkFrame):
 
         self.empty_label.pack_forget()
 
-        for test in tests:
-            self._create_test_card(test)
+        tests = self._sort_tests(tests)
+
+        if self._sort_by == "Group":
+            current_group = None
+            for test in tests:
+                group = test.group_name if test.group_name else "Ungrouped"
+                if group != current_group:
+                    current_group = group
+                    header = ctk.CTkLabel(
+                        self.test_list_frame,
+                        text=current_group,
+                        font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
+                        anchor="w",
+                        text_color=COLOR_PRIMARY,
+                    )
+                    header.pack(fill="x", padx=5, pady=(12, 4))
+                self._create_test_card(test)
+        else:
+            for test in tests:
+                self._create_test_card(test)
 
     def _create_test_card(self, test) -> None:
         """Create a card widget for a single test."""
@@ -153,11 +218,14 @@ class TestSelectorFrame(ctk.CTkFrame):
             anchor="w",
         ).pack(fill="x")
 
-        # Question count
+        # Question count and group
         q_count = self.test_service.get_question_count(test.id)
+        detail_parts = [f"{q_count} question{'s' if q_count != 1 else ''}"]
+        if test.group_name:
+            detail_parts.append(test.group_name)
         ctk.CTkLabel(
             info_frame,
-            text=f"{q_count} question{'s' if q_count != 1 else ''}",
+            text="  |  ".join(detail_parts),
             font=(FONT_FAMILY, FONT_SIZE_SMALL),
             text_color="gray",
             anchor="w",
