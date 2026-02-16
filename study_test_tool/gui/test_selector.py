@@ -17,6 +17,7 @@ from config.settings import (
 )
 from gui.components.mode_dialog import ModeSelectionDialog
 from services.import_service import ImportService
+from services.question_service import QuestionService
 from services.test_service import TestService
 from utils.constants import (
     IMPORT_FILE_TYPES,
@@ -35,6 +36,7 @@ class TestSelectorFrame(ctk.CTkFrame):
         super().__init__(parent)
         self.controller = controller
         self.test_service = TestService()
+        self.question_service = QuestionService()
         self.import_service = ImportService()
 
         self._build_ui()
@@ -231,6 +233,19 @@ class TestSelectorFrame(ctk.CTkFrame):
 
     def _on_take_test(self, test) -> None:
         """Show mode dialog, then navigate to test-taking."""
+        # Check for questions with no correct answer set
+        questions = self.question_service.get_questions_for_test(test.id)
+        missing = [q for q in questions if not q.correct_answer]
+        if missing:
+            proceed = messagebox.askyesno(
+                "Missing Answers",
+                f"{len(missing)} question(s) have no correct answer set. "
+                "Scoring may not work correctly for those questions.\n\n"
+                "Do you want to continue anyway?",
+            )
+            if not proceed:
+                return
+
         dialog = ModeSelectionDialog(self.winfo_toplevel())
         mode = dialog.get_mode()
         if mode is None:

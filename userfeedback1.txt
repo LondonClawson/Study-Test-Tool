@@ -1,0 +1,16 @@
+Answers need to be able to wrap text (some answers are long and go off screen and I cant read them)
+
+I would like to be able to have a test that is a ransom selection from several different tests that I have setup (I have 4 weeks of tests for a class that I have been working on a week at a time but now I need to prep for the mid-term and its all 4 weeks. I want to get maybe 10 questions selected accross all of the tests that I select to be put into a test, if the analitics could still identify my pass rate for the origin test that would be nice)
+
+It would be nice if the tests could be organized (sort the tests by name, creation date, etc... Possibly group them as well, class, cert, etc...)
+
+Questions should have a warning flagg or give some kind of feedback if there is no answer set. 
+
+When updating questions there should be an "You have unsaved changes are you sure you want to close/move off" type of popup if I forget to save a change. 
+
+If the question text is too long I need to be able to scroll, this is critical!!! I had a long question that pushed the buttons down below the bottom of my screen completly preventing me from moving off of the quesiton. 
+
+It would be nice if there was an export test feature (shareing my tests, making sure that every quesiton has an answer and that the answers are correct, etc...)
+
+It would be nice to be able to import tests from PDF
+

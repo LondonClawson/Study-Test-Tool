@@ -48,13 +48,32 @@ class QuestionWidget(ctk.CTkFrame):
         options_frame.pack(fill="x", padx=30, pady=5)
 
         for option in self.question.options:
-            ctk.CTkRadioButton(
-                options_frame,
-                text=option.text,
+            row = ctk.CTkFrame(options_frame, fg_color="transparent")
+            row.pack(fill="x", pady=4)
+
+            rb = ctk.CTkRadioButton(
+                row,
+                text="",
                 variable=self._answer_var,
                 value=option.text,
+                width=20,
+            )
+            rb.pack(side="left", anchor="n", padx=(0, 5), pady=2)
+
+            label = ctk.CTkLabel(
+                row,
+                text=option.text,
                 font=(FONT_FAMILY, FONT_SIZE_BODY),
-            ).pack(anchor="w", pady=4)
+                wraplength=550,
+                justify="left",
+                anchor="nw",
+                cursor="hand2",
+            )
+            label.pack(side="left", fill="x", expand=True)
+            label.bind(
+                "<Button-1>",
+                lambda e, val=option.text: self._answer_var.set(val),
+            )
 
     def _build_essay_input(self) -> None:
         """Build a textbox for essay answers."""

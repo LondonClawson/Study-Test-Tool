@@ -297,6 +297,15 @@ class TestEditorFrame(ctk.CTkFrame):
             anchor="w",
         ).pack(fill="x")
 
+        if not question.correct_answer:
+            ctk.CTkLabel(
+                info,
+                text="\u26a0 No answer set",
+                font=(FONT_FAMILY, 11),
+                text_color="#f0ad4e",
+                anchor="w",
+            ).pack(fill="x")
+
         btns = ctk.CTkFrame(card, fg_color="transparent")
         btns.pack(side="right", padx=5, pady=5)
 
@@ -410,6 +419,12 @@ class TestEditorFrame(ctk.CTkFrame):
                 correct_answer=correct_answer,
                 category=category,
             )
+            if not correct_answer:
+                messagebox.showwarning(
+                    "No Answer Set",
+                    "This essay question has no expected answer set. "
+                    "It will be saved, but scoring may not work correctly.",
+                )
 
         if self._editing_question_id is not None:
             question.id = self._editing_question_id

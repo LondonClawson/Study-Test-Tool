@@ -79,7 +79,7 @@ class TestTakingFrame(ctk.CTkFrame):
         self.flag_btn.pack(side="right", padx=5)
 
         # Center: question area
-        self.question_area = ctk.CTkFrame(self)
+        self.question_area = ctk.CTkScrollableFrame(self)
         self.question_area.pack(fill="both", expand=True, padx=30, pady=10)
 
         # Bottom: nav buttons + progress bar
@@ -255,6 +255,9 @@ class TestTakingFrame(ctk.CTkFrame):
             self.question_area, question
         )
         self._question_widget.pack(fill="both", expand=True)
+
+        # Reset scroll to top for the new question
+        self.question_area._parent_canvas.yview_moveto(0.0)
 
         # Restore saved answer
         saved = self._session.responses.get(question.id)
