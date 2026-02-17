@@ -1,6 +1,7 @@
 """Scoring service for evaluating test attempts."""
 
-from typing import Dict, Optional
+from collections import defaultdict
+from typing import Dict, List, Optional
 
 from config.settings import QUESTION_TYPE_ESSAY, QUESTION_TYPE_MC
 from database.db_manager import DatabaseManager
@@ -111,6 +112,70 @@ class ScoringService:
             self._db.save_response(response)
 
         return attempt_id
+
+    def save_mixed_attempt(
+        self,
+        score_data: Dict,
+        questions: list,
+        mode: str = "test",
+    ) -> List[int]:
+        """Save a mix test as separate per-source-test attempts.
+
+        Groups responses by their originating test_id and saves one attempt
+        per source test so analytics track back to each original test.
+
+        Args:
+            score_data: The dict returned by score_test().
+            questions: The list of Question objects from the session.
+            mode: "test" or "practice".
+
+        Returns:
+            List of saved attempt IDs.
+        """
+        # Build question_id → test_id lookup
+        qid_to_test: Dict[int, int] = {}
+        for q in questions:
+            if q.test_id is not None:
+                qid_to_test[q.id] = q.test_id
+
+        # Group responses by source test
+        grouped: Dict[int, List[QuestionResponse]] = defaultdict(list)
+        for response in score_data["responses"]:
+            source_test_id = qid_to_test.get(response.question_id)
+            if source_test_id is not None:
+                grouped[source_test_id].append(response)
+
+        total_time = score_data.get("time_taken", 0)
+        total_questions = len(score_data["responses"])
+
+        attempt_ids: List[int] = []
+        for test_id, responses in grouped.items():
+            correct = sum(1 for r in responses if r.is_correct is True)
+            incorrect = sum(1 for r in responses if r.is_correct is False)
+            essays = sum(1 for r in responses if r.is_correct is None)
+            mc_total = correct + incorrect
+            percentage = (correct / mc_total * 100) if mc_total > 0 else 0.0
+
+            # Proportional time allocation
+            proportion = len(responses) / total_questions if total_questions > 0 else 0
+            proportional_time = int(total_time * proportion)
+
+            per_test_score_data = {
+                "score": correct,
+                "total": mc_total,
+                "total_questions": len(responses),
+                "percentage": round(percentage, 1),
+                "correct_questions": correct,
+                "incorrect_questions": incorrect,
+                "essay_questions": essays,
+                "time_taken": proportional_time,
+                "responses": responses,
+            }
+
+            attempt_id = self.save_attempt(test_id, per_test_score_data, mode)
+            attempt_ids.append(attempt_id)
+
+        return attempt_ids
 
     def get_attempt_details(self, attempt_id: int) -> Optional[TestAttempt]:
         """Load a saved attempt with all responses."""

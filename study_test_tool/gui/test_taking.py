@@ -41,6 +41,7 @@ class TestTakingFrame(ctk.CTkFrame):
         self._progress_bar: Optional[ProgressBar] = None
         self._mode: str = MODE_TEST
         self._feedback_frame: Optional[ctk.CTkFrame] = None
+        self._is_mix_test: bool = False
 
         self._build_ui()
 
@@ -134,6 +135,8 @@ class TestTakingFrame(ctk.CTkFrame):
         test_id: Optional[int] = None,
         mode: str = MODE_TEST,
         review_question_ids: Optional[List[int]] = None,
+        questions: Optional[List] = None,
+        mix_test_name: Optional[str] = None,
         **kwargs,
     ) -> None:
         """Initialize the test-taking session.
@@ -142,6 +145,8 @@ class TestTakingFrame(ctk.CTkFrame):
             test_id: The test to take.
             mode: "test" or "practice".
             review_question_ids: Specific question IDs for review sessions.
+            questions: Pre-selected questions (for mix tests).
+            mix_test_name: Display name for mix tests.
         """
         self._mode = mode
 
@@ -153,10 +158,17 @@ class TestTakingFrame(ctk.CTkFrame):
             self.check_btn.pack_forget()
             self.finish_btn.configure(text="Finish Test")
 
-        # Load questions for review or normal test
-        if review_question_ids:
-            questions = self._load_review_questions(review_question_ids)
-            if not questions:
+        # Mix test: questions already provided
+        if questions is not None:
+            self._is_mix_test = True
+            self.test_name_label.configure(
+                text=mix_test_name if mix_test_name else "Mix Test"
+            )
+            self._session = TestSession(None, questions, mode=mode)
+        elif review_question_ids:
+            self._is_mix_test = False
+            loaded = self._load_review_questions(review_question_ids)
+            if not loaded:
                 messagebox.showwarning(
                     "No Questions", "Could not load review questions."
                 )
@@ -164,10 +176,11 @@ class TestTakingFrame(ctk.CTkFrame):
                 return
             # Use the test_id from the first question if not provided
             if test_id is None:
-                test_id = questions[0].test_id
+                test_id = loaded[0].test_id
             self.test_name_label.configure(text="Review Session")
-            self._session = TestSession(test_id, questions, mode=mode)
+            self._session = TestSession(test_id, loaded, mode=mode)
         else:
+            self._is_mix_test = False
             if test_id is None:
                 return
 
@@ -177,10 +190,10 @@ class TestTakingFrame(ctk.CTkFrame):
                 self.controller.show_frame(SCREEN_HOME)
                 return
 
-            questions = self.question_service.get_questions_for_test(
+            loaded = self.question_service.get_questions_for_test(
                 test_id, randomize=True
             )
-            if not questions:
+            if not loaded:
                 messagebox.showwarning(
                     "No Questions", "This test has no questions."
                 )
@@ -188,7 +201,7 @@ class TestTakingFrame(ctk.CTkFrame):
                 return
 
             self.test_name_label.configure(text=test.name)
-            self._session = TestSession(test_id, questions, mode=mode)
+            self._session = TestSession(test_id, loaded, mode=mode)
 
         self._session.start()
 
@@ -417,13 +430,24 @@ class TestTakingFrame(ctk.CTkFrame):
         self._session.finish_test()
 
         score_data = self.scoring_service.score_test(self._session)
-        attempt_id = self.scoring_service.save_attempt(
-            self._session.test_id, score_data, mode=self._mode
-        )
 
-        self.controller.show_frame(
-            SCREEN_RESULTS,
-            attempt_id=attempt_id,
-            session=self._session,
-            score_data=score_data,
-        )
+        if self._is_mix_test:
+            self.scoring_service.save_mixed_attempt(
+                score_data, self._session.questions, mode=self._mode
+            )
+            self.controller.show_frame(
+                SCREEN_RESULTS,
+                attempt_id=None,
+                session=self._session,
+                score_data=score_data,
+            )
+        else:
+            attempt_id = self.scoring_service.save_attempt(
+                self._session.test_id, score_data, mode=self._mode
+            )
+            self.controller.show_frame(
+                SCREEN_RESULTS,
+                attempt_id=attempt_id,
+                session=self._session,
+                score_data=score_data,
+            )

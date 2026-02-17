@@ -15,9 +15,11 @@ from config.settings import (
     FONT_SIZE_SMALL,
     FONT_SIZE_TITLE,
 )
+from gui.components.mix_test_dialog import MixTestDialog
 from gui.components.mode_dialog import ModeSelectionDialog
 from services.export_service import ExportService
 from services.import_service import ImportService
+from services.mix_service import MixService
 from services.question_service import QuestionService
 from services.test_service import TestService
 from utils.constants import (
@@ -41,6 +43,7 @@ class TestSelectorFrame(ctk.CTkFrame):
         self.question_service = QuestionService()
         self.import_service = ImportService()
         self.export_service = ExportService()
+        self.mix_service = MixService()
 
         self._sort_by = "Last Updated"
 
@@ -72,6 +75,15 @@ class TestSelectorFrame(ctk.CTkFrame):
             text="New Test",
             command=self._on_new_test,
             width=120,
+        ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="Mix Test",
+            command=self._on_mix_test,
+            width=120,
+            fg_color="#7b2d8e",
+            hover_color="#5e2270",
         ).pack(side="left", padx=5)
 
         ctk.CTkButton(
@@ -310,6 +322,54 @@ class TestSelectorFrame(ctk.CTkFrame):
     def _on_analytics(self) -> None:
         """Navigate to analytics view."""
         self.controller.show_frame(SCREEN_ANALYTICS)
+
+    def _on_mix_test(self) -> None:
+        """Open mix test dialog, then start a mixed test."""
+        tests = self.test_service.get_all_tests()
+        tests_with_counts = []
+        for test in tests:
+            q_count = self.test_service.get_question_count(test.id)
+            if q_count > 0:
+                tests_with_counts.append((test, q_count))
+
+        if not tests_with_counts:
+            messagebox.showinfo(
+                "No Tests",
+                "No tests with questions available for mixing.",
+            )
+            return
+
+        dialog = MixTestDialog(self.winfo_toplevel(), tests_with_counts)
+        result = dialog.get_result()
+        if result is None:
+            return
+
+        test_ids, count = result
+
+        # Show mode selection
+        mode_dialog = ModeSelectionDialog(self.winfo_toplevel())
+        mode = mode_dialog.get_mode()
+        if mode is None:
+            return
+
+        questions = self.mix_service.select_questions(test_ids, count)
+        if not questions:
+            messagebox.showwarning(
+                "No Questions", "Could not load questions from selected tests."
+            )
+            return
+
+        # Build display name from selected test names
+        selected_tests = [t for t, _ in tests_with_counts if t.id in test_ids]
+        name_parts = [t.name for t in selected_tests]
+        mix_name = "Mix: " + ", ".join(name_parts)
+
+        self.controller.show_frame(
+            SCREEN_TEST_TAKING,
+            mode=mode,
+            questions=questions,
+            mix_test_name=mix_name,
+        )
 
     def _on_take_test(self, test) -> None:
         """Show mode dialog, then navigate to test-taking."""

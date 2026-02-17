@@ -10,9 +10,12 @@ class TestSession:
     """Manages the state of an active test-taking session."""
 
     def __init__(
-        self, test_id: int, questions: List[Question], mode: str = "test"
+        self,
+        test_id: Optional[int],
+        questions: List[Question],
+        mode: str = "test",
     ) -> None:
-        self.test_id: int = test_id
+        self.test_id: Optional[int] = test_id
         self.questions: List[Question] = questions
         self.mode: str = mode
         self.current_index: int = 0
@@ -114,6 +117,11 @@ class TestSession:
         """Whether the current question has been answered."""
         question = self.get_current_question()
         return question is not None and question.id in self.responses
+
+    @property
+    def is_mix_test(self) -> bool:
+        """Whether this session is a mix test (questions from multiple tests)."""
+        return self.test_id is None
 
     @property
     def is_question_flagged(self) -> bool:

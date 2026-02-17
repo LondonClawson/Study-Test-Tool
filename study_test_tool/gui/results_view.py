@@ -1,10 +1,13 @@
 """Results view — displays score and question-by-question review."""
 
+from collections import defaultdict
+
 import customtkinter as ctk
 
 from config.settings import (
     COLOR_CORRECT,
     COLOR_INCORRECT,
+    COLOR_PRIMARY,
     FONT_FAMILY,
     FONT_SIZE_BODY,
     FONT_SIZE_HEADING,
@@ -135,6 +138,68 @@ class ResultsViewFrame(ctk.CTkFrame):
                 was_flagged=was_flagged,
                 options=question.options,
             )
+
+        # Per-source-test breakdown for mix tests
+        if session.is_mix_test:
+            self._show_source_breakdown(session, score_data)
+
+    def _show_source_breakdown(self, session, score_data: dict) -> None:
+        """Show per-source-test score breakdown for mix tests."""
+        # Group questions by source test_id
+        grouped: dict = defaultdict(list)
+        response_map = {r.question_id: r for r in score_data["responses"]}
+        for question in session.questions:
+            if question.test_id is not None:
+                grouped[question.test_id].append(question)
+
+        if not grouped:
+            return
+
+        # Section header
+        section = ctk.CTkFrame(self.review_frame, corner_radius=8)
+        section.pack(fill="x", pady=(15, 5), padx=5)
+
+        ctk.CTkLabel(
+            section,
+            text="Score by Source Test",
+            font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
+            text_color=COLOR_PRIMARY,
+        ).pack(anchor="w", padx=15, pady=(10, 5))
+
+        for test_id, questions in grouped.items():
+            test = self.test_service.get_test_by_id(test_id)
+            test_name = test.name if test else f"Test #{test_id}"
+
+            correct = 0
+            mc_total = 0
+            for q in questions:
+                resp = response_map.get(q.id)
+                if resp and resp.is_correct is not None:
+                    mc_total += 1
+                    if resp.is_correct:
+                        correct += 1
+
+            if mc_total > 0:
+                pct = round(correct / mc_total * 100, 1)
+                line = f"{test_name}: {correct}/{mc_total} ({pct}%)"
+            else:
+                line = f"{test_name}: {len(questions)} essay question(s)"
+
+            color = COLOR_CORRECT if mc_total > 0 and correct == mc_total else (
+                COLOR_INCORRECT if mc_total > 0 and correct < mc_total / 2
+                else "gray"
+            )
+
+            ctk.CTkLabel(
+                section,
+                text=line,
+                font=(FONT_FAMILY, FONT_SIZE_BODY),
+                text_color=color,
+                anchor="w",
+            ).pack(fill="x", padx=25, pady=2)
+
+        # Bottom padding
+        ctk.CTkFrame(section, height=8, fg_color="transparent").pack()
 
     def _show_from_db(self, attempt_id: int) -> None:
         """Display results loaded from the database."""

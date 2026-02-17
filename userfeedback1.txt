@@ -10,7 +10,7 @@ I would like to be able to have a test that is a ransom selection from several d
 
 [DONE] If the question text is too long I need to be able to scroll, this is critical!!! I had a long question that pushed the buttons down below the bottom of my screen completly preventing me from moving off of the quesiton.
 
-It would be nice if there was an export test feature (shareing my tests, making sure that every quesiton has an answer and that the answers are correct, etc...)
+[DONE] It would be nice if there was an export test feature (shareing my tests, making sure that every quesiton has an answer and that the answers are correct, etc...)
 
 It would be nice to be able to import tests from PDF
 
