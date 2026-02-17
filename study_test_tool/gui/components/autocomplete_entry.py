@@ -35,7 +35,7 @@ class AutocompleteEntry(ctk.CTkFrame):
         self._entry.bind("<Escape>", lambda e: self._close_dropdown())
 
         # Dropdown frame — placed as overlay below the entry
-        self._dropdown_frame: Optional[ctk.CTkScrollableFrame] = None
+        self._dropdown_frame: Optional[ctk.CTkFrame] = None
 
     # ── Public interface (mirrors CTkEntry) ───────────────────
 
@@ -75,8 +75,8 @@ class AutocompleteEntry(ctk.CTkFrame):
         self._show_dropdown()
 
     def _on_focus_in(self, event) -> None:
-        """Show dropdown when the entry gains focus."""
-        self._show_dropdown()
+        """Show dropdown when the entry gains focus (delayed to avoid click conflict)."""
+        self.after(50, self._show_dropdown)
 
     def _get_filtered(self) -> List[str]:
         """Return values matching the current text (case-insensitive)."""
@@ -112,9 +112,9 @@ class AutocompleteEntry(ctk.CTkFrame):
         item_height = 30
         dropdown_height = min(len(matches) * item_height + 10, self._max_items * item_height + 10)
 
-        self._dropdown_frame = ctk.CTkScrollableFrame(
+        self._dropdown_frame = ctk.CTkFrame(
             toplevel,
-            width=entry_w - 20,
+            width=entry_w,
             height=dropdown_height,
             corner_radius=4,
         )
@@ -151,6 +151,7 @@ class AutocompleteEntry(ctk.CTkFrame):
     def _close_dropdown(self) -> None:
         """Remove the dropdown overlay."""
         if self._dropdown_frame is not None:
+            self._dropdown_frame.place_forget()
             self._dropdown_frame.destroy()
             self._dropdown_frame = None
         self._dropdown_visible = False
@@ -159,18 +160,25 @@ class AutocompleteEntry(ctk.CTkFrame):
         except Exception:
             pass
 
+    def _is_click_inside(self, widget, x_root: int, y_root: int) -> bool:
+        """Check if root coordinates fall within a widget's bounding box."""
+        try:
+            wx = widget.winfo_rootx()
+            wy = widget.winfo_rooty()
+            ww = widget.winfo_width()
+            wh = widget.winfo_height()
+            return wx <= x_root <= wx + ww and wy <= y_root <= wy + wh
+        except Exception:
+            return False
+
     def _on_click_outside(self, event) -> None:
         """Close dropdown if the click is outside the dropdown and entry."""
         if not self._dropdown_visible:
             return
-        widget = event.widget
-        # Check if click is inside the entry or dropdown
-        try:
-            if widget == self._entry or widget == self._entry._entry:
+        # Check if click landed inside the entry or dropdown by coordinates
+        if self._is_click_inside(self._entry, event.x_root, event.y_root):
+            return
+        if self._dropdown_frame is not None:
+            if self._is_click_inside(self._dropdown_frame, event.x_root, event.y_root):
                 return
-            if self._dropdown_frame is not None:
-                if str(widget).startswith(str(self._dropdown_frame)):
-                    return
-        except Exception:
-            pass
         self._close_dropdown()
