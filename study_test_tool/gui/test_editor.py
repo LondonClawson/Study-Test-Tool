@@ -4,6 +4,7 @@ import tkinter.messagebox as messagebox
 
 import customtkinter as ctk
 
+from gui.components.autocomplete_entry import AutocompleteEntry
 from config.settings import (
     COLOR_DANGER,
     COLOR_SUCCESS,
@@ -86,7 +87,7 @@ class TestEditorFrame(ctk.CTkFrame):
             font=(FONT_FAMILY, FONT_SIZE_BODY),
         ).grid(row=2, column=0, sticky="w", pady=3)
 
-        self.group_entry = ctk.CTkEntry(
+        self.group_entry = AutocompleteEntry(
             meta_frame, width=400, placeholder_text="e.g. Week 1, Cert Prep"
         )
         self.group_entry.grid(row=2, column=1, sticky="w", padx=10, pady=3)
@@ -242,6 +243,8 @@ class TestEditorFrame(ctk.CTkFrame):
         self._test_id = test_id
         self._editing_question_id = None
         self._reset_form()
+
+        self.group_entry.set_values(self.test_service.get_group_names())
 
         if test_id is not None:
             test = self.test_service.get_test_by_id(test_id)

@@ -147,6 +147,29 @@ class TestSortingLogic:
         assert groups_seen == ["Ungrouped", "Week 1", "Week 2"]
 
 
+class TestDistinctGroupNames:
+    """Test get_distinct_group_names on DatabaseManager."""
+
+    def test_get_distinct_group_names(self, db):
+        db.create_test(Test(name="A", group_name="Week 2"))
+        db.create_test(Test(name="B", group_name="Week 1"))
+        db.create_test(Test(name="C", group_name="Week 2"))
+        db.create_test(Test(name="D", group_name="Cert Prep"))
+        result = db.get_distinct_group_names()
+        assert result == ["Cert Prep", "Week 1", "Week 2"]
+
+    def test_get_distinct_group_names_excludes_empty(self, db):
+        db.create_test(Test(name="A", group_name=""))
+        db.create_test(Test(name="B"))
+        db.create_test(Test(name="C", group_name="Real Group"))
+        result = db.get_distinct_group_names()
+        assert result == ["Real Group"]
+
+    def test_get_distinct_group_names_empty_table(self, db):
+        result = db.get_distinct_group_names()
+        assert result == []
+
+
 class TestTestServiceGroupName:
     """Test group_name through TestService layer."""
 

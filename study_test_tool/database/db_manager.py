@@ -39,6 +39,21 @@ class DatabaseManager:
         finally:
             conn.close()
 
+    # ── Group Names ────────────────────────────────────────────
+
+    def get_distinct_group_names(self) -> List[str]:
+        """Return all distinct non-empty group names, sorted alphabetically."""
+        conn = self._conn()
+        try:
+            rows = conn.execute(
+                "SELECT DISTINCT group_name FROM tests "
+                "WHERE group_name IS NOT NULL AND group_name != '' "
+                "ORDER BY group_name"
+            ).fetchall()
+            return [row["group_name"] for row in rows]
+        finally:
+            conn.close()
+
     # ── Test CRUD ──────────────────────────────────────────────
 
     def create_test(self, test: Test) -> int:
