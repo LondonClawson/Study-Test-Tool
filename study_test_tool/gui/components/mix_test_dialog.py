@@ -1,6 +1,7 @@
 """Mix test dialog — select tests and question count for a mixed test."""
 
-from typing import List, Optional, Tuple
+from collections import OrderedDict
+from typing import Dict, List, Optional, Tuple
 
 import customtkinter as ctk
 
@@ -13,6 +14,33 @@ from config.settings import (
 )
 from models.test import Test
 
+UNGROUPED_LABEL = "Ungrouped"
+
+
+def group_tests_by_name(
+    tests_with_counts: List[Tuple[Test, int]],
+) -> List[Tuple[str, List[Tuple[Test, int]]]]:
+    """Organize tests by ``group_name`` for display in the mix dialog.
+
+    Real groups are returned in alphabetical order. Tests with no group
+    fall into an "Ungrouped" bucket which is always returned last.
+    """
+    groups: "OrderedDict[str, List[Tuple[Test, int]]]" = OrderedDict()
+    ungrouped: List[Tuple[Test, int]] = []
+
+    for test, count in tests_with_counts:
+        if test.group_name:
+            groups.setdefault(test.group_name, []).append((test, count))
+        else:
+            ungrouped.append((test, count))
+
+    result: List[Tuple[str, List[Tuple[Test, int]]]] = [
+        (name, groups[name]) for name in sorted(groups.keys())
+    ]
+    if ungrouped:
+        result.append((UNGROUPED_LABEL, ungrouped))
+    return result
+
 
 class MixTestDialog(ctk.CTkToplevel):
     """Modal dialog for selecting tests and question count for a mix test."""
@@ -24,13 +52,15 @@ class MixTestDialog(ctk.CTkToplevel):
     ) -> None:
         super().__init__(parent)
         self.title("Mix Test")
-        self.geometry("450x480")
+        self.geometry("450x560")
         self.resizable(False, False)
 
         self._result: Optional[Tuple[List[int], int]] = None
         self._tests_with_counts = tests_with_counts
         self._checkboxes: List[Tuple[ctk.CTkCheckBox, int]] = []
         self._check_vars: List[ctk.BooleanVar] = []
+        self._group_vars: Dict[str, ctk.BooleanVar] = {}
+        self._group_to_test_indices: Dict[str, List[int]] = {}
 
         # Make modal
         self.transient(parent)
@@ -41,7 +71,7 @@ class MixTestDialog(ctk.CTkToplevel):
         # Center on parent
         self.update_idletasks()
         x = parent.winfo_rootx() + (parent.winfo_width() - 450) // 2
-        y = parent.winfo_rooty() + (parent.winfo_height() - 480) // 2
+        y = parent.winfo_rooty() + (parent.winfo_height() - 560) // 2
         self.geometry(f"+{x}+{y}")
 
     def _build_ui(self) -> None:
@@ -82,23 +112,42 @@ class MixTestDialog(ctk.CTkToplevel):
             command=self._deselect_all,
         ).pack(side="left", padx=3)
 
-        # Scrollable test list
-        scroll = ctk.CTkScrollableFrame(self, height=220)
+        # Scrollable test list, organized by group
+        scroll = ctk.CTkScrollableFrame(self, height=300)
         scroll.pack(fill="both", expand=True, padx=25, pady=5)
 
-        for test, q_count in self._tests_with_counts:
-            var = ctk.BooleanVar(value=False)
-            self._check_vars.append(var)
+        grouped = group_tests_by_name(self._tests_with_counts)
+        test_index = 0
 
-            cb = ctk.CTkCheckBox(
+        for group_name, group_tests in grouped:
+            group_var = ctk.BooleanVar(value=False)
+            self._group_vars[group_name] = group_var
+            self._group_to_test_indices[group_name] = []
+
+            group_cb = ctk.CTkCheckBox(
                 scroll,
-                text=f"{test.name}  ({q_count} questions)",
-                font=(FONT_FAMILY, FONT_SIZE_BODY),
-                variable=var,
-                command=self._on_checkbox_changed,
+                text=group_name,
+                font=(FONT_FAMILY, FONT_SIZE_BODY, "bold"),
+                variable=group_var,
+                command=lambda gn=group_name: self._on_group_toggled(gn),
             )
-            cb.pack(anchor="w", pady=3, padx=5)
-            self._checkboxes.append((cb, test.id))
+            group_cb.pack(anchor="w", pady=(8, 2), padx=2)
+
+            for test, q_count in group_tests:
+                var = ctk.BooleanVar(value=False)
+                self._check_vars.append(var)
+
+                cb = ctk.CTkCheckBox(
+                    scroll,
+                    text=f"{test.name}  ({q_count} questions)",
+                    font=(FONT_FAMILY, FONT_SIZE_BODY),
+                    variable=var,
+                    command=lambda gn=group_name: self._on_test_checkbox_changed(gn),
+                )
+                cb.pack(anchor="w", pady=2, padx=25)
+                self._checkboxes.append((cb, test.id))
+                self._group_to_test_indices[group_name].append(test_index)
+                test_index += 1
 
         # Total available label
         self._total_label = ctk.CTkLabel(
@@ -157,15 +206,37 @@ class MixTestDialog(ctk.CTkToplevel):
         return total
 
     def _select_all(self) -> None:
-        """Select all test checkboxes."""
+        """Select all test checkboxes (and group headers)."""
         for var in self._check_vars:
+            var.set(True)
+        for var in self._group_vars.values():
             var.set(True)
         self._on_checkbox_changed()
 
     def _deselect_all(self) -> None:
-        """Deselect all test checkboxes."""
+        """Deselect all test checkboxes (and group headers)."""
         for var in self._check_vars:
             var.set(False)
+        for var in self._group_vars.values():
+            var.set(False)
+        self._on_checkbox_changed()
+
+    def _on_group_toggled(self, group_name: str) -> None:
+        """Toggle every test in a group when its header checkbox changes."""
+        is_selected = self._group_vars[group_name].get()
+        for idx in self._group_to_test_indices[group_name]:
+            self._check_vars[idx].set(is_selected)
+        self._on_checkbox_changed()
+
+    def _on_test_checkbox_changed(self, group_name: str) -> None:
+        """Sync the group header when an individual test checkbox changes.
+
+        The group header is checked only when every test in the group is
+        selected; unchecking any test unchecks the group.
+        """
+        indices = self._group_to_test_indices[group_name]
+        all_selected = all(self._check_vars[i].get() for i in indices)
+        self._group_vars[group_name].set(all_selected)
         self._on_checkbox_changed()
 
     def _on_ok(self) -> None:

@@ -21,6 +21,9 @@ class QuestionWidget(ctk.CTkFrame):
         super().__init__(parent, **kwargs)
         self.question = question
         self._answer_var = ctk.StringVar(value="")
+        self._radio_buttons: list = []
+        self._option_labels: list = []
+        self._essay_textbox: Optional[ctk.CTkTextbox] = None
 
         self._build_ui()
 
@@ -59,6 +62,7 @@ class QuestionWidget(ctk.CTkFrame):
                 width=20,
             )
             rb.pack(side="left", anchor="n", padx=(0, 5), pady=2)
+            self._radio_buttons.append(rb)
 
             label = ctk.CTkLabel(
                 row,
@@ -74,6 +78,7 @@ class QuestionWidget(ctk.CTkFrame):
                 "<Button-1>",
                 lambda e, val=option.text: self._answer_var.set(val),
             )
+            self._option_labels.append(label)
 
     def _build_essay_input(self) -> None:
         """Build a textbox for essay answers."""
@@ -112,3 +117,18 @@ class QuestionWidget(ctk.CTkFrame):
         else:
             self._essay_textbox.delete("1.0", "end")
             self._essay_textbox.insert("1.0", answer)
+
+    def disable(self) -> None:
+        """Disable all answer inputs so the answer cannot be changed.
+
+        Used in practice mode after the user clicks "Check Answer" to lock
+        in their first attempt.
+        """
+        if self.question.type == QUESTION_TYPE_MC:
+            for rb in self._radio_buttons:
+                rb.configure(state="disabled")
+            for label in self._option_labels:
+                label.unbind("<Button-1>")
+                label.configure(cursor="")
+        elif self._essay_textbox is not None:
+            self._essay_textbox.configure(state="disabled")

@@ -20,6 +20,7 @@ class TestSession:
         self.mode: str = mode
         self.current_index: int = 0
         self.responses: Dict[int, str] = {}  # question_id → answer text
+        self.checked_responses: Dict[int, str] = {}  # question_id → first-checked answer
         self.flagged: Set[int] = set()  # question_ids
         self.question_times: Dict[int, int] = {}  # question_id → seconds
         self._start_time: float = 0.0
@@ -42,6 +43,32 @@ class TestSession:
             self.responses[question_id] = answer
         elif question_id in self.responses:
             del self.responses[question_id]
+
+    def save_checked_response(self, question_id: int, answer: str) -> bool:
+        """Record the first answer submitted via "Check Answer".
+
+        First-write-wins: subsequent calls for the same question are ignored
+        so the user's original attempt is what counts toward the final score.
+
+        Returns:
+            True if this was the first check for the question, False if it
+            was already locked.
+        """
+        if question_id in self.checked_responses:
+            return False
+        self.checked_responses[question_id] = answer
+        return True
+
+    def get_scoring_responses(self) -> Dict[int, str]:
+        """Get the answers to use for final scoring.
+
+        Checked responses (first attempt in practice mode) take priority over
+        any later edits in ``responses``. Questions that were never checked
+        fall through to whatever is in ``responses``.
+        """
+        merged = dict(self.responses)
+        merged.update(self.checked_responses)
+        return merged
 
     def flag_question(self, question_id: int) -> bool:
         """Toggle the flagged status of a question.
@@ -117,6 +144,12 @@ class TestSession:
         """Whether the current question has been answered."""
         question = self.get_current_question()
         return question is not None and question.id in self.responses
+
+    @property
+    def is_current_question_checked(self) -> bool:
+        """Whether the current question has been checked (locked) in practice mode."""
+        question = self.get_current_question()
+        return question is not None and question.id in self.checked_responses
 
     @property
     def is_mix_test(self) -> bool:

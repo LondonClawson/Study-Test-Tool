@@ -687,24 +687,56 @@ class DatabaseManager:
     def get_category_performance(
         self, test_id: Optional[int] = None
     ) -> List[Dict]:
-        """Get correct/total/percentage grouped by category."""
+        """Get correct/total/percentage grouped by category.
+
+        When the in-scope questions have no categories assigned, falls back
+        to grouping by ``tests.group_name`` (or ``tests.name`` if the group
+        is unset) so the Weak Topics view stays useful for users who haven't
+        tagged their questions.
+        """
         conn = self._conn()
         try:
-            base_query = (
-                "SELECT q.category, "
-                "COUNT(qr.id) as total, "
-                "SUM(CASE WHEN qr.is_correct = 1 THEN 1 ELSE 0 END) as correct "
-                "FROM questions q "
-                "JOIN question_responses qr ON q.id = qr.question_id "
-                "WHERE q.category != '' AND qr.is_correct IS NOT NULL "
-            )
-            params = []
+            params: List = []
+            test_filter = ""
             if test_id is not None:
-                base_query += "AND q.test_id = ? "
+                test_filter = "AND q.test_id = ? "
                 params.append(test_id)
 
-            base_query += "GROUP BY q.category ORDER BY q.category"
-            rows = conn.execute(base_query, params).fetchall()
+            probe = conn.execute(
+                "SELECT 1 FROM questions q "
+                "JOIN question_responses qr ON q.id = qr.question_id "
+                "WHERE q.category != '' AND qr.is_correct IS NOT NULL "
+                + test_filter
+                + "LIMIT 1",
+                params,
+            ).fetchone()
+
+            if probe is not None:
+                query = (
+                    "SELECT q.category AS category, "
+                    "COUNT(qr.id) as total, "
+                    "SUM(CASE WHEN qr.is_correct = 1 THEN 1 ELSE 0 END) as correct "
+                    "FROM questions q "
+                    "JOIN question_responses qr ON q.id = qr.question_id "
+                    "WHERE q.category != '' AND qr.is_correct IS NOT NULL "
+                    + test_filter
+                    + "GROUP BY q.category ORDER BY q.category"
+                )
+            else:
+                query = (
+                    "SELECT COALESCE(NULLIF(t.group_name, ''), t.name) AS category, "
+                    "COUNT(qr.id) as total, "
+                    "SUM(CASE WHEN qr.is_correct = 1 THEN 1 ELSE 0 END) as correct "
+                    "FROM questions q "
+                    "JOIN question_responses qr ON q.id = qr.question_id "
+                    "JOIN tests t ON q.test_id = t.id "
+                    "WHERE qr.is_correct IS NOT NULL "
+                    + test_filter
+                    + "GROUP BY COALESCE(NULLIF(t.group_name, ''), t.name) "
+                    "ORDER BY 1"
+                )
+
+            rows = conn.execute(query, params).fetchall()
 
             return [
                 {

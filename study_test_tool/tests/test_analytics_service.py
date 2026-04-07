@@ -122,6 +122,144 @@ class TestCategoryPerformance:
         cats = service.get_category_performance(test_id=test_id)
         assert len(cats) >= 1
 
+    def test_fallback_to_test_name_when_no_categories(self, db):
+        """Without categories or group_name, falls back to grouping by test name."""
+        from models.question import Question, QuestionOption
+        from models.test import Test
+        from models.test_result import QuestionResponse, TestAttempt
+
+        test = Test(name="Untagged Test")
+        test_id = db.create_test(test)
+
+        q = Question(
+            test_id=test_id,
+            text="Q1",
+            type="multiple_choice",
+            correct_answer="A",
+            options=[
+                QuestionOption(text="A", is_correct=True),
+                QuestionOption(text="B", is_correct=False),
+            ],
+        )
+        q_id = db.add_question(q)
+
+        attempt_id = db.save_attempt(
+            TestAttempt(
+                test_id=test_id, score=0, total_questions=1, percentage=0.0
+            )
+        )
+        db.save_response(
+            QuestionResponse(
+                attempt_id=attempt_id,
+                question_id=q_id,
+                user_answer="B",
+                is_correct=False,
+            )
+        )
+
+        service = AnalyticsService(db._db_path)
+        cats = service.get_category_performance()
+        assert len(cats) == 1
+        assert cats[0]["category"] == "Untagged Test"
+        assert cats[0]["total"] == 1
+        assert cats[0]["correct"] == 0
+
+    def test_fallback_collapses_tests_sharing_group_name(self, db):
+        """Tests with the same group_name collapse into a single bucket."""
+        from models.question import Question, QuestionOption
+        from models.test import Test
+        from models.test_result import QuestionResponse, TestAttempt
+
+        test_a_id = db.create_test(Test(name="Test A", group_name="Shared"))
+        test_b_id = db.create_test(Test(name="Test B", group_name="Shared"))
+
+        for tid, correct in [(test_a_id, True), (test_b_id, False)]:
+            q = Question(
+                test_id=tid,
+                text="Q",
+                type="multiple_choice",
+                correct_answer="A",
+                options=[
+                    QuestionOption(text="A", is_correct=True),
+                    QuestionOption(text="B", is_correct=False),
+                ],
+            )
+            q_id = db.add_question(q)
+            attempt_id = db.save_attempt(
+                TestAttempt(
+                    test_id=tid, score=0, total_questions=1, percentage=0.0
+                )
+            )
+            db.save_response(
+                QuestionResponse(
+                    attempt_id=attempt_id,
+                    question_id=q_id,
+                    user_answer="A" if correct else "B",
+                    is_correct=correct,
+                )
+            )
+
+        service = AnalyticsService(db._db_path)
+        cats = service.get_category_performance()
+        assert len(cats) == 1
+        assert cats[0]["category"] == "Shared"
+        assert cats[0]["total"] == 2
+        assert cats[0]["correct"] == 1
+        assert cats[0]["percentage"] == 50.0
+
+    def test_categorized_questions_take_priority_over_fallback(self, db):
+        """If any in-scope question has a category, only categorized rows are returned."""
+        from models.question import Question, QuestionOption
+        from models.test import Test
+        from models.test_result import QuestionResponse, TestAttempt
+
+        test_id = db.create_test(Test(name="Mixed Test", group_name="Grouped"))
+
+        tagged = Question(
+            test_id=test_id,
+            text="Tagged",
+            type="multiple_choice",
+            correct_answer="A",
+            category="Algebra",
+            options=[
+                QuestionOption(text="A", is_correct=True),
+                QuestionOption(text="B", is_correct=False),
+            ],
+        )
+        tagged_id = db.add_question(tagged)
+
+        untagged = Question(
+            test_id=test_id,
+            text="Untagged",
+            type="multiple_choice",
+            correct_answer="A",
+            options=[
+                QuestionOption(text="A", is_correct=True),
+                QuestionOption(text="B", is_correct=False),
+            ],
+        )
+        untagged_id = db.add_question(untagged)
+
+        attempt_id = db.save_attempt(
+            TestAttempt(
+                test_id=test_id, score=2, total_questions=2, percentage=100.0
+            )
+        )
+        for qid in (tagged_id, untagged_id):
+            db.save_response(
+                QuestionResponse(
+                    attempt_id=attempt_id,
+                    question_id=qid,
+                    user_answer="A",
+                    is_correct=True,
+                )
+            )
+
+        service = AnalyticsService(db._db_path)
+        cats = service.get_category_performance()
+        assert [c["category"] for c in cats] == ["Algebra"]
+        assert cats[0]["total"] == 1
+
 
 class TestWeakTopics:
     """Tests for weak topic identification."""

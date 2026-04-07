@@ -46,9 +46,10 @@ class ScoringService:
         incorrect = 0
         essays = 0
         scored_responses = []
+        scoring_responses = session.get_scoring_responses()
 
         for question in session.questions:
-            user_answer = session.responses.get(question.id)
+            user_answer = scoring_responses.get(question.id)
             is_correct = self.score_question(question, user_answer)
 
             if is_correct is None:

@@ -80,6 +80,29 @@ class TestScoringService:
         assert result["percentage"] == 100.0
         assert result["essay_questions"] == 1
 
+    def test_score_test_uses_checked_responses(self):
+        """Regression: practice mode must score the first checked answer,
+        not whatever the user changed it to afterward."""
+        questions = [
+            Question(id=1, text="Q1", type="multiple_choice", correct_answer="A"),
+            Question(id=2, text="Q2", type="multiple_choice", correct_answer="B"),
+            Question(id=3, text="Q3", type="multiple_choice", correct_answer="C"),
+        ]
+
+        session = TestSession(test_id=1, questions=questions, mode="practice")
+        session.start()
+        # User originally answered wrong on Q1 and Q2 and clicked Check.
+        session.checked_responses = {1: "Wrong", 2: "Wrong"}
+        # Then they "fixed" their visible answers to all-correct.
+        session.responses = {1: "A", 2: "B", 3: "C"}
+
+        scoring = ScoringService(":memory:")
+        result = scoring.score_test(session)
+
+        # Q1 + Q2 should score as wrong (locked from check), Q3 correct.
+        assert result["score"] == 1
+        assert result["total"] == 3
+
     def test_score_test_partial(self):
         questions = [
             Question(id=1, text="Q1", type="multiple_choice", correct_answer="A"),

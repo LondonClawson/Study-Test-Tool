@@ -277,6 +277,25 @@ class TestTakingFrame(ctk.CTkFrame):
         if saved:
             self._question_widget.set_answer(saved)
 
+        # In practice mode, re-apply the lock and feedback if this question
+        # was already checked.
+        if self._mode == MODE_PRACTICE:
+            if question.id in self._session.checked_responses:
+                checked_answer = self._session.checked_responses[question.id]
+                self._question_widget.set_answer(checked_answer)
+                self._question_widget.disable()
+                is_correct = self.scoring_service.score_question(
+                    question, checked_answer if checked_answer else None
+                )
+                self._show_feedback(
+                    question,
+                    checked_answer if checked_answer else None,
+                    is_correct,
+                )
+                self.check_btn.configure(state="disabled")
+            else:
+                self.check_btn.configure(state="normal")
+
         # Update progress bar
         self._update_progress_bar()
 
@@ -307,18 +326,36 @@ class TestTakingFrame(ctk.CTkFrame):
         )
 
     def _on_check_answer(self) -> None:
-        """Check the current answer (practice mode)."""
+        """Check the current answer (practice mode).
+
+        The first answer the user submits via this button is locked in for
+        scoring. The answer widget is then disabled so it cannot be changed.
+        """
         if self._session is None or self._question_widget is None:
             return
 
-        self._save_current_answer()
         question = self._session.get_current_question()
         if question is None:
             return
 
+        # If already checked, do nothing — the answer is locked.
+        if question.id in self._session.checked_responses:
+            return
+
+        self._save_current_answer()
         user_answer = self._session.responses.get(question.id)
+
+        # Lock the answer for scoring (first-write-wins).
+        self._session.save_checked_response(
+            question.id, user_answer if user_answer else ""
+        )
+
         is_correct = self.scoring_service.score_question(question, user_answer)
         self._show_feedback(question, user_answer, is_correct)
+
+        # Visually lock the answer input and disable the Check Answer button.
+        self._question_widget.disable()
+        self.check_btn.configure(state="disabled")
 
     def _show_feedback(self, question, user_answer, is_correct) -> None:
         """Display correct/incorrect feedback below the question widget."""

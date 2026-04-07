@@ -123,3 +123,29 @@ class TestTestSession:
         session.finish_test()
         # Should not raise
         assert True
+
+    def test_save_checked_response_first_call(self, session):
+        assert session.save_checked_response(1, "A") is True
+        assert session.checked_responses[1] == "A"
+        assert session.is_current_question_checked is True
+
+    def test_save_checked_response_does_not_overwrite(self, session):
+        session.save_checked_response(1, "B")
+        # Second call returns False and keeps the original answer.
+        assert session.save_checked_response(1, "A") is False
+        assert session.checked_responses[1] == "B"
+
+    def test_get_scoring_responses_prefers_checked(self, session):
+        # Simulates: user picked B, clicked Check, then changed to A.
+        session.save_checked_response(1, "B")
+        session.save_response(1, "A")
+        scoring = session.get_scoring_responses()
+        assert scoring[1] == "B"
+
+    def test_get_scoring_responses_falls_back_to_responses(self, session):
+        # Q1 was checked, Q2 was only edited (never checked).
+        session.save_checked_response(1, "A")
+        session.save_response(2, "Y")
+        scoring = session.get_scoring_responses()
+        assert scoring[1] == "A"
+        assert scoring[2] == "Y"
