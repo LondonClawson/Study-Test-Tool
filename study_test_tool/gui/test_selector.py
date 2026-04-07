@@ -66,16 +66,9 @@ class TestSelectorFrame(ctk.CTkFrame):
 
         ctk.CTkButton(
             btn_frame,
-            text="Import Test",
+            text="Import",
             command=self._on_import,
             width=120,
-        ).pack(side="left", padx=5)
-
-        ctk.CTkButton(
-            btn_frame,
-            text="Import PDF Folder…",
-            command=self._on_import_pdf_folder,
-            width=150,
         ).pack(side="left", padx=5)
 
         ctk.CTkButton(
@@ -295,9 +288,9 @@ class TestSelectorFrame(ctk.CTkFrame):
         ).pack(side="left", padx=3)
 
     def _on_import(self) -> None:
-        """Handle Import Test button click."""
+        """Handle Import button click — auto-detects file type."""
         file_path = filedialog.askopenfilename(
-            title="Import Test",
+            title="Import",
             filetypes=IMPORT_FILE_TYPES,
         )
         if not file_path:
@@ -305,7 +298,7 @@ class TestSelectorFrame(ctk.CTkFrame):
 
         try:
             if file_path.lower().endswith(".pdf"):
-                self._import_single_pdf(file_path)
+                self._import_pdf(file_path)
             elif file_path.endswith(".json"):
                 self.import_service.import_from_json(file_path)
                 messagebox.showinfo("Success", "Test imported successfully!")
@@ -320,15 +313,18 @@ class TestSelectorFrame(ctk.CTkFrame):
         except Exception as e:
             messagebox.showerror("Import Error", f"Unexpected error: {e}")
 
-    def _import_single_pdf(self, pdf_path: str) -> None:
-        """Import one half of a PDF pair, auto-detecting its partner.
+    def _import_pdf(self, pdf_path: str) -> None:
+        """Import a PDF, auto-detecting partner and offering folder batch.
 
-        If the partner cannot be auto-located in the same folder, prompts
-        the user to pick it explicitly. Raises ConversionError on failure.
+        Resolves the Questions/Answers partner for the picked PDF. If the
+        containing folder holds more than one valid pair, prompts the user
+        to choose between importing just this pair or batch-importing all
+        pairs in the folder. Raises ConversionError on failure.
         """
         from pathlib import Path
 
-        from services.pdf_import_service import find_partner_pdf, pairing_key_from_stem
+        from services import pdf_import_service
+        from services.pdf_import_service import find_partner_pdf
 
         picked = Path(pdf_path)
 
@@ -366,6 +362,31 @@ class TestSelectorFrame(ctk.CTkFrame):
                     f"need a {want} PDF."
                 )
 
+        # If the containing folder has more than one valid pair, offer batch.
+        try:
+            all_pairs = pdf_import_service.discover_pairs(picked.parent)
+        except ConversionError:
+            all_pairs = []
+
+        if len(all_pairs) > 1:
+            # Yes = import all pairs, No = just this one, Cancel = abort.
+            choice = messagebox.askyesnocancel(
+                "Multiple PDF pairs found",
+                f"Found {len(all_pairs)} Questions/Answers PDF pairs in this folder.\n\n"
+                "Yes — Import all pairs in the folder\n"
+                "No — Import only the selected pair\n"
+                "Cancel — Abort",
+                default=messagebox.NO,
+            )
+            if choice is None:
+                return
+            if choice:
+                results = self.import_service.import_from_pdf_folder(
+                    str(picked.parent)
+                )
+                self._show_pdf_folder_report(results)
+                return
+
         if role == "questions":
             questions_pdf, answers_pdf = picked, partner
         else:
@@ -379,21 +400,8 @@ class TestSelectorFrame(ctk.CTkFrame):
             f"Imported PDF pair:\n{questions_pdf.name}\n{answers_pdf.name}",
         )
 
-    def _on_import_pdf_folder(self) -> None:
-        """Batch-import every Questions/Answers PDF pair in a folder."""
-        folder = filedialog.askdirectory(title="Select folder of PDF pairs")
-        if not folder:
-            return
-
-        try:
-            results = self.import_service.import_from_pdf_folder(folder)
-        except ConversionError as e:
-            messagebox.showerror("PDF Import Error", str(e))
-            return
-        except Exception as e:
-            messagebox.showerror("PDF Import Error", f"Unexpected error: {e}")
-            return
-
+    def _show_pdf_folder_report(self, results) -> None:
+        """Render the success/skip report for a folder PDF batch import."""
         succeeded = [r for r in results if r["status"] == "success"]
         skipped = [r for r in results if r["status"] == "skipped"]
 
@@ -405,7 +413,6 @@ class TestSelectorFrame(ctk.CTkFrame):
         for r in skipped:
             lines.append(f"[SKIP] {r['pair']} — {r['error']}")
 
-        self._refresh_test_list()
         if skipped:
             messagebox.showwarning("PDF Import Report", "\n".join(lines))
         else:
