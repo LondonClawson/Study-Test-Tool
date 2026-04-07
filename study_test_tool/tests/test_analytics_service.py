@@ -312,3 +312,182 @@ class TestWeakTopics:
 
         topics = service.get_weak_topics(test_id=test_id)
         assert len(topics) >= 1
+
+
+def _seed_two_tests_one_group(db):
+    """Two tests sharing a group, no per-question category; one response each."""
+    from models.question import Question, QuestionOption
+    from models.test import Test
+    from models.test_result import QuestionResponse, TestAttempt
+
+    test_a_id = db.create_test(Test(name="Test A", group_name="Shared"))
+    test_b_id = db.create_test(Test(name="Test B", group_name="Shared"))
+
+    ids = {}
+    for tid, correct in [(test_a_id, True), (test_b_id, False)]:
+        q = Question(
+            test_id=tid,
+            text="Q",
+            type="multiple_choice",
+            correct_answer="A",
+            options=[
+                QuestionOption(text="A", is_correct=True),
+                QuestionOption(text="B", is_correct=False),
+            ],
+        )
+        q_id = db.add_question(q)
+        attempt_id = db.save_attempt(
+            TestAttempt(
+                test_id=tid, score=0, total_questions=1, percentage=0.0
+            )
+        )
+        db.save_response(
+            QuestionResponse(
+                attempt_id=attempt_id,
+                question_id=q_id,
+                user_answer="A" if correct else "B",
+                is_correct=correct,
+            )
+        )
+        ids[tid] = q_id
+    return test_a_id, test_b_id
+
+
+class TestGroupByModes:
+    """Tests for the explicit group_by parameter on category performance."""
+
+    def test_group_by_test_splits_into_per_test_rows(self, db):
+        """group_by='test' returns one row per test even when they share a group."""
+        _seed_two_tests_one_group(db)
+
+        service = AnalyticsService(db._db_path)
+        cats = service.get_category_performance(group_by="test")
+
+        labels = sorted(c["category"] for c in cats)
+        assert labels == ["Test A", "Test B"]
+        for c in cats:
+            assert c["total"] == 1
+
+    def test_group_by_group_collapses_shared_group(self, db):
+        """group_by='group' buckets tests sharing a group_name together."""
+        _seed_two_tests_one_group(db)
+
+        service = AnalyticsService(db._db_path)
+        cats = service.get_category_performance(group_by="group")
+
+        assert len(cats) == 1
+        assert cats[0]["category"] == "Shared"
+        assert cats[0]["total"] == 2
+        assert cats[0]["correct"] == 1
+
+    def test_group_by_group_falls_back_to_test_name_when_empty(self, db):
+        """group_by='group' uses test name when group_name is unset."""
+        from models.question import Question, QuestionOption
+        from models.test import Test
+        from models.test_result import QuestionResponse, TestAttempt
+
+        test_id = db.create_test(Test(name="Solo Test"))
+        q = Question(
+            test_id=test_id,
+            text="Q",
+            type="multiple_choice",
+            correct_answer="A",
+            options=[
+                QuestionOption(text="A", is_correct=True),
+                QuestionOption(text="B", is_correct=False),
+            ],
+        )
+        q_id = db.add_question(q)
+        attempt_id = db.save_attempt(
+            TestAttempt(
+                test_id=test_id, score=1, total_questions=1, percentage=100.0
+            )
+        )
+        db.save_response(
+            QuestionResponse(
+                attempt_id=attempt_id,
+                question_id=q_id,
+                user_answer="A",
+                is_correct=True,
+            )
+        )
+
+        service = AnalyticsService(db._db_path)
+        cats = service.get_category_performance(group_by="group")
+        assert len(cats) == 1
+        assert cats[0]["category"] == "Solo Test"
+
+    def test_group_by_category_returns_empty_when_no_categories(self, db):
+        """Explicit group_by='category' does NOT fall back — returns []."""
+        _seed_two_tests_one_group(db)
+
+        service = AnalyticsService(db._db_path)
+        cats = service.get_category_performance(group_by="category")
+        assert cats == []
+
+    def test_group_by_category_returns_category_rows_when_tagged(self, db):
+        """group_by='category' lists per-category stats when tags exist."""
+        from models.question import Question, QuestionOption
+        from models.test import Test
+        from models.test_result import QuestionResponse, TestAttempt
+
+        test_id = db.create_test(Test(name="Mixed"))
+        q = Question(
+            test_id=test_id,
+            text="Tagged",
+            type="multiple_choice",
+            correct_answer="A",
+            category="Algebra",
+            options=[
+                QuestionOption(text="A", is_correct=True),
+                QuestionOption(text="B", is_correct=False),
+            ],
+        )
+        q_id = db.add_question(q)
+        attempt_id = db.save_attempt(
+            TestAttempt(
+                test_id=test_id, score=1, total_questions=1, percentage=100.0
+            )
+        )
+        db.save_response(
+            QuestionResponse(
+                attempt_id=attempt_id,
+                question_id=q_id,
+                user_answer="A",
+                is_correct=True,
+            )
+        )
+
+        service = AnalyticsService(db._db_path)
+        cats = service.get_category_performance(group_by="category")
+        assert [c["category"] for c in cats] == ["Algebra"]
+
+    def test_group_by_auto_preserves_legacy_fallback(self, db):
+        """group_by='auto' (the default) still falls back to group/test name."""
+        _seed_two_tests_one_group(db)
+
+        service = AnalyticsService(db._db_path)
+        cats_auto = service.get_category_performance(group_by="auto")
+        cats_default = service.get_category_performance()
+        assert cats_auto == cats_default
+        assert len(cats_auto) == 1
+        assert cats_auto[0]["category"] == "Shared"
+
+    def test_weak_topics_passes_group_by_through(self, db):
+        """get_weak_topics forwards group_by and still classifies status."""
+        _seed_two_tests_one_group(db)
+
+        service = AnalyticsService(db._db_path)
+        topics = service.get_weak_topics(group_by="test")
+        labels = sorted(t["category"] for t in topics)
+        assert labels == ["Test A", "Test B"]
+        for t in topics:
+            assert t["status"] in ("weak", "moderate", "strong")
+
+    def test_invalid_group_by_raises(self, db):
+        """Unsupported group_by value raises ValueError."""
+        service = AnalyticsService(db._db_path)
+        with pytest.raises(ValueError):
+            service.get_category_performance(group_by="tag")
+        with pytest.raises(ValueError):
+            service.get_weak_topics(group_by="bogus")

@@ -86,6 +86,46 @@ class TestJsonImport:
         with pytest.raises(FileNotFoundError):
             import_svc.import_from_json("/nonexistent/file.json")
 
+    def test_import_from_dict_success(self, import_svc):
+        """In-memory payload path used by the PDF import flow."""
+        data = {
+            "name": "Dict Test",
+            "description": "In-memory",
+            "questions": [
+                {
+                    "text": "Q?",
+                    "type": "multiple_choice",
+                    "options": [
+                        {"text": "A", "correct": True},
+                        {"text": "B", "correct": False},
+                    ],
+                }
+            ],
+        }
+        test_id = import_svc.import_from_dict(data)
+        assert test_id > 0
+
+    def test_import_from_dict_uses_fallback_name(self, import_svc):
+        data = {
+            "questions": [
+                {
+                    "text": "Q?",
+                    "type": "multiple_choice",
+                    "options": [
+                        {"text": "A", "correct": True},
+                        {"text": "B", "correct": False},
+                    ],
+                }
+            ],
+        }
+        # No 'name' in payload; fallback must be used. Should not raise.
+        test_id = import_svc.import_from_dict(data, fallback_name="Fallback")
+        assert test_id > 0
+
+    def test_import_from_dict_rejects_missing_questions(self, import_svc):
+        with pytest.raises(ValueError, match="questions"):
+            import_svc.import_from_dict({"name": "Bad"})
+
     def test_import_essay_question(self, import_svc):
         data = {
             "name": "Essay Test",

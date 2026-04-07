@@ -21,6 +21,7 @@ TEXT_EXTENSION = ".txt"
 IMPORT_FILE_TYPES = [
     ("JSON files", "*.json"),
     ("Text files", "*.txt"),
+    ("PDF (Questions/Answers pair)", "*.pdf"),
     ("All files", "*.*"),
 ]
 

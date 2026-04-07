@@ -19,6 +19,7 @@ from gui.components.mix_test_dialog import MixTestDialog
 from gui.components.mode_dialog import ModeSelectionDialog
 from services.export_service import ExportService
 from services.import_service import ImportService
+from services.pdf_import_service import ConversionError, strip_role_suffix
 from services.mix_service import MixService
 from services.question_service import QuestionService
 from services.test_service import TestService
@@ -68,6 +69,13 @@ class TestSelectorFrame(ctk.CTkFrame):
             text="Import Test",
             command=self._on_import,
             width=120,
+        ).pack(side="left", padx=5)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="Import PDF Folder…",
+            command=self._on_import_pdf_folder,
+            width=150,
         ).pack(side="left", padx=5)
 
         ctk.CTkButton(
@@ -296,16 +304,112 @@ class TestSelectorFrame(ctk.CTkFrame):
             return
 
         try:
-            if file_path.endswith(".json"):
-                test_id = self.import_service.import_from_json(file_path)
+            if file_path.lower().endswith(".pdf"):
+                self._import_single_pdf(file_path)
+            elif file_path.endswith(".json"):
+                self.import_service.import_from_json(file_path)
+                messagebox.showinfo("Success", "Test imported successfully!")
             else:
-                test_id = self.import_service.import_from_text(file_path)
-            messagebox.showinfo("Success", "Test imported successfully!")
+                self.import_service.import_from_text(file_path)
+                messagebox.showinfo("Success", "Test imported successfully!")
             self._refresh_test_list()
+        except ConversionError as e:
+            messagebox.showerror("PDF Import Error", str(e))
         except (ValueError, FileNotFoundError, json.JSONDecodeError) as e:
             messagebox.showerror("Import Error", str(e))
         except Exception as e:
             messagebox.showerror("Import Error", f"Unexpected error: {e}")
+
+    def _import_single_pdf(self, pdf_path: str) -> None:
+        """Import one half of a PDF pair, auto-detecting its partner.
+
+        If the partner cannot be auto-located in the same folder, prompts
+        the user to pick it explicitly. Raises ConversionError on failure.
+        """
+        from pathlib import Path
+
+        from services.pdf_import_service import find_partner_pdf, pairing_key_from_stem
+
+        picked = Path(pdf_path)
+
+        # Figure out which half the user picked.
+        try:
+            _, role = strip_role_suffix(picked.stem)
+        except ConversionError as exc:
+            raise ConversionError(
+                f"{exc} Rename the file so it ends with 'Questions' or 'Answers'."
+            ) from exc
+
+        # Try auto-detect; fall back to asking for the partner.
+        try:
+            partner = find_partner_pdf(picked)
+        except ConversionError:
+            want = "Answers" if role == "questions" else "Questions"
+            partner_path = filedialog.askopenfilename(
+                title=f"Select the matching {want} PDF",
+                filetypes=[("PDF files", "*.pdf")],
+                initialdir=str(picked.parent),
+            )
+            if not partner_path:
+                return
+            partner = Path(partner_path)
+            # Sanity check: must be the correct role and same pairing key.
+            try:
+                _, partner_role = strip_role_suffix(partner.stem)
+            except ConversionError as exc:
+                raise ConversionError(
+                    f"{exc} Rename the file so it ends with 'Questions' or 'Answers'."
+                ) from exc
+            if partner_role == role:
+                raise ConversionError(
+                    f"Selected file is also a '{role.capitalize()}' PDF — "
+                    f"need a {want} PDF."
+                )
+
+        if role == "questions":
+            questions_pdf, answers_pdf = picked, partner
+        else:
+            questions_pdf, answers_pdf = partner, picked
+
+        self.import_service.import_from_pdf_pair(
+            str(questions_pdf), str(answers_pdf)
+        )
+        messagebox.showinfo(
+            "Success",
+            f"Imported PDF pair:\n{questions_pdf.name}\n{answers_pdf.name}",
+        )
+
+    def _on_import_pdf_folder(self) -> None:
+        """Batch-import every Questions/Answers PDF pair in a folder."""
+        folder = filedialog.askdirectory(title="Select folder of PDF pairs")
+        if not folder:
+            return
+
+        try:
+            results = self.import_service.import_from_pdf_folder(folder)
+        except ConversionError as e:
+            messagebox.showerror("PDF Import Error", str(e))
+            return
+        except Exception as e:
+            messagebox.showerror("PDF Import Error", f"Unexpected error: {e}")
+            return
+
+        succeeded = [r for r in results if r["status"] == "success"]
+        skipped = [r for r in results if r["status"] == "skipped"]
+
+        lines = [f"Processed: {len(results)}",
+                 f"Succeeded: {len(succeeded)}",
+                 f"Skipped: {len(skipped)}", ""]
+        for r in succeeded:
+            lines.append(f"[OK] {r['pair']} ({r['question_count']} questions)")
+        for r in skipped:
+            lines.append(f"[SKIP] {r['pair']} — {r['error']}")
+
+        self._refresh_test_list()
+        if skipped:
+            messagebox.showwarning("PDF Import Report", "\n".join(lines))
+        else:
+            messagebox.showinfo("PDF Import Report", "\n".join(lines))
 
     def _on_new_test(self) -> None:
         """Navigate to editor for a new test."""

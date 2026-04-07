@@ -1,14 +1,16 @@
-"""Import service for loading tests from JSON and text files."""
+"""Import service for loading tests from JSON, text, and PDF files."""
 
 import json
 import re
 from pathlib import Path
-from typing import Dict, List, Optional
+from typing import Any, Dict, List, Optional
 
 from config.settings import QUESTION_TYPE_ESSAY, QUESTION_TYPE_MC
 from database.db_manager import DatabaseManager
 from models.question import Question, QuestionOption
 from models.test import Test
+from services import pdf_import_service
+from services.pdf_import_service import ConversionError
 
 
 class ImportService:
@@ -39,10 +41,28 @@ class ImportService:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
+        return self.import_from_dict(data, fallback_name=path.stem)
+
+    def import_from_dict(self, data: Dict, fallback_name: str = "") -> int:
+        """Import a test from an already-parsed payload dict.
+
+        Shared code path for JSON files and in-memory payloads produced by
+        :mod:`services.pdf_import_service`.
+
+        Args:
+            data: Payload matching the import JSON contract.
+            fallback_name: Used when the payload has no ``name`` field.
+
+        Returns:
+            The id of the created test.
+
+        Raises:
+            ValueError: If the payload format is invalid.
+        """
         self._validate_json_format(data)
 
         test = Test(
-            name=data.get("name", path.stem),
+            name=data.get("name") or fallback_name,
             description=data.get("description", ""),
         )
         test_id = self._db.create_test(test)
@@ -52,6 +72,82 @@ class ImportService:
             self._db.add_question(question)
 
         return test_id
+
+    # ── PDF Import ─────────────────────────────────────────────
+
+    def import_from_pdf_pair(
+        self, questions_pdf: str, answers_pdf: str
+    ) -> int:
+        """Import a test from a Questions/Answers PDF pair.
+
+        Requires ``pdftotext`` (from poppler) on PATH.
+
+        Args:
+            questions_pdf: Path to the Questions PDF.
+            answers_pdf: Path to the Answers PDF.
+
+        Returns:
+            The id of the created test.
+
+        Raises:
+            ConversionError: If pdftotext is missing, pairing fails, or the
+                PDFs cannot be parsed into a valid payload.
+        """
+        pdf_import_service.require_pdftotext()
+        pair = pdf_import_service.build_pair_from_paths(
+            Path(questions_pdf), Path(answers_pdf)
+        )
+        payload = pdf_import_service.convert_pair_to_dict(pair)
+        return self.import_from_dict(payload, fallback_name=pair.display_name)
+
+    def import_from_pdf_folder(self, folder: str) -> List[Dict[str, Any]]:
+        """Import every discoverable PDF pair in ``folder``.
+
+        Mirrors the standalone CLI's ``--batch`` mode: each pair is handled
+        independently, errors are captured per-pair, and the returned list
+        contains one report dict per pair (success, question_count on
+        success; status='skipped' with an error message otherwise). Pairs
+        that import successfully also include the created ``test_id``.
+
+        Raises:
+            ConversionError: If ``pdftotext`` is missing or no pairs exist.
+        """
+        pdf_import_service.require_pdftotext()
+        root = Path(folder)
+        if not root.is_dir():
+            raise ConversionError(f"Not a directory: {folder}")
+
+        pairs = pdf_import_service.discover_pairs(root)
+        if not pairs:
+            raise ConversionError(
+                "No valid Questions/Answers PDF pairs were found in this folder."
+            )
+
+        results: List[Dict[str, Any]] = []
+        for pair in pairs:
+            base = {
+                "pair": pair.display_name,
+                "questions_pdf": str(pair.questions_pdf),
+                "answers_pdf": str(pair.answers_pdf),
+            }
+            try:
+                payload = pdf_import_service.convert_pair_to_dict(pair)
+                test_id = self.import_from_dict(
+                    payload, fallback_name=pair.display_name
+                )
+                results.append(
+                    {
+                        **base,
+                        "status": "success",
+                        "test_id": test_id,
+                        "question_count": len(payload["questions"]),
+                    }
+                )
+            except ConversionError as exc:
+                results.append({**base, "status": "skipped", "error": str(exc)})
+            except ValueError as exc:
+                results.append({**base, "status": "skipped", "error": str(exc)})
+        return results
 
     @staticmethod
     def _validate_json_format(data: Dict) -> None:

@@ -82,6 +82,20 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         )
         self.test_filter_menu.pack(side="left")
 
+        # Group-by selector (only shown on Weak Topics tab)
+        self.group_by_label = ctk.CTkLabel(
+            filter_frame,
+            text="Group by:",
+            font=(FONT_FAMILY, FONT_SIZE_BODY),
+        )
+        self.group_by_var = ctk.StringVar(value="Test")
+        self.group_by_seg = ctk.CTkSegmentedButton(
+            filter_frame,
+            values=["Test", "Group", "Category"],
+            variable=self.group_by_var,
+            command=self._on_filter_change,
+        )
+
         # Content area — holds either graph or weak topics list
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.content_frame.pack(fill="both", expand=True, padx=30, pady=(0, 20))
@@ -106,6 +120,7 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         test_names = ["All Tests"] + [t.name for t in tests]
         self.test_filter_menu.configure(values=test_names)
         self.test_filter_var.set("All Tests")
+        self.group_by_var.set("Test")
         self.tab_var.set("Score Trends")
 
         self._render_current_tab()
@@ -137,6 +152,14 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         self.graph_widget.pack_forget()
         self.weak_topics_frame.pack_forget()
         self.empty_label.pack_forget()
+
+        # Show group-by control only on Weak Topics tab
+        if tab == "Weak Topics":
+            self.group_by_label.pack(side="left", padx=(20, 6))
+            self.group_by_seg.pack(side="left")
+        else:
+            self.group_by_label.pack_forget()
+            self.group_by_seg.pack_forget()
 
         if tab == "Score Trends":
             self._render_score_trends()
@@ -210,9 +233,27 @@ class AnalyticsViewFrame(ctk.CTkFrame):
     def _render_weak_topics(self) -> None:
         """Render weak topics list with color-coded indicators."""
         test_id = self._get_selected_test_id()
-        topics = self.analytics_service.get_weak_topics(test_id=test_id)
+        group_by = {
+            "Test": "test",
+            "Group": "group",
+            "Category": "category",
+        }.get(self.group_by_var.get(), "test")
+        topics = self.analytics_service.get_weak_topics(
+            test_id=test_id, group_by=group_by
+        )
 
         if not topics:
+            if group_by == "category":
+                self.empty_label.configure(
+                    text=(
+                        "No categories tagged on your questions. "
+                        "Try grouping by Test or Group."
+                    )
+                )
+            else:
+                self.empty_label.configure(
+                    text="No data available yet. Take some tests first!"
+                )
             self.empty_label.pack(pady=40)
             return
 

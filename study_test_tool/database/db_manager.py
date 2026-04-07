@@ -685,15 +685,37 @@ class DatabaseManager:
             conn.close()
 
     def get_category_performance(
-        self, test_id: Optional[int] = None
+        self,
+        test_id: Optional[int] = None,
+        group_by: str = "auto",
     ) -> List[Dict]:
-        """Get correct/total/percentage grouped by category.
+        """Get correct/total/percentage grouped by the chosen dimension.
 
-        When the in-scope questions have no categories assigned, falls back
-        to grouping by ``tests.group_name`` (or ``tests.name`` if the group
-        is unset) so the Weak Topics view stays useful for users who haven't
-        tagged their questions.
+        Args:
+            test_id: Optional filter by test.
+            group_by: How to bucket the results. One of:
+
+                - ``"auto"`` (default): group by ``questions.category`` when
+                  any in-scope questions have one, otherwise fall back to
+                  ``tests.group_name`` (or ``tests.name``). Preserves legacy
+                  behavior.
+                - ``"category"``: always group by ``questions.category``.
+                  Returns ``[]`` when no categories are tagged — callers
+                  should show an empty state rather than silently falling
+                  back.
+                - ``"test"``: group by individual test (``tests.name``).
+                - ``"group"``: group by ``tests.group_name``, falling back
+                  to ``tests.name`` when the group is empty.
+
+        Raises:
+            ValueError: If ``group_by`` is not a supported value.
         """
+        if group_by not in ("auto", "category", "test", "group"):
+            raise ValueError(
+                f"Unsupported group_by value: {group_by!r}. "
+                "Expected 'auto', 'category', 'test', or 'group'."
+            )
+
         conn = self._conn()
         try:
             params: List = []
@@ -702,16 +724,19 @@ class DatabaseManager:
                 test_filter = "AND q.test_id = ? "
                 params.append(test_id)
 
-            probe = conn.execute(
-                "SELECT 1 FROM questions q "
-                "JOIN question_responses qr ON q.id = qr.question_id "
-                "WHERE q.category != '' AND qr.is_correct IS NOT NULL "
-                + test_filter
-                + "LIMIT 1",
-                params,
-            ).fetchone()
+            mode = group_by
+            if mode == "auto":
+                probe = conn.execute(
+                    "SELECT 1 FROM questions q "
+                    "JOIN question_responses qr ON q.id = qr.question_id "
+                    "WHERE q.category != '' AND qr.is_correct IS NOT NULL "
+                    + test_filter
+                    + "LIMIT 1",
+                    params,
+                ).fetchone()
+                mode = "category" if probe is not None else "group"
 
-            if probe is not None:
+            if mode == "category":
                 query = (
                     "SELECT q.category AS category, "
                     "COUNT(qr.id) as total, "
@@ -722,7 +747,19 @@ class DatabaseManager:
                     + test_filter
                     + "GROUP BY q.category ORDER BY q.category"
                 )
-            else:
+            elif mode == "test":
+                query = (
+                    "SELECT t.name AS category, "
+                    "COUNT(qr.id) as total, "
+                    "SUM(CASE WHEN qr.is_correct = 1 THEN 1 ELSE 0 END) as correct "
+                    "FROM questions q "
+                    "JOIN question_responses qr ON q.id = qr.question_id "
+                    "JOIN tests t ON q.test_id = t.id "
+                    "WHERE qr.is_correct IS NOT NULL "
+                    + test_filter
+                    + "GROUP BY t.id, t.name ORDER BY t.name"
+                )
+            else:  # mode == "group"
                 query = (
                     "SELECT COALESCE(NULLIF(t.group_name, ''), t.name) AS category, "
                     "COUNT(qr.id) as total, "

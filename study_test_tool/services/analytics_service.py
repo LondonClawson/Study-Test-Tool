@@ -50,35 +50,44 @@ class AnalyticsService:
         return self._db.get_attempt_frequency(days)
 
     def get_category_performance(
-        self, test_id: Optional[int] = None
+        self,
+        test_id: Optional[int] = None,
+        group_by: str = "auto",
     ) -> List[Dict]:
-        """Get raw performance stats grouped by category.
+        """Get raw performance stats grouped by the chosen dimension.
 
         Args:
             test_id: Optional filter by test.
+            group_by: Grouping dimension — ``"auto"`` (legacy fallback),
+                ``"category"``, ``"test"``, or ``"group"``. See
+                :meth:`DatabaseManager.get_category_performance` for details.
 
         Returns:
             List of dicts with category, total, correct, percentage.
         """
-        return self._db.get_category_performance(test_id)
+        return self._db.get_category_performance(test_id, group_by=group_by)
 
     def get_weak_topics(
         self,
         test_id: Optional[int] = None,
         threshold: float = 70.0,
+        group_by: str = "auto",
     ) -> List[Dict]:
         """Get categories with health status classification.
 
         Args:
             test_id: Optional filter by test.
             threshold: Score below which a topic is "weak" (default 70%).
+            group_by: Grouping dimension — ``"auto"``, ``"category"``,
+                ``"test"``, or ``"group"``. See
+                :meth:`get_category_performance` for details.
 
         Returns:
             List of dicts with category, total, correct, percentage, status.
             Status is "weak" (<threshold), "moderate" (threshold-85%), or
             "strong" (>85%).
         """
-        categories = self._db.get_category_performance(test_id)
+        categories = self._db.get_category_performance(test_id, group_by=group_by)
         result = []
         for cat in categories:
             pct = cat["percentage"]

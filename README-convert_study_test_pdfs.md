@@ -151,14 +151,30 @@ The script already handles these quirks:
 - a no-space option token such as `(D)Yes`
 - four-choice sets printed as `E/F/G/H` when the answer key still uses `A/B/C/D`
 
+## In-App Usage
+
+The parsing engine now lives in `study_test_tool/services/pdf_import_service.py` and is wired into the GUI:
+
+- **Import Test** button — pick any `.pdf` in a Questions/Answers pair. The tool auto-locates the matching half in the same folder by pairing key. If the partner cannot be found automatically, a second file dialog asks for it explicitly.
+- **Import PDF Folder…** button — pick a directory; every discoverable pair is imported in one pass, and a summary dialog reports `N succeeded / M skipped` with per-pair error messages for anything that failed.
+
+Both paths still require `pdftotext` (poppler). When it is missing, the GUI surfaces the `brew install poppler` hint instead of a stack trace.
+
+`ImportService` exposes the new entry points if you need them programmatically:
+
+- `import_from_pdf_pair(questions_pdf, answers_pdf) -> test_id`
+- `import_from_pdf_folder(folder) -> list[report_dict]`
+- `import_from_dict(data, fallback_name)` — the shared in-memory path used by both JSON and PDF imports.
+
 ## Integration Notes
 
-If you move this into the Study-Test-Tool repo later:
+This script at the repo root is now a thin CLI wrapper around `study_test_tool/services/pdf_import_service.py`. The standalone invocations documented above still work unchanged — the CLI shim just re-exports the same parsing and pairing functions the GUI calls.
 
-1. Keep it as a standalone utility first rather than wiring it into the GUI immediately.
-2. Preserve the `pdftotext` requirement, since the workflow depends on text extraction first.
-3. Keep the skip-and-report behavior. It is safer than auto-guessing on malformed materials.
-4. If you later integrate it into the app, reuse the app’s existing JSON import path rather than inventing a second schema.
+Principles preserved:
+
+1. `pdftotext` remains the boundary — no Python PDF library is added.
+2. Skip-and-report behavior is unchanged: malformed pairs are reported, never guessed.
+3. The JSON contract is unchanged; PDF and JSON imports share one code path inside `ImportService`.
 
 ## Validation History
 
