@@ -2,6 +2,7 @@
 
 import pytest
 
+from config.database import get_connection
 from models.question import Question, QuestionOption
 from models.test import Test
 from models.test_result import QuestionResponse, TestAttempt
@@ -148,3 +149,81 @@ class TestDatabaseManagerTests:
         assert db.get_test_by_id(test_id) is None
         assert db.get_questions_for_test(test_id) == []
         assert db.get_attempts_for_test(test_id) == []
+
+
+class TestGetQuestionHistoryStats:
+    """Tests for get_question_history_stats (used by weighted mix selection)."""
+
+    def _insert_attempt(self, db_path, test_id, completed_at):
+        conn = get_connection(db_path)
+        try:
+            cursor = conn.execute(
+                "INSERT INTO test_attempts "
+                "(test_id, score, total_questions, percentage, time_taken, "
+                "mode, completed_at) VALUES (?, ?, ?, ?, ?, ?, ?)",
+                (test_id, 0, 0, 0.0, 0, "test", completed_at),
+            )
+            conn.commit()
+            return cursor.lastrowid
+        finally:
+            conn.close()
+
+    def test_empty_question_ids_returns_empty_dict(self, db):
+        assert db.get_question_history_stats([]) == {}
+
+    def test_unanswered_questions_get_defaults(self, populated_db):
+        db, test_id = populated_db
+        questions = db.get_questions_for_test(test_id)
+        qids = [q.id for q in questions]
+        stats = db.get_question_history_stats(qids)
+        assert set(stats.keys()) == set(qids)
+        for qid in qids:
+            assert stats[qid] == {
+                "last_is_correct": None,
+                "last_completed_at": None,
+                "attempts_since": 0,
+            }
+
+    def test_tracks_last_response_and_attempts_since(self, db_path, populated_db):
+        db, test_id = populated_db
+        questions = db.get_questions_for_test(test_id)
+        q = questions[0]
+
+        # Attempt 1 at 10:00 — answered correctly.
+        a1 = self._insert_attempt(db_path, test_id, "2026-01-01 10:00:00")
+        db.save_response(
+            QuestionResponse(
+                attempt_id=a1,
+                question_id=q.id,
+                user_answer="x",
+                is_correct=True,
+            )
+        )
+
+        # Two newer attempts (no response for q) at 10:01 and 10:02.
+        self._insert_attempt(db_path, test_id, "2026-01-01 10:01:00")
+        self._insert_attempt(db_path, test_id, "2026-01-01 10:02:00")
+
+        stats = db.get_question_history_stats([q.id])
+        assert stats[q.id]["last_is_correct"] is True
+        assert stats[q.id]["last_completed_at"] == "2026-01-01 10:00:00"
+        assert stats[q.id]["attempts_since"] == 2
+
+    def test_essay_response_yields_none_is_correct(self, db_path, populated_db):
+        db, test_id = populated_db
+        questions = db.get_questions_for_test(test_id)
+        essay = next(q for q in questions if q.type == "essay")
+
+        a1 = self._insert_attempt(db_path, test_id, "2026-01-01 10:00:00")
+        db.save_response(
+            QuestionResponse(
+                attempt_id=a1,
+                question_id=essay.id,
+                user_answer="my essay",
+                is_correct=None,
+            )
+        )
+
+        stats = db.get_question_history_stats([essay.id])
+        assert stats[essay.id]["last_is_correct"] is None
+        assert stats[essay.id]["last_completed_at"] == "2026-01-01 10:00:00"

@@ -1,5 +1,6 @@
 """Database manager — all SQL operations live here."""
 
+import bisect
 import sqlite3
 from typing import Dict, List, Optional
 
@@ -501,6 +502,81 @@ class DatabaseManager:
                 }
                 for row in rows
             ]
+        finally:
+            conn.close()
+
+    def get_question_history_stats(
+        self, question_ids: List[int]
+    ) -> Dict[int, Dict]:
+        """Return per-question history stats used by weighted mix selection.
+
+        For each question id in ``question_ids``, returns:
+            {
+                "last_is_correct": Optional[bool],  # None if never answered or essay
+                "last_completed_at": Optional[str], # ISO timestamp of that attempt
+                "attempts_since": int,              # count of test_attempts newer
+                                                    # than last_completed_at; 0 if
+                                                    # never answered
+            }
+
+        Questions with no responses get a default dict with None/None/0.
+        """
+        result: Dict[int, Dict] = {
+            qid: {
+                "last_is_correct": None,
+                "last_completed_at": None,
+                "attempts_since": 0,
+            }
+            for qid in question_ids
+        }
+        if not question_ids:
+            return result
+
+        conn = self._conn()
+        try:
+            # Fetch full ordered list of attempt timestamps once for bisect.
+            all_attempt_times = [
+                row["completed_at"]
+                for row in conn.execute(
+                    "SELECT completed_at FROM test_attempts "
+                    "ORDER BY completed_at ASC"
+                ).fetchall()
+            ]
+
+            placeholders = ",".join("?" * len(question_ids))
+            query = (
+                "SELECT qr.question_id, qr.is_correct, ta.completed_at "
+                "FROM question_responses qr "
+                "JOIN test_attempts ta ON ta.id = qr.attempt_id "
+                "WHERE qr.question_id IN (" + placeholders + ") "
+                "AND ta.completed_at = ("
+                "  SELECT MAX(ta2.completed_at) "
+                "  FROM question_responses qr2 "
+                "  JOIN test_attempts ta2 ON ta2.id = qr2.attempt_id "
+                "  WHERE qr2.question_id = qr.question_id"
+                ")"
+            )
+            rows = conn.execute(query, tuple(question_ids)).fetchall()
+
+            for row in rows:
+                qid = row["question_id"]
+                last_completed_at = row["completed_at"]
+                # bisect_right gives count of items <= value; anything strictly
+                # after is "since".
+                attempts_since = len(all_attempt_times) - bisect.bisect_right(
+                    all_attempt_times, last_completed_at
+                )
+                is_correct_raw = row["is_correct"]
+                if is_correct_raw is None:
+                    last_is_correct: Optional[bool] = None
+                else:
+                    last_is_correct = bool(is_correct_raw)
+                result[qid] = {
+                    "last_is_correct": last_is_correct,
+                    "last_completed_at": last_completed_at,
+                    "attempts_since": attempts_since,
+                }
+            return result
         finally:
             conn.close()
 
