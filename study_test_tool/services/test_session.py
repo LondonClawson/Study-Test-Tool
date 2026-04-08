@@ -14,10 +14,12 @@ class TestSession:
         test_id: Optional[int],
         questions: List[Question],
         mode: str = "test",
+        mix_name: Optional[str] = None,
     ) -> None:
         self.test_id: Optional[int] = test_id
         self.questions: List[Question] = questions
         self.mode: str = mode
+        self.mix_name: Optional[str] = mix_name
         self.current_index: int = 0
         self.responses: Dict[int, str] = {}  # question_id → answer text
         self.checked_responses: Dict[int, str] = {}  # question_id → first-checked answer

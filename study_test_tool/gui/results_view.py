@@ -30,6 +30,9 @@ class ResultsViewFrame(ctk.CTkFrame):
         self.scoring_service = ScoringService()
         self.test_service = TestService()
         self._test_id = None
+        self._mode = None
+        self._mix_questions = None
+        self._mix_name = None
 
         self._build_ui()
 
@@ -103,6 +106,13 @@ class ResultsViewFrame(ctk.CTkFrame):
     def _show_from_session(self, session, score_data: dict) -> None:
         """Display results from a just-completed session."""
         self._test_id = session.test_id
+        self._mode = session.mode
+        if session.is_mix_test:
+            self._mix_questions = session.questions
+            self._mix_name = session.mix_name
+        else:
+            self._mix_questions = None
+            self._mix_name = None
 
         # Header
         score = score_data["score"]
@@ -358,9 +368,20 @@ class ResultsViewFrame(ctk.CTkFrame):
                 ).pack(fill="x")
 
     def _on_retake(self) -> None:
-        """Navigate to retake the same test."""
-        if self._test_id:
-            self.controller.show_frame(SCREEN_TEST_TAKING, test_id=self._test_id)
+        """Navigate to retake the same test (mix or regular)."""
+        if self._mix_questions is not None:
+            self.controller.show_frame(
+                SCREEN_TEST_TAKING,
+                mode=self._mode,
+                questions=self._mix_questions,
+                mix_test_name=self._mix_name,
+            )
+        elif self._test_id:
+            self.controller.show_frame(
+                SCREEN_TEST_TAKING,
+                test_id=self._test_id,
+                mode=self._mode,
+            )
 
     @staticmethod
     def _format_time(seconds: int) -> str:

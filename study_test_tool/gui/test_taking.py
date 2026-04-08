@@ -164,7 +164,9 @@ class TestTakingFrame(ctk.CTkFrame):
             self.test_name_label.configure(
                 text=mix_test_name if mix_test_name else "Mix Test"
             )
-            self._session = TestSession(None, questions, mode=mode)
+            self._session = TestSession(
+                None, questions, mode=mode, mix_name=mix_test_name
+            )
         elif review_question_ids:
             self._is_mix_test = False
             loaded = self._load_review_questions(review_question_ids)
