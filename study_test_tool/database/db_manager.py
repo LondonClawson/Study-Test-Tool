@@ -35,6 +35,11 @@ class DatabaseManager:
                     "ALTER TABLE tests ADD COLUMN group_name TEXT DEFAULT ''"
                 )
                 conn.commit()
+            if "is_archived" not in columns:
+                conn.execute(
+                    "ALTER TABLE tests ADD COLUMN is_archived BOOLEAN DEFAULT 0"
+                )
+                conn.commit()
         except sqlite3.OperationalError:
             pass
         finally:
@@ -72,13 +77,13 @@ class DatabaseManager:
             conn.close()
 
     def get_all_tests(self) -> List[Test]:
-        """Get all tests without loading questions (lazy)."""
+        """Get all non-archived tests without loading questions (lazy)."""
         conn = self._conn()
         try:
             rows = conn.execute(
                 "SELECT id, name, description, group_name, "
                 "created_at, updated_at "
-                "FROM tests ORDER BY updated_at DESC"
+                "FROM tests WHERE is_archived = 0 ORDER BY updated_at DESC"
             ).fetchall()
             return [
                 Test(
@@ -138,6 +143,63 @@ class DatabaseManager:
         conn = self._conn()
         try:
             conn.execute("DELETE FROM tests WHERE id = ?", (test_id,))
+            conn.commit()
+        finally:
+            conn.close()
+
+    def get_archived_tests(self) -> List[Test]:
+        """Get all archived tests without loading questions (lazy)."""
+        conn = self._conn()
+        try:
+            rows = conn.execute(
+                "SELECT id, name, description, group_name, "
+                "created_at, updated_at "
+                "FROM tests WHERE is_archived = 1 ORDER BY updated_at DESC"
+            ).fetchall()
+            return [
+                Test(
+                    id=row["id"],
+                    name=row["name"],
+                    description=row["description"],
+                    group_name=row["group_name"] or "",
+                    created_at=row["created_at"],
+                    updated_at=row["updated_at"],
+                )
+                for row in rows
+            ]
+        finally:
+            conn.close()
+
+    def archive_test(self, test_id: int) -> None:
+        """Set is_archived = 1 for a test."""
+        conn = self._conn()
+        try:
+            conn.execute(
+                "UPDATE tests SET is_archived = 1 WHERE id = ?", (test_id,)
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def unarchive_test(self, test_id: int) -> None:
+        """Set is_archived = 0 for a test."""
+        conn = self._conn()
+        try:
+            conn.execute(
+                "UPDATE tests SET is_archived = 0 WHERE id = ?", (test_id,)
+            )
+            conn.commit()
+        finally:
+            conn.close()
+
+    def archive_group(self, group_name: str) -> None:
+        """Set is_archived = 1 for all tests in a group."""
+        conn = self._conn()
+        try:
+            conn.execute(
+                "UPDATE tests SET is_archived = 1 WHERE group_name = ?",
+                (group_name,),
+            )
             conn.commit()
         finally:
             conn.close()

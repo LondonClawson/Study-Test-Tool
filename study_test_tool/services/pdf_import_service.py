@@ -181,6 +181,21 @@ def extract_text(pdf_path: Path, txt_path: Path) -> None:
     )
 
 
+def extract_text_from_docx(path: str) -> str:
+    """Extract plain text from a .docx file."""
+    from docx import Document  # noqa: PLC0415
+
+    doc = Document(path)
+    return "\n".join(paragraph.text for paragraph in doc.paragraphs)
+
+
+def _extract_file_text(source: Path, txt_path: Path) -> str:
+    if source.suffix.lower() == ".docx":
+        return extract_text_from_docx(str(source))
+    extract_text(source, txt_path)
+    return txt_path.read_text(encoding="utf-8")
+
+
 # ── Text parsing ───────────────────────────────────────────────────────────
 
 
@@ -306,11 +321,8 @@ def convert_pair_to_dict(pair: PairSpec) -> Dict[str, Any]:
     responsible for persistence — the GUI pipes the dict straight into
     :meth:`ImportService.import_from_dict`.
     """
-    extract_text(pair.questions_pdf, pair.questions_txt)
-    extract_text(pair.answers_pdf, pair.answers_txt)
-
-    question_text = clean_text(pair.questions_txt.read_text(encoding="utf-8"))
-    answer_text = clean_text(pair.answers_txt.read_text(encoding="utf-8"))
+    question_text = clean_text(_extract_file_text(pair.questions_pdf, pair.questions_txt))
+    answer_text = clean_text(_extract_file_text(pair.answers_pdf, pair.answers_txt))
 
     questions = parse_questions(question_text)
     answers = parse_answers(answer_text)

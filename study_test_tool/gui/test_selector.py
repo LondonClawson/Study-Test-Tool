@@ -15,6 +15,7 @@ from config.settings import (
     FONT_SIZE_SMALL,
     FONT_SIZE_TITLE,
 )
+from gui.components.collapsible_group import CollapsibleGroup
 from gui.components.mix_test_dialog import MixTestDialog
 from gui.components.mode_dialog import ModeSelectionDialog
 from services.export_service import ExportService
@@ -47,6 +48,7 @@ class TestSelectorFrame(ctk.CTkFrame):
         self.mix_service = MixService()
 
         self._sort_by = "Last Updated"
+        self._group_widgets: dict[str, CollapsibleGroup] = {}
 
         self._build_ui()
 
@@ -137,6 +139,16 @@ class TestSelectorFrame(ctk.CTkFrame):
         self._sort_menu.set(self._sort_by)
         self._sort_menu.pack(side="left")
 
+        self._collapse_all_btn = ctk.CTkButton(
+            sort_frame,
+            text="Collapse All",
+            width=110,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+            command=self._on_collapse_all_toggle,
+        )
+        self._collapse_all_btn.pack(side="left", padx=(10, 0))
+
         # Scrollable test list
         self.test_list_frame = ctk.CTkScrollableFrame(self)
         self.test_list_frame.pack(fill="both", expand=True, padx=30, pady=(0, 20))
@@ -158,6 +170,20 @@ class TestSelectorFrame(ctk.CTkFrame):
         self._sort_by = value
         self._refresh_test_list()
 
+    def _on_collapse_all_toggle(self) -> None:
+        """Collapse all groups if any are expanded; otherwise expand all."""
+        if not self._group_widgets:
+            return
+        any_expanded = any(w.is_expanded for w in self._group_widgets.values())
+        for w in self._group_widgets.values():
+            if any_expanded and w.is_expanded:
+                w.toggle()
+            elif not any_expanded and not w.is_expanded:
+                w.toggle()
+        self._collapse_all_btn.configure(
+            text="Expand All" if any_expanded else "Collapse All"
+        )
+
     def _sort_tests(self, tests):
         """Sort the test list based on current sort selection."""
         if self._sort_by == "Name (A-Z)":
@@ -175,14 +201,18 @@ class TestSelectorFrame(ctk.CTkFrame):
 
     def _refresh_test_list(self) -> None:
         """Reload and display all tests."""
-        # Clear existing cards
+        # Preserve expanded/collapsed state before destroying widgets
+        old_group_states = {name: w.is_expanded for name, w in self._group_widgets.items()}
+
         for widget in self.test_list_frame.winfo_children():
             if widget != self.empty_label:
                 widget.destroy()
+        self._group_widgets = {}
 
         tests = self.test_service.get_all_tests()
+        archived_tests = self.test_service.get_archived_tests()
 
-        if not tests:
+        if not tests and not archived_tests:
             self.empty_label.pack(pady=40)
             return
 
@@ -191,27 +221,53 @@ class TestSelectorFrame(ctk.CTkFrame):
         tests = self._sort_tests(tests)
 
         if self._sort_by == "Group":
+            # Count tests per group for the badge
+            group_counts: dict[str, int] = {}
+            for test in tests:
+                group = test.group_name if test.group_name else "Ungrouped"
+                group_counts[group] = group_counts.get(group, 0) + 1
+
             current_group = None
+            current_widget = None
             for test in tests:
                 group = test.group_name if test.group_name else "Ungrouped"
                 if group != current_group:
                     current_group = group
-                    header = ctk.CTkLabel(
+                    was_expanded = old_group_states.get(group, True)
+                    group_widget = CollapsibleGroup(
                         self.test_list_frame,
-                        text=current_group,
-                        font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
-                        anchor="w",
-                        text_color=COLOR_PRIMARY,
+                        group_name=group,
+                        test_count=group_counts[group],
+                        expanded=was_expanded,
+                        archive_callback=lambda g=group: self._on_archive_group(g),
                     )
-                    header.pack(fill="x", padx=5, pady=(12, 4))
-                self._create_test_card(test)
+                    group_widget.pack(fill="x")
+                    self._group_widgets[group] = group_widget
+                    current_widget = group_widget
+                self._create_test_card(test, parent=current_widget.content_frame)
         else:
             for test in tests:
                 self._create_test_card(test)
 
-    def _create_test_card(self, test) -> None:
+        if archived_tests:
+            archived_widget = CollapsibleGroup(
+                self.test_list_frame,
+                group_name="Archived Tests",
+                test_count=len(archived_tests),
+                expanded=old_group_states.get("__archived__", False),
+            )
+            archived_widget.pack(fill="x", pady=(10, 0))
+            self._group_widgets["__archived__"] = archived_widget
+            for test in archived_tests:
+                self._create_archived_test_card(
+                    test, parent=archived_widget.content_frame
+                )
+
+    def _create_test_card(self, test, parent: ctk.CTkFrame = None) -> None:
         """Create a card widget for a single test."""
-        card = ctk.CTkFrame(self.test_list_frame, corner_radius=8)
+        if parent is None:
+            parent = self.test_list_frame
+        card = ctk.CTkFrame(parent, corner_radius=8)
         card.pack(fill="x", pady=5, padx=5)
 
         # Info section
@@ -280,6 +336,78 @@ class TestSelectorFrame(ctk.CTkFrame):
 
         ctk.CTkButton(
             btn_frame,
+            text="Archive",
+            width=70,
+            fg_color="#6c757d",
+            hover_color="#5a6268",
+            command=lambda t=test: self._on_archive_test(t),
+        ).pack(side="left", padx=3)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="Delete",
+            width=70,
+            fg_color=COLOR_DANGER,
+            hover_color="#c9302c",
+            command=lambda t=test: self._on_delete_test(t),
+        ).pack(side="left", padx=3)
+
+    def _create_archived_test_card(
+        self, test, parent: ctk.CTkFrame = None
+    ) -> None:
+        """Create a dimmed card widget for an archived test."""
+        if parent is None:
+            parent = self.test_list_frame
+        card = ctk.CTkFrame(
+            parent, corner_radius=8, fg_color=("#d0d0d0", "#2a2a2a")
+        )
+        card.pack(fill="x", pady=5, padx=5)
+
+        info_frame = ctk.CTkFrame(card, fg_color="transparent")
+        info_frame.pack(side="left", fill="both", expand=True, padx=15, pady=10)
+
+        ctk.CTkLabel(
+            info_frame,
+            text=test.name,
+            font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
+            text_color="gray",
+            anchor="w",
+        ).pack(fill="x")
+
+        desc_text = test.description if test.description else "No description"
+        ctk.CTkLabel(
+            info_frame,
+            text=desc_text,
+            font=(FONT_FAMILY, FONT_SIZE_SMALL),
+            text_color="gray",
+            anchor="w",
+        ).pack(fill="x")
+
+        q_count = self.test_service.get_question_count(test.id)
+        detail_parts = [f"{q_count} question{'s' if q_count != 1 else ''}"]
+        if test.group_name:
+            detail_parts.append(test.group_name)
+        ctk.CTkLabel(
+            info_frame,
+            text="  |  ".join(detail_parts),
+            font=(FONT_FAMILY, FONT_SIZE_SMALL),
+            text_color="gray",
+            anchor="w",
+        ).pack(fill="x")
+
+        btn_frame = ctk.CTkFrame(card, fg_color="transparent")
+        btn_frame.pack(side="right", padx=15, pady=10)
+
+        ctk.CTkButton(
+            btn_frame,
+            text="Unarchive",
+            width=90,
+            fg_color=COLOR_PRIMARY,
+            command=lambda t=test: self._on_unarchive_test(t),
+        ).pack(side="left", padx=3)
+
+        ctk.CTkButton(
+            btn_frame,
             text="Delete",
             width=70,
             fg_color=COLOR_DANGER,
@@ -297,7 +425,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             return
 
         try:
-            if file_path.lower().endswith(".pdf"):
+            if file_path.lower().endswith((".pdf", ".docx")):
                 self._import_pdf(file_path)
             elif file_path.endswith(".json"):
                 self.import_service.import_from_json(file_path)
@@ -342,8 +470,8 @@ class TestSelectorFrame(ctk.CTkFrame):
         except ConversionError:
             want = "Answers" if role == "questions" else "Questions"
             partner_path = filedialog.askopenfilename(
-                title=f"Select the matching {want} PDF",
-                filetypes=[("PDF files", "*.pdf")],
+                title=f"Select the matching {want} file",
+                filetypes=[("PDF files", "*.pdf"), ("Word files", "*.docx")],
                 initialdir=str(picked.parent),
             )
             if not partner_path:
@@ -538,11 +666,31 @@ class TestSelectorFrame(ctk.CTkFrame):
             messagebox.showerror("Export Error", f"Unexpected error: {e}")
 
     def _on_delete_test(self, test) -> None:
-        """Confirm and delete a test."""
+        """Confirm permanent deletion of a test."""
         if messagebox.askyesno(
-            "Confirm Delete",
-            f'Are you sure you want to delete "{test.name}"?\n\n'
+            "Permanently Delete",
+            f'Permanently delete "{test.name}"? This cannot be undone.\n\n'
             "This will also delete all questions and attempt history.",
         ):
             self.test_service.delete_test(test.id)
+            self._refresh_test_list()
+
+    def _on_archive_test(self, test) -> None:
+        """Archive a test (hide but preserve)."""
+        self.test_service.archive_test(test.id)
+        self._refresh_test_list()
+
+    def _on_unarchive_test(self, test) -> None:
+        """Restore an archived test to the active list."""
+        self.test_service.unarchive_test(test.id)
+        self._refresh_test_list()
+
+    def _on_archive_group(self, group_name: str) -> None:
+        """Archive all tests in a group after confirmation."""
+        if messagebox.askyesno(
+            "Archive Group",
+            f'Archive all tests in "{group_name}"?\n\n'
+            "They will be hidden but can be restored from the Archived section.",
+        ):
+            self.test_service.archive_group(group_name)
             self._refresh_test_list()

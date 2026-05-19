@@ -35,6 +35,22 @@ class TestService:
         """Delete a test and all associated data."""
         self._db.delete_test(test_id)
 
+    def get_archived_tests(self) -> List[Test]:
+        """Get all archived tests (without questions)."""
+        return self._db.get_archived_tests()
+
+    def archive_test(self, test_id: int) -> None:
+        """Archive a test (hide but preserve)."""
+        self._db.archive_test(test_id)
+
+    def unarchive_test(self, test_id: int) -> None:
+        """Restore an archived test to the active list."""
+        self._db.unarchive_test(test_id)
+
+    def archive_group(self, group_name: str) -> None:
+        """Archive all tests in a group."""
+        self._db.archive_group(group_name)
+
     def get_question_count(self, test_id: int) -> int:
         """Get the number of questions in a test."""
         return self._db.get_question_count(test_id)

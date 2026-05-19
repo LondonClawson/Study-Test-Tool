@@ -24,6 +24,13 @@ MIGRATIONS: List[Tuple[int, str, List[str]]] = [
             "ON question_responses (is_correct)",
         ],
     ),
+    (
+        3,
+        "Add is_archived column to tests",
+        [
+            "ALTER TABLE tests ADD COLUMN is_archived BOOLEAN DEFAULT 0",
+        ],
+    ),
 ]
 
 
