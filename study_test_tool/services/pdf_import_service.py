@@ -102,7 +102,8 @@ def build_pair_from_paths(questions_pdf: Path, answers_pdf: Path) -> PairSpec:
 
 def discover_pairs(root: Path) -> List[PairSpec]:
     grouped: Dict[str, Dict[str, Any]] = {}
-    for pdf_path in sorted(root.glob("*.pdf")):
+    candidates = sorted(list(root.glob("*.pdf")) + list(root.glob("*.docx")))
+    for pdf_path in candidates:
         try:
             base, role = strip_role_suffix(pdf_path.stem)
         except ConversionError:
@@ -138,7 +139,8 @@ def find_partner_pdf(pdf_path: Path) -> Path:
     base, role = strip_role_suffix(pdf_path.stem)
     target_key = pairing_key_from_stem(base)
     want_role = "answers" if role == "questions" else "questions"
-    for candidate in sorted(pdf_path.parent.glob("*.pdf")):
+    all_candidates = sorted(list(pdf_path.parent.glob("*.pdf")) + list(pdf_path.parent.glob("*.docx")))
+    for candidate in all_candidates:
         if candidate == pdf_path:
             continue
         try:
@@ -246,7 +248,7 @@ def parse_questions(text: str) -> List[Dict[str, Any]]:
 
 
 def parse_answers(text: str) -> Dict[int, str]:
-    answers = {int(num): letter for num, letter in re.findall(r"(?m)^\s*(\d+)\.\s*([A-D])\s*$", text)}
+    answers = {int(num): letter for num, letter in re.findall(r"(?m)^\s*(\d+)\.\s*([A-H])\s*$", text)}
     if not answers:
         raise ConversionError("No numbered answer key entries were found in the Answers text.")
     return answers

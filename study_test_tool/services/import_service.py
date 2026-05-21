@@ -78,22 +78,25 @@ class ImportService:
     def import_from_pdf_pair(
         self, questions_pdf: str, answers_pdf: str
     ) -> int:
-        """Import a test from a Questions/Answers PDF pair.
+        """Import a test from a Questions/Answers PDF or DOCX pair.
 
-        Requires ``pdftotext`` (from poppler) on PATH.
+        ``pdftotext`` (from poppler) is only required when at least one file
+        is a PDF; pure DOCX pairs work without poppler.
 
         Args:
-            questions_pdf: Path to the Questions PDF.
-            answers_pdf: Path to the Answers PDF.
+            questions_pdf: Path to the Questions file (.pdf or .docx).
+            answers_pdf: Path to the Answers file (.pdf or .docx).
 
         Returns:
             The id of the created test.
 
         Raises:
-            ConversionError: If pdftotext is missing, pairing fails, or the
-                PDFs cannot be parsed into a valid payload.
+            ConversionError: If pdftotext is missing (for PDF inputs), pairing
+                fails, or the files cannot be parsed into a valid payload.
         """
-        pdf_import_service.require_pdftotext()
+        q_path, a_path = Path(questions_pdf), Path(answers_pdf)
+        if any(p.suffix.lower() == ".pdf" for p in (q_path, a_path)):
+            pdf_import_service.require_pdftotext()
         pair = pdf_import_service.build_pair_from_paths(
             Path(questions_pdf), Path(answers_pdf)
         )
@@ -112,7 +115,6 @@ class ImportService:
         Raises:
             ConversionError: If ``pdftotext`` is missing or no pairs exist.
         """
-        pdf_import_service.require_pdftotext()
         root = Path(folder)
         if not root.is_dir():
             raise ConversionError(f"Not a directory: {folder}")
@@ -120,8 +122,12 @@ class ImportService:
         pairs = pdf_import_service.discover_pairs(root)
         if not pairs:
             raise ConversionError(
-                "No valid Questions/Answers PDF pairs were found in this folder."
+                "No valid Questions/Answers PDF or DOCX pairs were found in this folder."
             )
+
+        all_paths = [p for pair in pairs for p in (pair.questions_pdf, pair.answers_pdf)]
+        if any(p.suffix.lower() == ".pdf" for p in all_paths):
+            pdf_import_service.require_pdftotext()
 
         results: List[Dict[str, Any]] = []
         for pair in pairs:

@@ -11,6 +11,8 @@ from services.pdf_import_service import (
     ConversionError,
     build_payload,
     clean_text,
+    discover_pairs,
+    find_partner_pdf,
     normalize_display_stem,
     pairing_key_from_stem,
     parse_answers,
@@ -192,3 +194,50 @@ class TestCleanText:
         raw = "Some text\n1\n0. What is ten?\nA. ten\nB. eleven"
         cleaned = clean_text(raw)
         assert "10. What is ten?" in cleaned
+
+
+# ── Bug regression: parse_answers accepts E–H ─────────────────────────────
+
+
+class TestParseAnswersEFGH:
+    def test_accepts_e_through_h_answer_letters(self):
+        """Answer keys using E–H labels must not be silently dropped."""
+        text = "1. E\n2. F\n3. G\n4. H\n"
+        answers = parse_answers(text)
+        assert answers == {1: "E", 2: "F", 3: "G", 4: "H"}
+
+    def test_mixed_abcd_and_efgh(self):
+        text = "1. A\n2. E\n3. C\n4. H\n"
+        answers = parse_answers(text)
+        assert answers == {1: "A", 2: "E", 3: "C", 4: "H"}
+
+
+# ── Bug regression: discover_pairs and find_partner_pdf include .docx ──────
+
+
+class TestDocxDiscovery:
+    def test_discover_pairs_finds_docx_files(self, tmp_path):
+        """discover_pairs must include .docx files, not just .pdf."""
+        (tmp_path / "Week 1 Questions.docx").touch()
+        (tmp_path / "Week 1 Answers.docx").touch()
+        pairs = discover_pairs(tmp_path)
+        assert len(pairs) == 1
+        assert pairs[0].display_name == "Week 1"
+        assert pairs[0].questions_pdf.suffix == ".docx"
+        assert pairs[0].answers_pdf.suffix == ".docx"
+
+    def test_discover_pairs_finds_mixed_pdf_docx(self, tmp_path):
+        """discover_pairs must find a pair where one file is .pdf and the other .docx."""
+        (tmp_path / "Week 2 Questions.pdf").touch()
+        (tmp_path / "Week 2 Answers.docx").touch()
+        pairs = discover_pairs(tmp_path)
+        assert len(pairs) == 1
+
+    def test_find_partner_pdf_finds_docx_partner(self, tmp_path):
+        """find_partner_pdf must locate a .docx partner, not just .pdf."""
+        q = tmp_path / "Week 3 Questions.docx"
+        a = tmp_path / "Week 3 Answers.docx"
+        q.touch()
+        a.touch()
+        partner = find_partner_pdf(q)
+        assert partner == a
