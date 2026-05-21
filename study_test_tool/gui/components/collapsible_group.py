@@ -20,7 +20,7 @@ class CollapsibleGroup(ctk.CTkFrame):
         parent,
         group_name: str,
         test_count: int,
-        expanded: bool = True,
+        expanded: bool = False,
         archive_callback: Optional[Callable] = None,
         **kwargs,
     ) -> None:

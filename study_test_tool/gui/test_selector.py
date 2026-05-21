@@ -131,7 +131,6 @@ class TestSelectorFrame(ctk.CTkFrame):
                 "Name (A-Z)",
                 "Name (Z-A)",
                 "Date Created",
-                "Group",
             ],
             width=150,
             command=self._on_sort_changed,
@@ -185,17 +184,13 @@ class TestSelectorFrame(ctk.CTkFrame):
         )
 
     def _sort_tests(self, tests):
-        """Sort the test list based on current sort selection."""
+        """Sort the test list based on current sort selection (within each group)."""
         if self._sort_by == "Name (A-Z)":
             return sorted(tests, key=lambda t: t.name.lower())
         if self._sort_by == "Name (Z-A)":
             return sorted(tests, key=lambda t: t.name.lower(), reverse=True)
         if self._sort_by == "Date Created":
             return sorted(tests, key=lambda t: t.created_at or "", reverse=True)
-        if self._sort_by == "Group":
-            return sorted(
-                tests, key=lambda t: (t.group_name or "", t.name.lower())
-            )
         # Default: "Last Updated" — already sorted by DB query
         return tests
 
@@ -220,34 +215,34 @@ class TestSelectorFrame(ctk.CTkFrame):
 
         tests = self._sort_tests(tests)
 
-        if self._sort_by == "Group":
-            # Count tests per group for the badge
-            group_counts: dict[str, int] = {}
-            for test in tests:
-                group = test.group_name if test.group_name else "Ungrouped"
-                group_counts[group] = group_counts.get(group, 0) + 1
+        # Always render in groups: named groups alphabetically, "Ungrouped" last
+        grouped: dict[str, list] = {}
+        for test in tests:
+            group = test.group_name if test.group_name else "Ungrouped"
+            grouped.setdefault(group, []).append(test)
 
-            current_group = None
-            current_widget = None
-            for test in tests:
-                group = test.group_name if test.group_name else "Ungrouped"
-                if group != current_group:
-                    current_group = group
-                    was_expanded = old_group_states.get(group, True)
-                    group_widget = CollapsibleGroup(
-                        self.test_list_frame,
-                        group_name=group,
-                        test_count=group_counts[group],
-                        expanded=was_expanded,
-                        archive_callback=lambda g=group: self._on_archive_group(g),
-                    )
-                    group_widget.pack(fill="x")
-                    self._group_widgets[group] = group_widget
-                    current_widget = group_widget
-                self._create_test_card(test, parent=current_widget.content_frame)
-        else:
-            for test in tests:
-                self._create_test_card(test)
+        named_groups = sorted(k for k in grouped if k != "Ungrouped")
+        ordered_groups = named_groups + (["Ungrouped"] if "Ungrouped" in grouped else [])
+
+        for group in ordered_groups:
+            group_tests = grouped[group]
+            was_expanded = old_group_states.get(group, False)
+            archive_cb = (
+                (lambda g=group: self._on_archive_group(g))
+                if group != "Ungrouped"
+                else None
+            )
+            group_widget = CollapsibleGroup(
+                self.test_list_frame,
+                group_name=group,
+                test_count=len(group_tests),
+                expanded=was_expanded,
+                archive_callback=archive_cb,
+            )
+            group_widget.pack(fill="x")
+            self._group_widgets[group] = group_widget
+            for test in group_tests:
+                self._create_test_card(test, parent=group_widget.content_frame)
 
         if archived_tests:
             archived_widget = CollapsibleGroup(
