@@ -64,6 +64,7 @@ class ImportService:
         test = Test(
             name=data.get("name") or fallback_name,
             description=data.get("description", ""),
+            group_name=data.get("group_name", ""),
         )
         test_id = self._db.create_test(test)
 

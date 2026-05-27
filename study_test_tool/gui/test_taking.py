@@ -20,6 +20,7 @@ from gui.components.progress_bar import ProgressBar
 from gui.components.question_widget import QuestionWidget
 from gui.components.timer_widget import TimerWidget
 from services.question_service import QuestionService
+from services.review_service import ReviewService
 from services.scoring_service import ScoringService
 from services.test_service import TestService
 from services.test_session import TestSession
@@ -35,6 +36,7 @@ class TestTakingFrame(ctk.CTkFrame):
         self.test_service = TestService()
         self.question_service = QuestionService()
         self.scoring_service = ScoringService()
+        self.review_service = ReviewService()
 
         self._session: Optional[TestSession] = None
         self._question_widget: Optional[QuestionWidget] = None
@@ -223,15 +225,7 @@ class TestTakingFrame(ctk.CTkFrame):
 
     def _load_review_questions(self, question_ids: List[int]):
         """Load specific questions by ID for review sessions."""
-        from database.db_manager import DatabaseManager
-
-        db = DatabaseManager()
-        questions = []
-        for qid in question_ids:
-            q = db.get_question_by_id(qid)
-            if q:
-                questions.append(q)
-        return questions
+        return self.review_service.create_review_session_questions(question_ids)
 
     def _display_question(self) -> None:
         """Show the current question."""

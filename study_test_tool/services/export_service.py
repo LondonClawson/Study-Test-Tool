@@ -89,6 +89,7 @@ class ExportService:
         data: Dict = {
             "name": test.name,
             "description": test.description,
+            "group_name": test.group_name,
             "questions": questions,
         }
         return data

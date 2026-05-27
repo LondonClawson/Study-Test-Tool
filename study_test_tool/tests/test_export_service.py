@@ -141,6 +141,55 @@ class TestExportToJson:
         finally:
             os.unlink(path)
 
+    def test_export_preserves_group_name(
+        self, export_svc, import_svc, db_path_for_export
+    ):
+        """A test's group_name survives export and re-import."""
+        data = {
+            "name": "Grouped Test",
+            "description": "",
+            "group_name": "Bar Prep",
+            "questions": [
+                {
+                    "text": "Q?",
+                    "type": "multiple_choice",
+                    "options": [
+                        {"text": "A", "correct": True},
+                        {"text": "B", "correct": False},
+                    ],
+                }
+            ],
+        }
+        with tempfile.NamedTemporaryFile(
+            mode="w", suffix=".json", delete=False
+        ) as f:
+            json.dump(data, f)
+            in_path = f.name
+
+        try:
+            test_id = import_svc.import_from_json(in_path)
+        finally:
+            os.unlink(in_path)
+
+        with tempfile.NamedTemporaryFile(
+            suffix=".json", delete=False
+        ) as f:
+            out_path = f.name
+
+        try:
+            export_svc.export_to_json(test_id, out_path)
+            with open(out_path, "r", encoding="utf-8") as f:
+                exported = json.load(f)
+            assert exported["group_name"] == "Bar Prep"
+
+            new_id = import_svc.import_from_json(out_path)
+            from database.db_manager import DatabaseManager
+            db = DatabaseManager(db_path_for_export)
+            reimported = db.get_test_by_id(new_id)
+            assert reimported.group_name == "Bar Prep"
+        finally:
+            os.unlink(out_path)
+
     def test_round_trip(
         self, export_svc, import_svc, imported_test_id, sample_test_data
     ):
