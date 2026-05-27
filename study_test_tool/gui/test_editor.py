@@ -192,24 +192,27 @@ class TestEditorFrame(ctk.CTkFrame):
         ).pack(anchor="w")
 
         self.correct_var = ctk.IntVar(value=0)
-        self.option_entries = []
-        for i in range(4):
-            row = ctk.CTkFrame(self.options_frame, fg_color="transparent")
-            row.pack(fill="x", pady=2)
+        self.option_entries: list = []
+        self._option_rows: list = []
+        self._option_radios: list = []
+        self._option_remove_btns: list = []
 
-            rb = ctk.CTkRadioButton(
-                row,
-                text="",
-                variable=self.correct_var,
-                value=i,
-                width=20,
-            )
-            rb.pack(side="left", padx=(0, 5))
+        self.options_container = ctk.CTkFrame(
+            self.options_frame, fg_color="transparent"
+        )
+        self.options_container.pack(fill="x")
 
-            entry = ctk.CTkEntry(row, placeholder_text=f"Option {chr(65 + i)}")
-            entry.pack(side="left", fill="x", expand=True)
+        self.add_option_btn = ctk.CTkButton(
+            self.options_frame,
+            text="+ Add Option",
+            width=120,
+            height=26,
+            fg_color="gray",
+            command=self._on_add_option,
+        )
+        self.add_option_btn.pack(anchor="w", pady=(4, 0))
 
-            self.option_entries.append(entry)
+        self._rebuild_option_rows(["", "", "", ""], correct_idx=0)
 
         # Essay answer frame
         self.essay_frame = ctk.CTkFrame(form_scroll, fg_color="transparent")
@@ -357,6 +360,100 @@ class TestEditorFrame(ctk.CTkFrame):
             self.options_frame.pack_forget()
             self.essay_frame.pack(fill="x", pady=5)
 
+    def _rebuild_option_rows(
+        self, option_texts: list, correct_idx: int = 0
+    ) -> None:
+        """Destroy current option rows and build one row per ``option_texts``.
+
+        Keeps the radio-button ``value`` in lockstep with each row's index in
+        ``self.option_entries`` so callers can read ``correct_var`` directly.
+        """
+        for row in self._option_rows:
+            row.destroy()
+        self.option_entries = []
+        self._option_rows = []
+        self._option_radios = []
+        self._option_remove_btns = []
+
+        for i, text in enumerate(option_texts):
+            row = ctk.CTkFrame(self.options_container, fg_color="transparent")
+            row.pack(fill="x", pady=2)
+
+            rb = ctk.CTkRadioButton(
+                row,
+                text="",
+                variable=self.correct_var,
+                value=i,
+                width=20,
+            )
+            rb.pack(side="left", padx=(0, 5))
+
+            entry = ctk.CTkEntry(row, placeholder_text=f"Option {chr(65 + i)}")
+            entry.pack(side="left", fill="x", expand=True)
+            if text:
+                entry.insert(0, text)
+
+            remove_btn = ctk.CTkButton(
+                row,
+                text="×",
+                width=26,
+                height=26,
+                fg_color="transparent",
+                hover_color=("gray80", "gray30"),
+                text_color=("gray20", "gray80"),
+                command=lambda r=row: self._on_remove_option(r),
+            )
+            remove_btn.pack(side="left", padx=(5, 0))
+
+            self.option_entries.append(entry)
+            self._option_rows.append(row)
+            self._option_radios.append(rb)
+            self._option_remove_btns.append(remove_btn)
+
+        # Clamp correct selection to the available range.
+        if not self.option_entries:
+            self.correct_var.set(0)
+        elif correct_idx < 0 or correct_idx >= len(self.option_entries):
+            self.correct_var.set(0)
+        else:
+            self.correct_var.set(correct_idx)
+
+        self._update_remove_button_state()
+
+    def _update_remove_button_state(self) -> None:
+        """Disable per-row remove buttons when only 2 options remain."""
+        can_remove = len(self.option_entries) > 2
+        for btn in self._option_remove_btns:
+            btn.configure(state="normal" if can_remove else "disabled")
+
+    def _current_option_texts(self) -> list:
+        """Return the current text of every option entry, in row order."""
+        return [entry.get() for entry in self.option_entries]
+
+    def _on_add_option(self) -> None:
+        """Append an empty option row."""
+        texts = self._current_option_texts() + [""]
+        self._rebuild_option_rows(texts, correct_idx=self.correct_var.get())
+
+    def _on_remove_option(self, row) -> None:
+        """Remove the option row matching ``row`` (the CTkFrame instance)."""
+        if len(self.option_entries) <= 2:
+            return
+        try:
+            idx = self._option_rows.index(row)
+        except ValueError:
+            return
+        texts = self._current_option_texts()
+        del texts[idx]
+        current_correct = self.correct_var.get()
+        if current_correct == idx:
+            new_correct = 0
+        elif current_correct > idx:
+            new_correct = current_correct - 1
+        else:
+            new_correct = current_correct
+        self._rebuild_option_rows(texts, correct_idx=new_correct)
+
     def _on_save_test(self) -> None:
         """Save or create the test metadata."""
         name = self.name_entry.get().strip()
@@ -503,14 +600,15 @@ class TestEditorFrame(ctk.CTkFrame):
             self.type_selector.set("Multiple Choice")
             self._on_type_change("Multiple Choice")
 
-            for i, entry in enumerate(self.option_entries):
-                entry.delete(0, "end")
-
-            for i, opt in enumerate(question.options):
-                if i < len(self.option_entries):
-                    self.option_entries[i].insert(0, opt.text)
-                    if opt.is_correct:
-                        self.correct_var.set(i)
+            opts = list(question.options)
+            # Pad to 4 rows so new questions still get the familiar A–D layout.
+            texts = [opt.text for opt in opts]
+            while len(texts) < 4:
+                texts.append("")
+            correct_idx = next(
+                (i for i, opt in enumerate(opts) if opt.is_correct), 0
+            )
+            self._rebuild_option_rows(texts, correct_idx=correct_idx)
         else:
             self.type_selector.set("Essay")
             self._on_type_change("Essay")
@@ -545,9 +643,7 @@ class TestEditorFrame(ctk.CTkFrame):
         self.question_text.delete("1.0", "end")
         self.type_selector.set("Multiple Choice")
         self._on_type_change("Multiple Choice")
-        self.correct_var.set(0)
-        for entry in self.option_entries:
-            entry.delete(0, "end")
+        self._rebuild_option_rows(["", "", "", ""], correct_idx=0)
         self.essay_answer.delete("1.0", "end")
         self.category_entry.delete(0, "end")
         self._editing_question_id = None
