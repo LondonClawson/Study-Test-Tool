@@ -81,8 +81,8 @@ class ImportService:
     ) -> int:
         """Import a test from a Questions/Answers PDF or DOCX pair.
 
-        ``pdftotext`` (from poppler) is only required when at least one file
-        is a PDF; pure DOCX pairs work without poppler.
+        PDF text is extracted with ``pdfminer.six`` (pure Python — no system
+        binary needed); ``.docx`` files use ``python-docx``.
 
         Args:
             questions_pdf: Path to the Questions file (.pdf or .docx).
@@ -92,12 +92,10 @@ class ImportService:
             The id of the created test.
 
         Raises:
-            ConversionError: If pdftotext is missing (for PDF inputs), pairing
-                fails, or the files cannot be parsed into a valid payload.
+            ConversionError: If pairing fails or the files cannot be parsed
+                into a valid payload (including scanned PDFs that contain no
+                extractable text).
         """
-        q_path, a_path = Path(questions_pdf), Path(answers_pdf)
-        if any(p.suffix.lower() == ".pdf" for p in (q_path, a_path)):
-            pdf_import_service.require_pdftotext()
         pair = pdf_import_service.build_pair_from_paths(
             Path(questions_pdf), Path(answers_pdf)
         )
@@ -114,7 +112,7 @@ class ImportService:
         that import successfully also include the created ``test_id``.
 
         Raises:
-            ConversionError: If ``pdftotext`` is missing or no pairs exist.
+            ConversionError: If no pairs exist or the folder is missing.
         """
         root = Path(folder)
         if not root.is_dir():
@@ -125,10 +123,6 @@ class ImportService:
             raise ConversionError(
                 "No valid Questions/Answers PDF or DOCX pairs were found in this folder."
             )
-
-        all_paths = [p for pair in pairs for p in (pair.questions_pdf, pair.answers_pdf)]
-        if any(p.suffix.lower() == ".pdf" for p in all_paths):
-            pdf_import_service.require_pdftotext()
 
         results: List[Dict[str, Any]] = []
         for pair in pairs:

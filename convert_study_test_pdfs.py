@@ -30,7 +30,6 @@ from services.pdf_import_service import (  # noqa: E402
     convert_pair,
     discover_pairs,
     find_pair_by_stem,
-    require_pdftotext,
 )
 
 
@@ -112,7 +111,6 @@ def main() -> int:
     report_path = Path(args.report).expanduser() if args.report else root / REPORT_NAME
 
     try:
-        require_pdftotext()
         pairs = resolve_pairs(args, root)
     except ConversionError as exc:
         print(f"Error: {exc}", file=sys.stderr)

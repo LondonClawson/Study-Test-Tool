@@ -1,16 +1,21 @@
 """Tests for the pure-Python parsing layer of pdf_import_service.
 
-These tests never invoke ``pdftotext`` — they feed the parser the same kind
-of cleaned text strings that ``extract_text`` + ``clean_text`` would produce
-at runtime, so the suite runs on any machine without poppler installed.
+Most tests feed the parser cleaned text strings directly (the same shape
+``extract_text_from_pdf`` + ``clean_text`` produce at runtime), so the suite
+needs no real PDFs and runs on any machine.
 """
+
+from pathlib import Path
 
 import pytest
 
+from services import pdf_import_service
 from services.pdf_import_service import (
     ConversionError,
+    PairSpec,
     build_payload,
     clean_text,
+    convert_pair_to_dict,
     discover_pairs,
     find_partner_pdf,
     normalize_display_stem,
@@ -52,6 +57,11 @@ class TestPairingKey:
     def test_strip_role_suffix_rejects_bare_stem(self):
         with pytest.raises(ConversionError):
             strip_role_suffix("Week 1B Multiple-Choice")
+
+    def test_pairing_key_is_whitespace_insensitive(self):
+        """'Week 1B' and 'Week 1 B' must pair — instructors are inconsistent."""
+        assert pairing_key_from_stem("Week 1B") == pairing_key_from_stem("Week 1 B")
+        assert pairing_key_from_stem("Week1B") == pairing_key_from_stem("Week 1 B")
 
 
 # ── Question parsing ───────────────────────────────────────────────────────
@@ -104,6 +114,23 @@ D. Fourth
         with pytest.raises(ConversionError, match="No numbered questions"):
             parse_questions("")
 
+    def test_skips_numbered_dot_in_flowing_text(self):
+        """A line like '12.\\n' inside a scenario (e.g. wrapped 'May / 12.')
+        is not a real question — it has zero option markers. The parser must
+        skip such candidate blocks instead of failing the whole import."""
+        text = (
+            "11. Real question eleven\n"
+            "A. yes\nB. no\n\n"
+            "Some flowing text that ends with a date like May\n"
+            "12.\n\n"
+            "More flowing text inside a scenario.\n\n"
+            "13. Real question thirteen\n"
+            "A. yes\nB. no\n"
+        )
+        questions = parse_questions(text)
+        # Q12 (the fake one) silently dropped; Q11 and Q13 kept.
+        assert [q["number"] for q in questions] == [11, 13]
+
 
 # ── Answer-key parsing ─────────────────────────────────────────────────────
 
@@ -114,8 +141,55 @@ class TestParseAnswers:
         assert answers == {1: "A", 2: "B", 3: "C"}
 
     def test_rejects_empty(self):
-        with pytest.raises(ConversionError, match="No numbered answer key"):
+        with pytest.raises(ConversionError, match="No answer key entries"):
             parse_answers("")
+
+    def test_bare_letters_numbered_sequentially(self):
+        """Week 2B-style answer key: bare letters → Q1, Q2, Q3, ..."""
+        text = "C\nB\nC\nC\nA\nD\nA\nC\n"
+        assert parse_answers(text) == {
+            1: "C", 2: "B", 3: "C", 4: "C", 5: "A", 6: "D", 7: "A", 8: "C",
+        }
+
+    def test_na_skips_the_slot(self):
+        """Week 1B-style: 'n/a' advances the implicit counter past Q8."""
+        text = "D\nD\nB\nD\nB\nD\nC\nn/a\nA\nA\nB\nC\nC\nA\n"
+        answers = parse_answers(text)
+        assert 8 not in answers
+        assert answers[7] == "C"
+        assert answers[9] == "A"
+        assert answers[14] == "A"
+        assert len(answers) == 13
+
+    def test_mixed_bare_then_numbered(self):
+        """Week 2A-style: 8 bare letters, then explicit '29. B' and '32. C'."""
+        text = " A\n A\n D\n D\nC\n A\n B\n A\n29. B\n32. C\n"
+        answers = parse_answers(text)
+        assert answers[1] == "A"
+        assert answers[8] == "A"
+        assert answers[29] == "B"
+        assert answers[32] == "C"
+        # Bare run is exactly 8 entries; no implicit numbers in Q9-Q28.
+        assert set(answers.keys()) == {1, 2, 3, 4, 5, 6, 7, 8, 29, 32}
+
+    def test_numbered_with_gaps_then_resumes_bare(self):
+        """Week 4A-style: explicit '5. D' resets counter to 6 for next bare."""
+        text = "1. C\n2. A\n3. C\n5. D\nA\nA\nD\n A\n10. B\n14. B\n15.\tD\n16. B\n"
+        answers = parse_answers(text)
+        assert answers == {
+            1: "C", 2: "A", 3: "C", 5: "D",
+            6: "A", 7: "A", 8: "D", 9: "A",
+            10: "B", 14: "B", 15: "D", 16: "B",
+        }
+
+    def test_ignores_heading_and_separator_lines(self):
+        """Title lines like 'PRACTICE MULTIPLE CHOICE ANSWER KEY' don't match."""
+        text = (
+            "Contracts I – Week 1-2\n\n"
+            "PRACTICE MULTIPLE CHOICE ANSWER KEY\n\n"
+            "D\nD\nB\n"
+        )
+        assert parse_answers(text) == {1: "D", 2: "D", 3: "B"}
 
 
 # ── Correct-letter resolution ──────────────────────────────────────────────
@@ -178,11 +252,16 @@ class TestBuildPayload:
         with pytest.raises(ConversionError, match="Missing answer"):
             build_payload("Week 1", _simple_questions(), {1: "A"})
 
-    def test_rejects_extra_answer_key_entries(self):
-        with pytest.raises(ConversionError, match="no matching question"):
-            build_payload(
-                "Week 1", _simple_questions(), {1: "A", 2: "B", 3: "C"}
-            )
+    def test_silently_drops_extra_answer_key_entries(self):
+        """Partial questions files are common (instructor uploaded a subset).
+
+        An answer key with extras for Q3 (when only Q1, Q2 are listed) should
+        not fail the import — just ignore the extras.
+        """
+        payload = build_payload(
+            "Week 1", _simple_questions(), {1: "A", 2: "B", 3: "C"}
+        )
+        assert len(payload["questions"]) == 2
 
 
 # ── clean_text ─────────────────────────────────────────────────────────────
@@ -241,3 +320,49 @@ class TestDocxDiscovery:
         a.touch()
         partner = find_partner_pdf(q)
         assert partner == a
+
+
+# ── Scanned-PDF detection ─────────────────────────────────────────────────
+
+
+class TestScannedPdfDetection:
+    """convert_pair_to_dict surfaces an actionable error for image-only PDFs."""
+
+    def _make_pair(self, tmp_path: Path) -> PairSpec:
+        q = tmp_path / "Week 9 Questions.pdf"
+        a = tmp_path / "Week 9 Answers.pdf"
+        q.touch()
+        a.touch()
+        return PairSpec(
+            display_name="Week 9",
+            pairing_key="week9",
+            questions_pdf=q,
+            answers_pdf=a,
+            output_json=tmp_path / "Week 9.json",
+        )
+
+    def test_empty_questions_pdf_names_the_file(self, tmp_path, monkeypatch):
+        pair = self._make_pair(tmp_path)
+        monkeypatch.setattr(
+            pdf_import_service, "_extract_file_text", lambda source: ""
+        )
+        with pytest.raises(ConversionError) as exc:
+            convert_pair_to_dict(pair)
+        assert "Week 9 Questions.pdf" in str(exc.value)
+        assert "scanned image" in str(exc.value)
+
+    def test_empty_answers_pdf_names_that_file(self, tmp_path, monkeypatch):
+        pair = self._make_pair(tmp_path)
+        # Real questions, empty answers — error must name the answers side.
+        responses = {
+            pair.questions_pdf: SAMPLE_QUESTIONS_TEXT,
+            pair.answers_pdf: "\x0c\x0c\x0c",
+        }
+        monkeypatch.setattr(
+            pdf_import_service,
+            "_extract_file_text",
+            lambda source: responses[source],
+        )
+        with pytest.raises(ConversionError) as exc:
+            convert_pair_to_dict(pair)
+        assert "Week 9 Answers.pdf" in str(exc.value)

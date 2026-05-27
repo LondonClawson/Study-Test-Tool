@@ -4,16 +4,16 @@ This module contains the parsing engine used both by the in-app PDF import
 path (via :class:`services.import_service.ImportService`) and by the
 standalone ``convert_study_test_pdfs.py`` CLI shim at the repo root.
 
-The engine shells out to ``pdftotext -layout`` (from poppler) to extract text
-from PDFs, then parses the text into the import JSON shape the app already
-accepts. No Python PDF dependency is introduced.
+PDF text is extracted with ``pdfminer.six`` (pure Python — no system binary
+required); ``.docx`` files use ``python-docx``. Scanned PDFs that have no
+embedded text are detected and reported with an actionable error rather
+than producing garbage downstream.
 """
 
 from __future__ import annotations
 
 import json
 import re
-import subprocess
 from dataclasses import dataclass
 from datetime import datetime, timezone
 from pathlib import Path
@@ -37,8 +37,6 @@ class PairSpec:
     pairing_key: str
     questions_pdf: Path
     answers_pdf: Path
-    questions_txt: Path
-    answers_txt: Path
     output_json: Path
 
 
@@ -53,9 +51,10 @@ def normalize_display_stem(stem: str) -> str:
 
 
 def pairing_key_from_stem(stem: str) -> str:
+    # Whitespace is stripped entirely so "Week 1B" and "Week 1 B" pair.
     normalized = normalize_display_stem(stem)
-    normalized = normalized.lower().replace("-", " ")
-    normalized = re.sub(r"\s+", " ", normalized).strip()
+    normalized = normalized.lower().replace("-", "")
+    normalized = re.sub(r"\s+", "", normalized)
     return normalized
 
 
@@ -94,8 +93,6 @@ def build_pair_from_paths(questions_pdf: Path, answers_pdf: Path) -> PairSpec:
         pairing_key=q_key,
         questions_pdf=questions_pdf,
         answers_pdf=answers_pdf,
-        questions_txt=questions_pdf.with_suffix(".txt"),
-        answers_txt=answers_pdf.with_suffix(".txt"),
         output_json=parent / f"{display_name}.json",
     )
 
@@ -154,33 +151,14 @@ def find_partner_pdf(pdf_path: Path) -> Path:
     )
 
 
-# ── pdftotext boundary ─────────────────────────────────────────────────────
+# ── Text extraction ────────────────────────────────────────────────────────
 
 
-def require_pdftotext() -> None:
-    """Raise :class:`ConversionError` with an actionable hint if missing."""
-    try:
-        subprocess.run(
-            ["pdftotext", "-v"],
-            check=True,
-            capture_output=True,
-            text=True,
-        )
-    except FileNotFoundError as exc:
-        raise ConversionError(
-            "pdftotext is not installed. On macOS, run: brew install poppler"
-        ) from exc
-    except subprocess.CalledProcessError as exc:
-        raise ConversionError(f"Unable to run pdftotext: {exc}") from exc
+def extract_text_from_pdf(pdf_path: Path) -> str:
+    """Extract text from a PDF using ``pdfminer.six`` (pure Python)."""
+    from pdfminer.high_level import extract_text as _pdfminer_extract  # noqa: PLC0415
 
-
-def extract_text(pdf_path: Path, txt_path: Path) -> None:
-    subprocess.run(
-        ["pdftotext", "-layout", str(pdf_path), str(txt_path)],
-        check=True,
-        capture_output=True,
-        text=True,
-    )
+    return _pdfminer_extract(str(pdf_path))
 
 
 def extract_text_from_docx(path: str) -> str:
@@ -191,11 +169,10 @@ def extract_text_from_docx(path: str) -> str:
     return "\n".join(paragraph.text for paragraph in doc.paragraphs)
 
 
-def _extract_file_text(source: Path, txt_path: Path) -> str:
+def _extract_file_text(source: Path) -> str:
     if source.suffix.lower() == ".docx":
         return extract_text_from_docx(str(source))
-    extract_text(source, txt_path)
-    return txt_path.read_text(encoding="utf-8")
+    return extract_text_from_pdf(source)
 
 
 # ── Text parsing ───────────────────────────────────────────────────────────
@@ -209,18 +186,82 @@ def clean_text(text: str) -> str:
         "",
         text,
     )
+    # Garbled page-footer glyph runs (e.g. '! " # $ %&% 0% ()%*%') — these
+    # come from a non-standard font that pdftotext/pdfminer can't decode and
+    # otherwise leak into the last option's text.
+    text = re.sub(
+        r"""(?m)^[ \t]*!(?:[ \t]*[!"#$%&'()*+,\-./\d]){4,}[ \t]*$""",
+        "",
+        text,
+    )
     text = re.sub(r"(?m)^\s*(\d)\s*\n\s*(\d\.)", r"\1\2", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
 
 
+_FACTS_HEADER_RE = re.compile(
+    r"(?ms)^[ \t]*Facts for Questions?[ \t]+([^\n]+?)[ \t]*\n"
+    r"(.*?)"
+    r"(?=^[ \t]*Facts for Questions?[ \t]|^[ \t]*\d+\.[ \t]*$|^[ \t]*\d+\.[ \t]+\S|\Z)"
+)
+
+
+def _parse_question_number_list(s: str) -> List[int]:
+    """Parse a Facts header's number list: '1' → [1]; '6-8' → [6,7,8]; '13 and 14' → [13,14]."""
+    nums: List[int] = []
+    s = s.replace("–", "-")
+    for part in re.split(r"\s*(?:,|\band\b)\s*", s):
+        part = part.strip()
+        if not part:
+            continue
+        rng = re.match(r"(\d+)\s*-\s*(\d+)$", part)
+        if rng:
+            nums.extend(range(int(rng.group(1)), int(rng.group(2)) + 1))
+            continue
+        mm = re.search(r"\d+", part)
+        if mm:
+            nums.append(int(mm.group()))
+    return nums
+
+
+def _extract_scenarios(text: str) -> Tuple[str, Dict[int, str]]:
+    """Pull 'Facts for Question(s) N' scenario blocks out of ``text``.
+
+    Returns the text with the Facts blocks removed and a ``{question_num:
+    scenario_text}`` map. The boundary for a scenario is the next Facts
+    header or the next question-number marker at the start of a line. This
+    lets ``parse_questions`` parse a clean stem+options chunk per question,
+    and the caller can stitch the scenario back into the question's stem.
+    """
+    scenarios: Dict[int, str] = {}
+    parts: List[str] = []
+    last = 0
+    for m in _FACTS_HEADER_RE.finditer(text):
+        parts.append(text[last : m.start()])
+        nums = _parse_question_number_list(m.group(1))
+        scenario = " ".join(m.group(2).split())
+        for n in nums:
+            scenarios[n] = scenario
+        last = m.end()
+    parts.append(text[last:])
+    return "".join(parts), scenarios
+
+
 def parse_questions(text: str) -> List[Dict[str, Any]]:
+    text, scenarios = _extract_scenarios(text)
     questions: List[Dict[str, Any]] = []
     matches = re.finditer(r"(?ms)^\s*(\d+)\.\s+(.*?)(?=^\s*\d+\.\s+|\Z)", text)
     for match in matches:
         number = int(match.group(1))
         body = match.group(2).strip()
         option_matches = list(re.finditer(rf"(?m){OPTION_PREFIX_RE}", body))
+        # 0 option markers means this number-dot at line start is part of
+        # flowing text (a wrapped date like "May / 12.\n" or a numbered list
+        # inside a scenario), not a real question. Silently drop it — real
+        # malformed questions will still surface as missing-answer errors
+        # downstream.
+        if not option_matches:
+            continue
         if len(option_matches) < 2:
             raise ConversionError(f"Could not parse answer choices for question {number}.")
 
@@ -240,6 +281,9 @@ def parse_questions(text: str) -> List[Dict[str, Any]]:
                 raise ConversionError(f"Question {number} option {letter} is empty.")
             options.append({"letter": letter, "text": chunk})
 
+        scenario = scenarios.get(number)
+        if scenario:
+            stem = f"{scenario}\n\n{stem}"
         questions.append({"number": number, "text": stem, "options": options})
 
     if not questions:
@@ -247,10 +291,54 @@ def parse_questions(text: str) -> List[Dict[str, Any]]:
     return questions
 
 
+_ANSWER_NUMBERED_RE = re.compile(r"^\s*(\d{1,3})\s*[.):]?\s*([A-H])\s*$")
+_ANSWER_BARE_RE = re.compile(r"^\s*([A-H])\s*$")
+_ANSWER_NA_RE = re.compile(r"^\s*n\s*/?\s*a\s*$", re.IGNORECASE)
+
+
 def parse_answers(text: str) -> Dict[int, str]:
-    answers = {int(num): letter for num, letter in re.findall(r"(?m)^\s*(\d+)\.\s*([A-H])\s*$", text)}
+    """Parse an answer key, handling the variety of formats seen in the wild.
+
+    Each non-empty line is classified:
+
+    * ``"3. C"`` / ``"3) C"`` / ``"3 C"`` — explicit; records ``{3: "C"}`` and
+      advances the implicit counter to ``4``.
+    * ``"C"`` (a single A–H on its own line) — bare; records the next implicit
+      slot and advances the counter.
+    * ``"n/a"`` — skip the next implicit slot without recording an answer.
+    * Anything else (headings, separators, blank lines) — ignored.
+
+    The implicit counter starts at ``1`` so files that contain only bare
+    letters are numbered sequentially. A ``ConversionError`` is raised only
+    when zero answers were recorded — heading-only files still fail loudly.
+    """
+    answers: Dict[int, str] = {}
+    next_implicit = 1
+
+    for raw_line in text.splitlines():
+        line = raw_line.strip()
+        if not line:
+            continue
+
+        numbered = _ANSWER_NUMBERED_RE.match(line)
+        if numbered:
+            number = int(numbered.group(1))
+            answers[number] = numbered.group(2)
+            next_implicit = number + 1
+            continue
+
+        bare = _ANSWER_BARE_RE.match(line)
+        if bare:
+            answers[next_implicit] = bare.group(1)
+            next_implicit += 1
+            continue
+
+        if _ANSWER_NA_RE.match(line):
+            next_implicit += 1
+            continue
+
     if not answers:
-        raise ConversionError("No numbered answer key entries were found in the Answers text.")
+        raise ConversionError("No answer key entries were found in the Answers text.")
     return answers
 
 
@@ -278,9 +366,10 @@ def build_payload(
     if len(set(parsed_numbers)) != len(parsed_numbers):
         raise ConversionError("Duplicate question numbers found in the Questions text.")
 
-    extra_answers = sorted(set(answers) - set(parsed_numbers))
-    if extra_answers:
-        raise ConversionError(f"Answer key has entries with no matching question: {extra_answers}")
+    # Answer-key entries with no matching question are common when an
+    # instructor uploads a partial questions file; silently drop them rather
+    # than failing the whole import.
+    answers = {n: letter for n, letter in answers.items() if n in set(parsed_numbers)}
 
     for question in questions:
         number = question["number"]
@@ -315,19 +404,41 @@ def build_payload(
 # ── Pair conversion ────────────────────────────────────────────────────────
 
 
-def convert_pair_to_dict(pair: PairSpec) -> Dict[str, Any]:
-    """Run pdftotext + parse and return the import payload in memory.
+def _require_extractable_text(source: Path, text: str) -> None:
+    """Raise an actionable error when a PDF/DOCX yielded no usable text.
 
-    Writes ``.txt`` intermediates next to the PDFs (the CLI workflow keeps
-    them for debugging), but does **not** write a JSON file. The caller is
-    responsible for persistence — the GUI pipes the dict straight into
-    :meth:`ImportService.import_from_dict`.
+    Scanned image PDFs come through as zero characters (or only form-feeds /
+    whitespace). Bail out with a clear message pointing the user at OCR
+    instead of letting the parser stumble forward on empty input.
     """
-    question_text = clean_text(_extract_file_text(pair.questions_pdf, pair.questions_txt))
-    answer_text = clean_text(_extract_file_text(pair.answers_pdf, pair.answers_txt))
+    if text.strip():
+        return
+    if source.suffix.lower() == ".docx":
+        raise ConversionError(
+            f"'{source.name}' contains no text. Confirm the file is not empty."
+        )
+    raise ConversionError(
+        f"'{source.name}' has no extractable text — it appears to be a "
+        "scanned image PDF. Open it in Word (File → Open will OCR it), save "
+        "as .docx, and import that file instead."
+    )
 
-    questions = parse_questions(question_text)
-    answers = parse_answers(answer_text)
+
+def convert_pair_to_dict(pair: PairSpec) -> Dict[str, Any]:
+    """Extract + parse a Questions/Answers pair and return the import payload.
+
+    Returns the in-memory payload dict; the GUI feeds this straight into
+    :meth:`ImportService.import_from_dict`. Scanned PDFs (no embedded text)
+    are detected up-front so the user gets an actionable error rather than a
+    "No numbered questions found" puzzle.
+    """
+    question_raw = _extract_file_text(pair.questions_pdf)
+    _require_extractable_text(pair.questions_pdf, question_raw)
+    answer_raw = _extract_file_text(pair.answers_pdf)
+    _require_extractable_text(pair.answers_pdf, answer_raw)
+
+    questions = parse_questions(clean_text(question_raw))
+    answers = parse_answers(clean_text(answer_raw))
     return build_payload(pair.display_name, questions, answers)
 
 
@@ -342,8 +453,6 @@ def convert_pair(pair: PairSpec) -> Dict[str, Any]:
         "pair": pair.display_name,
         "questions_pdf": str(pair.questions_pdf),
         "answers_pdf": str(pair.answers_pdf),
-        "questions_txt": str(pair.questions_txt),
-        "answers_txt": str(pair.answers_txt),
         "output_json": str(pair.output_json),
     }
     try:
@@ -356,12 +465,6 @@ def convert_pair(pair: PairSpec) -> Dict[str, Any]:
             **base_report,
             "status": "success",
             "question_count": len(payload["questions"]),
-        }
-    except subprocess.CalledProcessError as exc:
-        return {
-            **base_report,
-            "status": "skipped",
-            "error": f"pdftotext failed: {exc.stderr.strip() or exc}",
         }
     except ConversionError as exc:
         return {
