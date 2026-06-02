@@ -5,6 +5,7 @@ CREATE TABLE IF NOT EXISTS tests (
     name TEXT NOT NULL,
     description TEXT DEFAULT '',
     group_name TEXT DEFAULT '',
+    is_archived BOOLEAN DEFAULT 0,
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     updated_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP
 );

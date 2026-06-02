@@ -2,7 +2,49 @@
 
 import pytest
 
+from models.question import Question, QuestionOption
+from models.test import Test
+from models.test_result import QuestionResponse, TestAttempt
 from services.review_service import ReviewService
+
+
+def _create_missed_test(db, name, group_name=""):
+    """Create a one-question test with enough misses for frequency tests."""
+    test_id = db.create_test(Test(name=name, group_name=group_name))
+    question_id = db.add_question(
+        Question(
+            test_id=test_id,
+            text=f"{name} missed question",
+            type="multiple_choice",
+            correct_answer="A",
+            category=group_name,
+            options=[
+                QuestionOption(text="A", is_correct=True),
+                QuestionOption(text="B", is_correct=False),
+            ],
+        )
+    )
+
+    for _ in range(2):
+        attempt_id = db.save_attempt(
+            TestAttempt(
+                test_id=test_id,
+                score=0,
+                total_questions=1,
+                percentage=0.0,
+                mode="test",
+            )
+        )
+        db.save_response(
+            QuestionResponse(
+                attempt_id=attempt_id,
+                question_id=question_id,
+                user_answer="B",
+                is_correct=False,
+            )
+        )
+
+    return test_id, question_id
 
 
 class TestMissedQuestions:
@@ -49,6 +91,67 @@ class TestMissedQuestions:
         for m in missed:
             assert "category" in m
 
+    def test_get_missed_questions_excludes_archived_tests(self, db):
+        """All missed review excludes archived tests."""
+        archived_test_id, archived_question_id = _create_missed_test(
+            db, "Last Semester Exam", "Class 1"
+        )
+        active_test_id, active_question_id = _create_missed_test(
+            db, "Current Semester Quiz", "Class 2"
+        )
+        db.archive_test(archived_test_id)
+        service = ReviewService(db._db_path)
+
+        missed = service.get_missed_questions()
+        question_ids = {item["question_id"] for item in missed}
+
+        assert active_question_id in question_ids
+        assert archived_question_id not in question_ids
+        assert all(item["test_id"] != archived_test_id for item in missed)
+        assert all(item["test_id"] == active_test_id for item in missed)
+
+    def test_get_missed_questions_excludes_archived_test_id(self, db):
+        """Explicit archived test filters still return no review questions."""
+        archived_test_id, _ = _create_missed_test(
+            db, "Archived Quiz", "Class 1"
+        )
+        db.archive_test(archived_test_id)
+        service = ReviewService(db._db_path)
+
+        assert service.get_missed_questions(test_id=archived_test_id) == []
+
+    def test_get_missed_questions_filters_multiple_tests(self, db):
+        """Can review missed questions from selected active tests."""
+        first_test_id, first_question_id = _create_missed_test(
+            db, "Quiz 1", "Class 2"
+        )
+        second_test_id, second_question_id = _create_missed_test(
+            db, "Quiz 2", "Class 2"
+        )
+        third_test_id, third_question_id = _create_missed_test(
+            db, "Quiz 3", "Class 2"
+        )
+        service = ReviewService(db._db_path)
+
+        missed = service.get_missed_questions(
+            test_ids=[first_test_id, second_test_id]
+        )
+        question_ids = {item["question_id"] for item in missed}
+
+        assert question_ids == {first_question_id, second_question_id}
+        assert third_question_id not in question_ids
+        assert all(item["test_id"] != third_test_id for item in missed)
+
+    def test_get_missed_questions_rejects_conflicting_filters(
+        self, db_with_attempts
+    ):
+        """Callers must choose either single-test or multi-test filtering."""
+        db, test_id = db_with_attempts
+        service = ReviewService(db._db_path)
+
+        with pytest.raises(ValueError):
+            service.get_missed_questions(test_id=test_id, test_ids=[test_id])
+
 
 class TestFrequentlyMissed:
     """Tests for frequently missed questions filtering."""
@@ -85,6 +188,65 @@ class TestFrequentlyMissed:
             test_id=test_id, min_attempts=2, miss_threshold=0.5
         )
         assert all(f["test_id"] == test_id for f in freq)
+
+    def test_frequently_missed_excludes_archived_tests(self, db):
+        """Frequently missed review excludes archived tests."""
+        archived_test_id, archived_question_id = _create_missed_test(
+            db, "Old Final", "Class 1"
+        )
+        active_test_id, active_question_id = _create_missed_test(
+            db, "New Quiz", "Class 2"
+        )
+        db.archive_test(archived_test_id)
+        service = ReviewService(db._db_path)
+
+        freq = service.get_frequently_missed(
+            min_attempts=2, miss_threshold=0.5
+        )
+        question_ids = {item["question_id"] for item in freq}
+
+        assert active_question_id in question_ids
+        assert archived_question_id not in question_ids
+        assert all(item["test_id"] == active_test_id for item in freq)
+
+    def test_frequently_missed_filters_multiple_tests(self, db):
+        """Frequently missed can be scoped to selected active tests."""
+        first_test_id, first_question_id = _create_missed_test(
+            db, "Quiz 1", "Class 2"
+        )
+        second_test_id, second_question_id = _create_missed_test(
+            db, "Quiz 2", "Class 2"
+        )
+        third_test_id, third_question_id = _create_missed_test(
+            db, "Quiz 3", "Class 2"
+        )
+        service = ReviewService(db._db_path)
+
+        freq = service.get_frequently_missed(
+            min_attempts=2,
+            miss_threshold=0.5,
+            test_ids=[first_test_id, second_test_id],
+        )
+        question_ids = {item["question_id"] for item in freq}
+
+        assert question_ids == {first_question_id, second_question_id}
+        assert third_question_id not in question_ids
+        assert all(item["test_id"] != third_test_id for item in freq)
+
+    def test_frequently_missed_rejects_conflicting_filters(
+        self, db_with_attempts
+    ):
+        """Callers must choose either single-test or multi-test filtering."""
+        db, test_id = db_with_attempts
+        service = ReviewService(db._db_path)
+
+        with pytest.raises(ValueError):
+            service.get_frequently_missed(
+                test_id=test_id,
+                test_ids=[test_id],
+                min_attempts=2,
+                miss_threshold=0.5,
+            )
 
 
 class TestGetQuestionById:

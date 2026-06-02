@@ -13,28 +13,33 @@ class ReviewService:
         self._db = DatabaseManager(db_path)
 
     def get_missed_questions(
-        self, test_id: Optional[int] = None
+        self,
+        test_id: Optional[int] = None,
+        test_ids: Optional[List[int]] = None,
     ) -> List[Dict]:
         """Get all questions that have been missed at least once.
 
         Args:
             test_id: Optional filter by test.
+            test_ids: Optional filter by multiple tests.
 
         Returns:
             List of dicts with question info and miss statistics.
         """
-        return self._db.get_missed_questions(test_id)
+        return self._db.get_missed_questions(test_id, test_ids)
 
     def get_frequently_missed(
         self,
         test_id: Optional[int] = None,
         min_attempts: int = 3,
         miss_threshold: float = 0.5,
+        test_ids: Optional[List[int]] = None,
     ) -> List[Dict]:
         """Get questions that are frequently answered incorrectly.
 
         Args:
             test_id: Optional filter by test.
+            test_ids: Optional filter by multiple tests.
             min_attempts: Minimum number of attempts to consider.
             miss_threshold: Minimum miss rate (0.0-1.0) to qualify.
 
@@ -42,7 +47,10 @@ class ReviewService:
             Filtered list of frequently missed question dicts.
         """
         return self._db.get_frequently_missed_questions(
-            test_id, min_attempts, miss_threshold
+            test_id=test_id,
+            min_attempts=min_attempts,
+            miss_threshold=miss_threshold,
+            test_ids=test_ids,
         )
 
     def create_review_session_questions(

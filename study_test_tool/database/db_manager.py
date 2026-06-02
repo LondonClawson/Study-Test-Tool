@@ -518,12 +518,17 @@ class DatabaseManager:
     # ── Missed Questions ──────────────────────────────────────
 
     def get_missed_questions(
-        self, test_id: Optional[int] = None
+        self,
+        test_id: Optional[int] = None,
+        test_ids: Optional[List[int]] = None,
     ) -> List[Dict]:
         """Get questions that have been answered incorrectly at least once.
 
         Returns list of dicts with question info and miss statistics.
         """
+        if test_id is not None and test_ids is not None:
+            raise ValueError("Use either test_id or test_ids, not both.")
+
         conn = self._conn()
         try:
             base_query = (
@@ -535,20 +540,24 @@ class DatabaseManager:
                 "JOIN question_responses qr ON q.id = qr.question_id "
                 "JOIN tests t ON q.test_id = t.id "
                 "WHERE qr.is_correct IS NOT NULL "
+                "AND t.is_archived = 0 "
             )
+            params = []
             if test_id is not None:
                 base_query += "AND q.test_id = ? "
-                base_query += (
-                    "GROUP BY q.id HAVING times_missed > 0 "
-                    "ORDER BY times_missed DESC"
-                )
-                rows = conn.execute(base_query, (test_id,)).fetchall()
-            else:
-                base_query += (
-                    "GROUP BY q.id HAVING times_missed > 0 "
-                    "ORDER BY times_missed DESC"
-                )
-                rows = conn.execute(base_query).fetchall()
+                params.append(test_id)
+            elif test_ids is not None:
+                if not test_ids:
+                    return []
+                placeholders = ",".join("?" * len(test_ids))
+                base_query += f"AND q.test_id IN ({placeholders}) "
+                params.extend(test_ids)
+
+            base_query += (
+                "GROUP BY q.id HAVING times_missed > 0 "
+                "ORDER BY times_missed DESC"
+            )
+            rows = conn.execute(base_query, params).fetchall()
 
             return [
                 {
@@ -647,6 +656,7 @@ class DatabaseManager:
         test_id: Optional[int] = None,
         min_attempts: int = 3,
         miss_threshold: float = 0.5,
+        test_ids: Optional[List[int]] = None,
     ) -> List[Dict]:
         """Get questions frequently answered incorrectly.
 
@@ -655,6 +665,9 @@ class DatabaseManager:
             min_attempts: Minimum attempts before considering frequency.
             miss_threshold: Minimum miss rate (0.0-1.0) to be 'frequent'.
         """
+        if test_id is not None and test_ids is not None:
+            raise ValueError("Use either test_id or test_ids, not both.")
+
         conn = self._conn()
         try:
             base_query = (
@@ -666,11 +679,18 @@ class DatabaseManager:
                 "JOIN question_responses qr ON q.id = qr.question_id "
                 "JOIN tests t ON q.test_id = t.id "
                 "WHERE qr.is_correct IS NOT NULL "
+                "AND t.is_archived = 0 "
             )
             params = []
             if test_id is not None:
                 base_query += "AND q.test_id = ? "
                 params.append(test_id)
+            elif test_ids is not None:
+                if not test_ids:
+                    return []
+                placeholders = ",".join("?" * len(test_ids))
+                base_query += f"AND q.test_id IN ({placeholders}) "
+                params.extend(test_ids)
 
             base_query += (
                 "GROUP BY q.id "
