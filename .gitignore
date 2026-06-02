@@ -11,6 +11,9 @@ venv/
 # Runtime data (user-local — never overwrite)
 study_test_tool/data/
 
+# Local test source documents
+test_source_data/
+
 # IDE
 .idea/
 .vscode/
