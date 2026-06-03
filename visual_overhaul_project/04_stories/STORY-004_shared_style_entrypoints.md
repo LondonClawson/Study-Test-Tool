@@ -1,0 +1,85 @@
+# STORY-004: Shared Style Entry Points
+
+## Status
+
+Blocked.
+
+## Readiness
+
+- Blocked by: CTX-FOUNDATION.
+- Unblocked by: `STORY-003_visual_foundation_spec.md`.
+
+## Sprint
+
+Target sprint: Sprint 1.
+
+## User Story
+
+As a maintainer, I want shared style entry points so that screen files stop
+duplicating visual constants and inline role colors.
+
+## Goal
+
+Create the smallest practical shared styling structure needed for MVP screens.
+
+## Required Context
+
+- `visual_overhaul_project/01_context/summaries/visual_foundation_decisions.md`.
+- `visual_overhaul_project/01_context/summaries/style_inventory.md`.
+- `visual_overhaul_project/01_context/summaries/gui_architecture_summary.md`.
+
+## Scope
+
+In:
+
+- Shared constants or helper functions for semantic visual roles.
+- Compatibility with existing `config.settings` conventions.
+- A narrow migration of only the roles needed by upcoming stories.
+
+Out:
+
+- Large design-system framework.
+- Screen redesign.
+- New dependency.
+- Behavior changes.
+
+## Likely Files
+
+- `study_test_tool/config/settings.py`.
+- Possible new or existing helper under `study_test_tool/gui/components/`.
+- Only touched screen/component files required to validate the entry points.
+
+## Implementation Steps
+
+1. Read CTX-FOUNDATION, CTX-STYLE-INVENTORY, and CTX-GUI-ARCH.
+2. Identify the minimum shared style entry points needed by upcoming stories.
+3. Add or adjust shared constants/helpers using existing project conventions.
+4. Migrate only the narrow validation area needed to prove the entry points.
+5. Smoke check app startup and the touched validation area.
+6. Document entry points, intentionally unmigrated areas, and follow-up stories.
+
+## Acceptance Criteria
+
+- Shared style entry points are named by purpose, not by one-off screen.
+- They support light and dark CustomTkinter values where needed.
+- Existing app startup and navigation remain unchanged.
+- No unrelated visual refactor is bundled into this story.
+
+## Verification
+
+- Run the relevant subset of tests if behavior-bearing files are touched.
+- Launch the app or inspect enough screens to confirm no startup error.
+- Record light/dark smoke-check notes if helpers include theme tuples.
+
+## Dev 2 Assignment Notes
+
+- Do not redesign screens while creating shared style entry points.
+- Do not add a broad design-system framework or dependency.
+- If CTX-FOUNDATION is still Placeholder or stale, stop and return this story to
+  Blocked.
+
+## Handoff Requirements
+
+- List new or changed style entry points.
+- List files intentionally not migrated yet.
+- List follow-up stories that should use the entry points.
