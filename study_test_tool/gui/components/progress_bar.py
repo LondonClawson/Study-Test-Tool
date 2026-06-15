@@ -1,15 +1,10 @@
 """Progress bar — row of clickable question indicators."""
 
-from typing import Callable, Dict, Set
+from typing import Callable, Set
 
 import customtkinter as ctk
 
-from config.settings import (
-    COLOR_ANSWERED,
-    COLOR_CURRENT,
-    COLOR_FLAGGED,
-    COLOR_UNANSWERED,
-)
+from gui.styles import FONT_COMPACT, PROGRESS_STATUS_COLORS, RADIUS_ROW
 
 
 class ProgressBar(ctk.CTkFrame):
@@ -36,9 +31,9 @@ class ProgressBar(ctk.CTkFrame):
                 text=str(i + 1),
                 width=32,
                 height=28,
-                corner_radius=4,
-                fg_color=COLOR_UNANSWERED,
-                font=("Helvetica", 11),
+                corner_radius=RADIUS_ROW,
+                fg_color=PROGRESS_STATUS_COLORS["unanswered"],
+                font=FONT_COMPACT,
                 command=lambda idx=i: self._on_click(idx),
             )
             btn.pack(side="left", padx=1, pady=2)
@@ -62,11 +57,11 @@ class ProgressBar(ctk.CTkFrame):
         for i, btn in enumerate(self._buttons):
             q_id = question_ids[i] if i < len(question_ids) else None
             if i == current_index:
-                color = COLOR_CURRENT
+                color = PROGRESS_STATUS_COLORS["current"]
             elif q_id in flagged:
-                color = COLOR_FLAGGED
+                color = PROGRESS_STATUS_COLORS["flagged"]
             elif q_id in answered:
-                color = COLOR_ANSWERED
+                color = PROGRESS_STATUS_COLORS["answered"]
             else:
-                color = COLOR_UNANSWERED
+                color = PROGRESS_STATUS_COLORS["unanswered"]
             btn.configure(fg_color=color)

@@ -59,7 +59,7 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `STORY-001_context_batch_one.md` | Submitted For Review | None |
 | `STORY-002_baseline_visual_audit.md` | Blocked | R-001 GUI capture environment |
 | `STORY-003_visual_foundation_spec.md` | Blocked | CTX-AUDIT-BASELINE |
-| `STORY-004_shared_style_entrypoints.md` | Blocked | CTX-FOUNDATION |
+| `STORY-004_shared_style_entrypoints.md` | Submitted For Review | None |
 | `STORY-005_button_hierarchy.md` | Blocked | CTX-FOUNDATION |
 | `STORY-006_card_and_list_patterns.md` | Blocked | CTX-FOUNDATION, named pilot area |
 | `STORY-007_page_header_pattern.md` | Blocked | CTX-FOUNDATION |
@@ -76,10 +76,9 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 
 ## Next Recommended Work
 
-1. Complete `R-001_baseline_visual_audit.md` on a GUI-capable runner to produce
-   missing light/dark baseline screenshots.
-2. Review completed screen-specific context summaries as needed for sprint
-   planning; R-003 through R-007 are now Done.
-3. Review `baseline_visual_audit.md` against the Definition of Ready.
-4. Use `baseline_visual_audit.md` and `style_inventory.md` to unblock
-   `STORY-003_visual_foundation_spec.md`.
+1. Review `STORY-004_shared_style_entrypoints.md` and its handoff for PM
+   acceptance.
+2. After `STORY-004` is Done, select a narrow target area for
+   `STORY-005_button_hierarchy.md`.
+3. Assign `R-008_dialog_context.md` before `STORY-015` or any dialog-polish
+   implementation work.
