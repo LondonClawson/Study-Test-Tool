@@ -19,6 +19,7 @@ from gui.components.collapsible_group import CollapsibleGroup
 from gui.components.import_preview_dialog import ImportPreviewDialog
 from gui.components.mix_test_dialog import MixTestDialog
 from gui.components.mode_dialog import ModeSelectionDialog
+from gui.mix_test_display import build_mix_test_display
 from services.export_service import ExportService
 from services.import_preview_service import ImportPreview
 from services.import_service import ImportService
@@ -652,16 +653,19 @@ class TestSelectorFrame(ctk.CTkFrame):
             )
             return
 
-        # Build display name from selected test names
         selected_tests = [t for t, _ in tests_with_counts if t.id in test_ids]
-        name_parts = [t.name for t in selected_tests]
-        mix_name = "Mix: " + ", ".join(name_parts)
+        mix_display = build_mix_test_display(
+            selected_tests,
+            tests_with_counts,
+            len(questions),
+        )
 
         self.controller.show_frame(
             SCREEN_TEST_TAKING,
             mode=mode,
             questions=questions,
-            mix_test_name=mix_name,
+            mix_test_name=mix_display.title,
+            mix_test_subtitle=mix_display.subtitle,
         )
 
     def _on_take_test(self, test) -> None:

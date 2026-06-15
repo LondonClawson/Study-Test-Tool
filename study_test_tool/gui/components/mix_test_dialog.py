@@ -1,6 +1,5 @@
 """Mix test dialog — select tests and question count for a mixed test."""
 
-from collections import OrderedDict
 from typing import Dict, List, Optional, Tuple
 
 import customtkinter as ctk
@@ -12,34 +11,8 @@ from config.settings import (
     FONT_SIZE_HEADING,
     FONT_SIZE_SMALL,
 )
+from gui.mix_test_display import group_tests_by_name
 from models.test import Test
-
-UNGROUPED_LABEL = "Ungrouped"
-
-
-def group_tests_by_name(
-    tests_with_counts: List[Tuple[Test, int]],
-) -> List[Tuple[str, List[Tuple[Test, int]]]]:
-    """Organize tests by ``group_name`` for display in the mix dialog.
-
-    Real groups are returned in alphabetical order. Tests with no group
-    fall into an "Ungrouped" bucket which is always returned last.
-    """
-    groups: "OrderedDict[str, List[Tuple[Test, int]]]" = OrderedDict()
-    ungrouped: List[Tuple[Test, int]] = []
-
-    for test, count in tests_with_counts:
-        if test.group_name:
-            groups.setdefault(test.group_name, []).append((test, count))
-        else:
-            ungrouped.append((test, count))
-
-    result: List[Tuple[str, List[Tuple[Test, int]]]] = [
-        (name, groups[name]) for name in sorted(groups.keys())
-    ]
-    if ungrouped:
-        result.append((UNGROUPED_LABEL, ungrouped))
-    return result
 
 
 class MixTestDialog(ctk.CTkToplevel):

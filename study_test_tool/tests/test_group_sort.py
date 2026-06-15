@@ -3,6 +3,7 @@
 import pytest
 
 from models.test import Test
+from gui.mix_test_display import build_mix_test_display
 
 
 class TestGroupNameModel:
@@ -168,6 +169,87 @@ class TestDistinctGroupNames:
     def test_get_distinct_group_names_empty_table(self, db):
         result = db.get_distinct_group_names()
         assert result == []
+
+
+class TestMixTestDisplay:
+    """Test mixed-test title and subtitle display rules."""
+
+    def test_complete_single_group_uses_group_title(self):
+        tests = [
+            Test(name="A", group_name="Contracts", id=1),
+            Test(name="B", group_name="Contracts", id=2),
+        ]
+        display = build_mix_test_display(tests, [(t, 5) for t in tests], 10)
+
+        assert display.title == "Contracts Mixed Test"
+        assert display.subtitle == "10 questions from 2 tests in Contracts"
+
+    def test_partial_single_group_mentions_selected_of_available(self):
+        selected = [
+            Test(name="A", group_name="Contracts", id=1),
+            Test(name="B", group_name="Contracts", id=2),
+        ]
+        all_tests = selected + [
+            Test(name="C", group_name="Contracts", id=3),
+            Test(name="D", group_name="Contracts", id=4),
+            Test(name="E", group_name="Contracts", id=5),
+        ]
+        display = build_mix_test_display(selected, [(t, 5) for t in all_tests], 12)
+
+        assert display.title == "Contracts Mixed Test"
+        assert display.subtitle == "12 questions from 2 of 5 tests in Contracts"
+
+    def test_partial_single_group_singular_selected_still_uses_group_tests(self):
+        selected = [Test(name="A", group_name="Contracts", id=1)]
+        all_tests = selected + [
+            Test(name="B", group_name="Contracts", id=2),
+            Test(name="C", group_name="Contracts", id=3),
+        ]
+        display = build_mix_test_display(selected, [(t, 5) for t in all_tests], 1)
+
+        assert display.title == "Contracts Mixed Test"
+        assert display.subtitle == "1 question from 1 of 3 tests in Contracts"
+
+    def test_two_groups_uses_both_group_names(self):
+        tests = [
+            Test(name="A", group_name="Torts", id=1),
+            Test(name="B", group_name="Contracts", id=2),
+        ]
+        display = build_mix_test_display(tests, [(t, 5) for t in tests], 8)
+
+        assert display.title == "Contracts + Torts Mixed Test"
+        assert display.subtitle == "8 questions from 2 groups and 2 tests"
+
+    def test_three_groups_uses_mixed_review(self):
+        tests = [
+            Test(name="A", group_name="Torts", id=1),
+            Test(name="B", group_name="Contracts", id=2),
+            Test(name="C", group_name="Evidence", id=3),
+        ]
+        display = build_mix_test_display(tests, [(t, 5) for t in tests], 9)
+
+        assert display.title == "Mixed Review"
+        assert display.subtitle == "9 questions from 3 groups and 3 tests"
+
+    def test_ungrouped_only_uses_generic_mixed_test(self):
+        tests = [
+            Test(name="A", id=1),
+            Test(name="B", id=2),
+        ]
+        display = build_mix_test_display(tests, [(t, 5) for t in tests], 7)
+
+        assert display.title == "Mixed Test"
+        assert display.subtitle == "7 questions from 2 tests"
+
+    def test_named_group_plus_ungrouped_uses_named_group_title(self):
+        tests = [
+            Test(name="A", group_name="Contracts", id=1),
+            Test(name="B", id=2),
+        ]
+        display = build_mix_test_display(tests, [(t, 5) for t in tests], 6)
+
+        assert display.title == "Contracts Mixed Test"
+        assert display.subtitle == "6 questions from 2 groups and 2 tests"
 
 
 class TestTestServiceGroupName:

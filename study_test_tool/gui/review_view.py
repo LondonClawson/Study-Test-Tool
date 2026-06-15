@@ -12,7 +12,7 @@ from config.settings import (
     FONT_SIZE_SMALL,
     FONT_SIZE_TITLE,
 )
-from gui.components.mix_test_dialog import group_tests_by_name
+from gui.mix_test_display import group_tests_by_name
 from services.review_service import ReviewService
 from services.test_service import TestService
 from utils.constants import MODE_PRACTICE, SCREEN_HOME, SCREEN_TEST_TAKING

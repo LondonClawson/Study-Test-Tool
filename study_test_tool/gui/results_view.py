@@ -33,6 +33,7 @@ class ResultsViewFrame(ctk.CTkFrame):
         self._mode = None
         self._mix_questions = None
         self._mix_name = None
+        self._mix_subtitle = None
 
         self._build_ui()
 
@@ -110,9 +111,11 @@ class ResultsViewFrame(ctk.CTkFrame):
         if session.is_mix_test:
             self._mix_questions = session.questions
             self._mix_name = session.mix_name
+            self._mix_subtitle = session.mix_subtitle
         else:
             self._mix_questions = None
             self._mix_name = None
+            self._mix_subtitle = None
 
         # Header
         score = score_data["score"]
@@ -405,6 +408,7 @@ class ResultsViewFrame(ctk.CTkFrame):
                 mode=self._mode,
                 questions=self._mix_questions,
                 mix_test_name=self._mix_name,
+                mix_test_subtitle=self._mix_subtitle,
             )
         elif self._test_id:
             self.controller.show_frame(

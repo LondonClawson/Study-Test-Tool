@@ -53,12 +53,25 @@ class TestTakingFrame(ctk.CTkFrame):
         self.top_frame = ctk.CTkFrame(self, fg_color="transparent")
         self.top_frame.pack(fill="x", padx=20, pady=(15, 5))
 
+        title_frame = ctk.CTkFrame(self.top_frame, fg_color="transparent")
+        title_frame.pack(side="left", fill="x", expand=True)
+
         self.test_name_label = ctk.CTkLabel(
-            self.top_frame,
+            title_frame,
             text="",
             font=(FONT_FAMILY, FONT_SIZE_TITLE, "bold"),
+            anchor="w",
         )
-        self.test_name_label.pack(side="left")
+        self.test_name_label.pack(anchor="w")
+
+        self.mix_subtitle_label = ctk.CTkLabel(
+            title_frame,
+            text="",
+            font=(FONT_FAMILY, FONT_SIZE_SMALL),
+            text_color="gray",
+            anchor="w",
+        )
+        self.mix_subtitle_label.pack(anchor="w", pady=(2, 0))
 
         self.timer_widget = TimerWidget(self.top_frame)
         self.timer_widget.pack(side="right", padx=10)
@@ -139,6 +152,7 @@ class TestTakingFrame(ctk.CTkFrame):
         review_question_ids: Optional[List[int]] = None,
         questions: Optional[List] = None,
         mix_test_name: Optional[str] = None,
+        mix_test_subtitle: Optional[str] = None,
         **kwargs,
     ) -> None:
         """Initialize the test-taking session.
@@ -149,6 +163,7 @@ class TestTakingFrame(ctk.CTkFrame):
             review_question_ids: Specific question IDs for review sessions.
             questions: Pre-selected questions (for mix tests).
             mix_test_name: Display name for mix tests.
+            mix_test_subtitle: Scope summary for mix tests.
         """
         self._mode = mode
 
@@ -166,11 +181,17 @@ class TestTakingFrame(ctk.CTkFrame):
             self.test_name_label.configure(
                 text=mix_test_name if mix_test_name else "Mix Test"
             )
+            self.mix_subtitle_label.configure(text=mix_test_subtitle or "")
             self._session = TestSession(
-                None, questions, mode=mode, mix_name=mix_test_name
+                None,
+                questions,
+                mode=mode,
+                mix_name=mix_test_name,
+                mix_subtitle=mix_test_subtitle,
             )
         elif review_question_ids:
             self._is_mix_test = False
+            self.mix_subtitle_label.configure(text="")
             loaded = self._load_review_questions(review_question_ids)
             if not loaded:
                 messagebox.showwarning(
@@ -185,6 +206,7 @@ class TestTakingFrame(ctk.CTkFrame):
             self._session = TestSession(test_id, loaded, mode=mode)
         else:
             self._is_mix_test = False
+            self.mix_subtitle_label.configure(text="")
             if test_id is None:
                 return
 

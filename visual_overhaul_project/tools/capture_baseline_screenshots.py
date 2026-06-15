@@ -77,12 +77,13 @@ from utils.constants import (
 
 App = None
 MixTestDialog = None
+build_mix_test_display = None
 ModeSelectionDialog = None
 
 
 def ensure_gui_modules() -> None:
     """Load GUI modules only when capture mode needs them."""
-    global App, MixTestDialog, ModeSelectionDialog
+    global App, MixTestDialog, build_mix_test_display, ModeSelectionDialog
 
     if ctk is None:
         raise RuntimeError("customtkinter is required for capture.")
@@ -94,9 +95,13 @@ def ensure_gui_modules() -> None:
         ModeSelectionDialog as ImportedModeSelectionDialog,
     )
     from gui.main_window import App as ImportedApp
+    from gui.mix_test_display import (
+        build_mix_test_display as imported_build_mix_test_display,
+    )
 
     App = ImportedApp
     MixTestDialog = ImportedMixTestDialog
+    build_mix_test_display = imported_build_mix_test_display
     ModeSelectionDialog = ImportedModeSelectionDialog
 
 
@@ -164,7 +169,11 @@ class ScreenshotHarness:
             ],
             check=True,
         )
-        print(f"captured {target.relative_to(REPO_ROOT)}")
+        try:
+            display_target = target.relative_to(REPO_ROOT)
+        except ValueError:
+            display_target = target
+        print(f"captured {display_target}")
 
     def show_frame(self, screen_name: str, **kwargs) -> None:
         """Raise an app frame and wait for Tk to render it."""
@@ -567,10 +576,24 @@ def create_results_session(seed: SeedData) -> tuple[TestSession, dict]:
 
 
 def create_mix_questions(seed: SeedData) -> List[Question]:
-    """Return questions from multiple tests for mix-test screenshots."""
+    """Return questions from one group for mix-test screenshots."""
     return (
         seed.questions_by_test[seed.active_test_id][:2]
         + seed.questions_by_test[seed.second_test_id][:2]
+    )
+
+
+def create_partial_group_mix_questions(seed: SeedData) -> List[Question]:
+    """Return questions from part of one group for mix-test screenshots."""
+    return seed.questions_by_test[seed.active_test_id][:2]
+
+
+def create_multi_group_mix_questions(seed: SeedData) -> List[Question]:
+    """Return questions from three group buckets for mix-test screenshots."""
+    return (
+        seed.questions_by_test[seed.active_test_id][:1]
+        + seed.questions_by_test[seed.essay_test_id][:1]
+        + seed.questions_by_test[seed.archived_test_id][:1]
     )
 
 
@@ -679,15 +702,75 @@ def show_essay_question(
     frame._display_question()
 
 
-def show_mix_test(
-    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+def show_mix_session(
+    seed: SeedData,
+    harness: ScreenshotHarness,
+    test_ids: List[int],
+    questions: List[Question],
 ) -> None:
-    """Show a mixed test-taking session."""
+    """Show a mixed test-taking session with generated display metadata."""
+    db = DatabaseManager(str(seed.db_path))
+    selected_tests = [db.get_test_by_id(test_id) for test_id in test_ids]
+    selected_tests = [test for test in selected_tests if test is not None]
+    available_test_ids = [
+        seed.active_test_id,
+        seed.second_test_id,
+        seed.essay_test_id,
+        seed.archived_test_id,
+    ]
+    available_tests = [db.get_test_by_id(test_id) for test_id in available_test_ids]
+    all_tests_with_counts = [
+        (test, db.get_question_count(test.id))
+        for test in available_tests
+        if test is not None
+    ]
+    mix_display = build_mix_test_display(
+        selected_tests,
+        all_tests_with_counts,
+        len(questions),
+    )
     harness.show_frame(
         SCREEN_TEST_TAKING,
         mode=MODE_TEST,
-        questions=create_mix_questions(seed),
-        mix_test_name="Mixed Clinical Review",
+        questions=questions,
+        mix_test_name=mix_display.title,
+        mix_test_subtitle=mix_display.subtitle,
+    )
+
+
+def show_mix_test(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show a mixed test-taking session from one complete group."""
+    show_mix_session(
+        seed,
+        harness,
+        [seed.active_test_id, seed.second_test_id],
+        create_mix_questions(seed),
+    )
+
+
+def show_mix_partial_group(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show a mixed test-taking session from part of one group."""
+    show_mix_session(
+        seed,
+        harness,
+        [seed.active_test_id],
+        create_partial_group_mix_questions(seed),
+    )
+
+
+def show_mix_multi_group(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show a mixed test-taking session from three group buckets."""
+    show_mix_session(
+        seed,
+        harness,
+        [seed.active_test_id, seed.essay_test_id, seed.archived_test_id],
+        create_multi_group_mix_questions(seed),
     )
 
 
@@ -783,6 +866,18 @@ CAPTURE_STATES = [
         "test_taking_essay_question", "test-taking", "seeded", show_essay_question
     ),
     CaptureState("test_taking_mix_test", "test-taking", "seeded", show_mix_test),
+    CaptureState(
+        "test_taking_mix_partial_group",
+        "test-taking",
+        "seeded",
+        show_mix_partial_group,
+    ),
+    CaptureState(
+        "test_taking_mix_multi_group",
+        "test-taking",
+        "seeded",
+        show_mix_multi_group,
+    ),
     CaptureState(
         "results_partial_score_essay_flagged",
         "results",
