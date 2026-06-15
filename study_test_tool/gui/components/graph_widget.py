@@ -23,7 +23,7 @@ class GraphWidget(ctk.CTkFrame):
         super().__init__(parent, **kwargs)
         self._figsize = figsize
         self._figure: Optional[Figure] = None
-        self._canvas: Optional[FigureCanvasTkAgg] = None
+        self._figure_canvas: Optional[FigureCanvasTkAgg] = None
         self._init_figure()
 
     def _get_theme_colors(self) -> dict:
@@ -52,18 +52,18 @@ class GraphWidget(ctk.CTkFrame):
         self._figure = Figure(figsize=self._figsize, dpi=100)
         self._figure.patch.set_facecolor(colors["bg"])
 
-        self._canvas = FigureCanvasTkAgg(self._figure, master=self)
-        self._canvas.get_tk_widget().pack(fill="both", expand=True)
+        self._figure_canvas = FigureCanvasTkAgg(self._figure, master=self)
+        self._figure_canvas.get_tk_widget().pack(fill="both", expand=True)
 
     def clear(self) -> None:
         """Clear the current chart."""
         self._figure.clear()
-        self._canvas.draw()
+        self._figure_canvas.draw()
 
     def refresh(self) -> None:
         """Redraw the canvas."""
         self._figure.tight_layout()
-        self._canvas.draw()
+        self._figure_canvas.draw()
 
     def draw_line_chart(
         self,
