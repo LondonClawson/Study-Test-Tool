@@ -16,9 +16,11 @@ from config.settings import (
     FONT_SIZE_TITLE,
 )
 from gui.components.collapsible_group import CollapsibleGroup
+from gui.components.import_preview_dialog import ImportPreviewDialog
 from gui.components.mix_test_dialog import MixTestDialog
 from gui.components.mode_dialog import ModeSelectionDialog
 from services.export_service import ExportService
+from services.import_preview_service import ImportPreview
 from services.import_service import ImportService
 from services.pdf_import_service import ConversionError, strip_role_suffix
 from services.mix_service import MixService
@@ -421,14 +423,15 @@ class TestSelectorFrame(ctk.CTkFrame):
 
         try:
             if file_path.lower().endswith((".pdf", ".docx")):
-                self._import_pdf(file_path)
+                imported = self._import_pdf(file_path)
             elif file_path.endswith(".json"):
-                self.import_service.import_from_json(file_path)
-                messagebox.showinfo("Success", "Test imported successfully!")
+                preview = self.import_service.preview_from_json(file_path)
+                imported = self._confirm_and_commit_import([preview])
             else:
-                self.import_service.import_from_text(file_path)
-                messagebox.showinfo("Success", "Test imported successfully!")
-            self._refresh_test_list()
+                preview = self.import_service.preview_from_text(file_path)
+                imported = self._confirm_and_commit_import([preview])
+            if imported:
+                self._refresh_test_list()
         except ConversionError as e:
             messagebox.showerror("PDF Import Error", str(e))
         except (ValueError, FileNotFoundError, json.JSONDecodeError) as e:
@@ -436,7 +439,34 @@ class TestSelectorFrame(ctk.CTkFrame):
         except Exception as e:
             messagebox.showerror("Import Error", f"Unexpected error: {e}")
 
-    def _import_pdf(self, pdf_path: str) -> None:
+    def _confirm_and_commit_import(
+        self,
+        previews: list[ImportPreview],
+        create_backup: bool = False,
+    ) -> list[int]:
+        """Show the preview dialog and commit confirmed importable previews."""
+        dialog = ImportPreviewDialog(self, previews)
+        result = dialog.get_result()
+        if not result:
+            return []
+
+        confirmed, group_name = result
+        if not confirmed:
+            return []
+
+        group_override = group_name if group_name else None
+        test_ids = self.import_service.commit_previews(
+            previews,
+            group_name_override=group_override,
+            create_backup=create_backup,
+        )
+        messagebox.showinfo(
+            "Success",
+            f"Imported {len(test_ids)} test(s) successfully.",
+        )
+        return test_ids
+
+    def _import_pdf(self, pdf_path: str) -> list[int]:
         """Import a PDF, auto-detecting partner and offering folder batch.
 
         Resolves the Questions/Answers partner for the picked PDF. If the
@@ -502,26 +532,55 @@ class TestSelectorFrame(ctk.CTkFrame):
                 default=messagebox.NO,
             )
             if choice is None:
-                return
+                return []
             if choice:
-                results = self.import_service.import_from_pdf_folder(
+                previews = self.import_service.preview_from_pdf_folder(
                     str(picked.parent)
                 )
+                test_ids = self._confirm_and_commit_import(
+                    previews,
+                    create_backup=True,
+                )
+                if not test_ids:
+                    return []
+                results = self._build_pdf_folder_report(previews, test_ids)
                 self._show_pdf_folder_report(results)
-                return
+                return test_ids
 
         if role == "questions":
             questions_pdf, answers_pdf = picked, partner
         else:
             questions_pdf, answers_pdf = partner, picked
 
-        self.import_service.import_from_pdf_pair(
+        preview = self.import_service.preview_from_pdf_pair(
             str(questions_pdf), str(answers_pdf)
         )
-        messagebox.showinfo(
-            "Success",
-            f"Imported PDF pair:\n{questions_pdf.name}\n{answers_pdf.name}",
-        )
+        return self._confirm_and_commit_import([preview])
+
+    @staticmethod
+    def _build_pdf_folder_report(previews, test_ids) -> list[dict]:
+        """Build a folder report from previews and committed ids."""
+        id_iter = iter(test_ids)
+        results = []
+        for preview in previews:
+            if preview.errors:
+                results.append(
+                    {
+                        "pair": preview.test_name,
+                        "status": "skipped",
+                        "error": "; ".join(preview.errors),
+                    }
+                )
+            else:
+                results.append(
+                    {
+                        "pair": preview.test_name,
+                        "status": "success",
+                        "test_id": next(id_iter, None),
+                        "question_count": preview.question_count,
+                    }
+                )
+        return results
 
     def _show_pdf_folder_report(self, results) -> None:
         """Render the success/skip report for a folder PDF batch import."""

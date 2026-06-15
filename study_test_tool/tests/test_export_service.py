@@ -7,6 +7,9 @@ import tempfile
 import pytest
 
 from config.database import initialize_database
+from database.db_manager import DatabaseManager
+from models.question import Question, QuestionOption
+from models.test import Test
 from services.export_service import ExportService
 from services.import_service import ImportService
 
@@ -219,28 +222,20 @@ class TestValidateTest:
 
     def test_validation_catches_missing_mc_answer(self, db_path_for_export):
         """MC question with no correct option triggers a warning."""
-        svc = ImportService(db_path_for_export)
-        data = {
-            "name": "Bad MC",
-            "questions": [
-                {
-                    "text": "Pick one",
-                    "type": "multiple_choice",
-                    "options": [
-                        {"text": "A", "correct": False},
-                        {"text": "B", "correct": False},
+        db = DatabaseManager(db_path_for_export)
+        test_id = db.create_test_with_questions(
+            Test(name="Bad MC"),
+            [
+                Question(
+                    text="Pick one",
+                    type="multiple_choice",
+                    options=[
+                        QuestionOption(text="A", is_correct=False),
+                        QuestionOption(text="B", is_correct=False),
                     ],
-                }
+                )
             ],
-        }
-        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
-            json.dump(data, f)
-            path = f.name
-
-        try:
-            test_id = svc.import_from_json(path)
-        finally:
-            os.unlink(path)
+        )
 
         export_svc = ExportService(db_path_for_export)
         warnings = export_svc.validate_test(test_id)

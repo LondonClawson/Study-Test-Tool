@@ -10,6 +10,8 @@ from database.db_manager import DatabaseManager
 from models.question import Question, QuestionOption
 from models.test import Test
 from services import pdf_import_service
+from services.backup_service import BackupService
+from services.import_preview_service import ImportPreview, ImportPreviewService
 from services.pdf_import_service import ConversionError
 
 
@@ -18,6 +20,150 @@ class ImportService:
 
     def __init__(self, db_path: Optional[str] = None) -> None:
         self._db = DatabaseManager(db_path)
+        self._backup_service = BackupService(db_path)
+        self._preview_service = ImportPreviewService()
+
+    # ── Preview / Commit ──────────────────────────────────────
+
+    def preview_from_json(self, file_path: str) -> "ImportPreview":
+        """Parse a JSON import file without writing it to the database."""
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        with open(path, "r", encoding="utf-8") as f:
+            data = json.load(f)
+
+        return self.preview_from_dict(data, fallback_name=path.stem, source_name=path.name)
+
+    def preview_from_dict(
+        self,
+        data: Dict,
+        fallback_name: str = "",
+        source_name: str = "",
+    ) -> "ImportPreview":
+        """Build an import preview from an already-parsed payload dict."""
+        return self._preview_service.preview_from_dict(
+            data,
+            fallback_name=fallback_name,
+            source_name=source_name,
+        )
+
+    def preview_from_text(
+        self, file_path: str, test_name: Optional[str] = None
+    ) -> "ImportPreview":
+        """Parse a plain-text import file without writing it to the database."""
+        path = Path(file_path)
+        if not path.exists():
+            raise FileNotFoundError(f"File not found: {file_path}")
+
+        content = path.read_text(encoding="utf-8")
+        name = test_name if test_name else path.stem
+        questions = self._parse_text_questions(content)
+        if not questions:
+            raise ValueError("No questions found in the text file.")
+
+        payload = {
+            "name": name,
+            "description": f"Imported from {path.name}",
+            "group_name": "",
+            "questions": [
+                self._preview_service.question_to_payload(question)
+                for question in questions
+            ],
+        }
+        return self.preview_from_dict(payload, fallback_name=name, source_name=path.name)
+
+    def preview_from_pdf_pair(
+        self, questions_pdf: str, answers_pdf: str
+    ) -> "ImportPreview":
+        """Parse a Questions/Answers PDF or DOCX pair without writing."""
+        pair = pdf_import_service.build_pair_from_paths(
+            Path(questions_pdf), Path(answers_pdf)
+        )
+        payload = pdf_import_service.convert_pair_to_dict(pair)
+        return self.preview_from_dict(
+            payload,
+            fallback_name=pair.display_name,
+            source_name=f"{pair.questions_pdf.name} + {pair.answers_pdf.name}",
+        )
+
+    def preview_from_pdf_folder(self, folder: str) -> List["ImportPreview"]:
+        """Preview every discoverable PDF/DOCX pair in ``folder``."""
+        root = Path(folder)
+        if not root.is_dir():
+            raise ConversionError(f"Not a directory: {folder}")
+
+        pairs = pdf_import_service.discover_pairs(root)
+        if not pairs:
+            raise ConversionError(
+                "No valid Questions/Answers PDF or DOCX pairs were found in this folder."
+            )
+
+        previews: List[ImportPreview] = []
+        for pair in pairs:
+            source_name = f"{pair.questions_pdf.name} + {pair.answers_pdf.name}"
+            try:
+                payload = pdf_import_service.convert_pair_to_dict(pair)
+                previews.append(
+                    self.preview_from_dict(
+                        payload,
+                        fallback_name=pair.display_name,
+                        source_name=source_name,
+                    )
+                )
+            except (ConversionError, ValueError) as exc:
+                previews.append(
+                    ImportPreview(
+                        source_name=source_name,
+                        test_name=pair.display_name,
+                        description="",
+                        group_name="",
+                        question_count=0,
+                        errors=[str(exc)],
+                        payload=None,
+                    )
+                )
+        return previews
+
+    def commit_preview(
+        self,
+        preview: "ImportPreview",
+        group_name_override: Optional[str] = None,
+    ) -> int:
+        """Persist a previously built import preview."""
+        if preview.errors:
+            raise ValueError("Cannot import a preview with errors.")
+        if preview.payload is None:
+            raise ValueError("Cannot import a preview without payload data.")
+
+        payload = dict(preview.payload)
+        if group_name_override is not None:
+            payload["group_name"] = group_name_override.strip()
+
+        test, questions = self._payload_to_models(payload, fallback_name=preview.test_name)
+        return self._db.create_test_with_questions(test, questions)
+
+    def commit_previews(
+        self,
+        previews: List["ImportPreview"],
+        group_name_override: Optional[str] = None,
+        create_backup: bool = False,
+    ) -> List[int]:
+        """Persist multiple previews, optionally backing up the database first."""
+        importable = [preview for preview in previews if not preview.errors]
+        if not importable:
+            raise ValueError("No importable tests were found.")
+        if create_backup:
+            self.create_database_backup()
+        return [
+            self.commit_preview(preview, group_name_override=group_name_override)
+            for preview in importable
+        ]
+
+    def create_database_backup(self) -> Optional[Path]:
+        """Create a timestamped copy of the current SQLite database if it exists."""
+        return self._backup_service.create_database_backup()
 
     # ── JSON Import ────────────────────────────────────────────
 
@@ -59,20 +205,8 @@ class ImportService:
         Raises:
             ValueError: If the payload format is invalid.
         """
-        self._validate_json_format(data)
-
-        test = Test(
-            name=data.get("name") or fallback_name,
-            description=data.get("description", ""),
-            group_name=data.get("group_name", ""),
-        )
-        test_id = self._db.create_test(test)
-
-        for q_data in data.get("questions", []):
-            question = self._parse_json_question(q_data, test_id)
-            self._db.add_question(question)
-
-        return test_id
+        preview = self.preview_from_dict(data, fallback_name=fallback_name)
+        return self.commit_preview(preview)
 
     # ── PDF Import ─────────────────────────────────────────────
 
@@ -122,6 +256,8 @@ class ImportService:
                 "No valid Questions/Answers PDF or DOCX pairs were found in this folder."
             )
 
+        self.create_database_backup()
+
         results: List[Dict[str, Any]] = []
         for pair in pairs:
             base = {
@@ -130,16 +266,17 @@ class ImportService:
                 "answers_pdf": str(pair.answers_pdf),
             }
             try:
-                payload = pdf_import_service.convert_pair_to_dict(pair)
-                test_id = self.import_from_dict(
-                    payload, fallback_name=pair.display_name
+                preview = self.preview_from_dict(
+                    pdf_import_service.convert_pair_to_dict(pair),
+                    fallback_name=pair.display_name,
                 )
+                test_id = self.commit_preview(preview)
                 results.append(
                     {
                         **base,
                         "status": "success",
                         "test_id": test_id,
-                        "question_count": len(payload["questions"]),
+                        "question_count": preview.question_count,
                     }
                 )
             except ConversionError as exc:
@@ -151,14 +288,7 @@ class ImportService:
     @staticmethod
     def _validate_json_format(data: Dict) -> None:
         """Validate the structure of imported JSON data."""
-        if not isinstance(data, dict):
-            raise ValueError("JSON root must be an object.")
-        if "questions" not in data:
-            raise ValueError("JSON must contain a 'questions' array.")
-        if not isinstance(data["questions"], list):
-            raise ValueError("'questions' must be an array.")
-        if len(data["questions"]) == 0:
-            raise ValueError("Test must contain at least one question.")
+        ImportPreviewService.validate_json_format(data)
 
     @staticmethod
     def _parse_json_question(q_data: Dict, test_id: int) -> Question:
@@ -193,6 +323,26 @@ class ImportService:
             options=options,
         )
 
+    def _payload_to_models(
+        self, payload: Dict, fallback_name: str = ""
+    ) -> tuple[Test, List[Question]]:
+        """Convert an import payload into model objects for transactional insert."""
+        self._preview_service.validate_json_format(payload)
+        errors, _ = self._preview_service.validate_payload_questions(payload)
+        if errors:
+            raise ValueError("; ".join(errors))
+
+        test = Test(
+            name=payload.get("name") or fallback_name,
+            description=payload.get("description", ""),
+            group_name=payload.get("group_name", ""),
+        )
+        questions = [
+            self._parse_json_question(q_data, test_id=0)
+            for q_data in payload.get("questions", [])
+        ]
+        return test, questions
+
     # ── Text Import ────────────────────────────────────────────
 
     def import_from_text(self, file_path: str, test_name: Optional[str] = None) -> int:
@@ -218,18 +368,8 @@ class ImportService:
         content = path.read_text(encoding="utf-8")
         name = test_name if test_name else path.stem
 
-        test = Test(name=name, description=f"Imported from {path.name}")
-        test_id = self._db.create_test(test)
-
-        questions = self._parse_text_questions(content)
-        if not questions:
-            raise ValueError("No questions found in the text file.")
-
-        for question in questions:
-            question.test_id = test_id
-            self._db.add_question(question)
-
-        return test_id
+        preview = self.preview_from_text(file_path, test_name=name)
+        return self.commit_preview(preview)
 
     def _parse_text_questions(self, content: str) -> List[Question]:
         """Parse questions from plain-text content."""

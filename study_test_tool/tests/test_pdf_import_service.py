@@ -131,6 +131,21 @@ D. Fourth
         # Q12 (the fake one) silently dropped; Q11 and Q13 kept.
         assert [q["number"] for q in questions] == [11, 13]
 
+    def test_accepts_question_word_heading(self):
+        text = """Question 1
+What is 2+2?
+A. 3
+B. 4
+
+Question 2:
+What color is the sky?
+A. Red
+B. Blue
+"""
+        questions = parse_questions(text)
+        assert [q["number"] for q in questions] == [1, 2]
+        assert questions[0]["text"] == "What is 2+2?"
+
 
 # ── Answer-key parsing ─────────────────────────────────────────────────────
 
@@ -273,6 +288,11 @@ class TestCleanText:
         raw = "Some text\n1\n0. What is ten?\nA. ten\nB. eleven"
         cleaned = clean_text(raw)
         assert "10. What is ten?" in cleaned
+
+    def test_unicode_line_separators_become_newlines(self):
+        raw = "1. Q?\u2028A. Yes\u2029B. No\x85"
+        cleaned = clean_text(raw)
+        assert "1. Q?\nA. Yes\nB. No" in cleaned
 
 
 # ── Bug regression: parse_answers accepts E–H ─────────────────────────────

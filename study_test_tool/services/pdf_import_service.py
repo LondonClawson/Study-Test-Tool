@@ -179,6 +179,7 @@ def _extract_file_text(source: Path) -> str:
 
 
 def clean_text(text: str) -> str:
+    text = text.replace("\u2028", "\n").replace("\u2029", "\n").replace("\x85", "\n")
     text = text.replace("\f", "\n")
     text = re.sub(r"(?m)^\s*Torts\s*$", "", text)
     text = re.sub(
@@ -250,10 +251,16 @@ def _extract_scenarios(text: str) -> Tuple[str, Dict[int, str]]:
 def parse_questions(text: str) -> List[Dict[str, Any]]:
     text, scenarios = _extract_scenarios(text)
     questions: List[Dict[str, Any]] = []
-    matches = re.finditer(r"(?ms)^\s*(\d+)\.\s+(.*?)(?=^\s*\d+\.\s+|\Z)", text)
+    question_marker = (
+        r"(?:Question\s+(\d+)\s*[.):]?\s+|(\d+)\s*[.):]\s+)"
+    )
+    matches = re.finditer(
+        rf"(?ims)^\s*{question_marker}(.*?)(?=^\s*{question_marker}|\Z)",
+        text,
+    )
     for match in matches:
-        number = int(match.group(1))
-        body = match.group(2).strip()
+        number = int(match.group(1) or match.group(2))
+        body = match.group(3).strip()
         option_matches = list(re.finditer(rf"(?m){OPTION_PREFIX_RE}", body))
         # 0 option markers means this number-dot at line start is part of
         # flowing text (a wrapped date like "May / 12.\n" or a numbered list

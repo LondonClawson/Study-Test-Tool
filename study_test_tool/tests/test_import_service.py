@@ -7,6 +7,7 @@ import tempfile
 import pytest
 
 from config.database import initialize_database
+from models.question import Question, QuestionOption
 from services.import_service import ImportService
 
 
@@ -99,6 +100,71 @@ class TestJsonImport:
         test_id = import_svc.import_from_dict(data)
         assert test_id > 0
 
+    def test_import_service_preview_from_dict_does_not_write(self, import_svc):
+        data = {
+            "name": "Preview Test",
+            "questions": [
+                {
+                    "text": "Q?",
+                    "type": "multiple_choice",
+                    "options": [
+                        {"text": "A", "correct": True},
+                        {"text": "B", "correct": False},
+                    ],
+                }
+            ],
+        }
+
+        preview = import_svc.preview_from_dict(data)
+
+        assert preview.test_name == "Preview Test"
+        assert preview.question_count == 1
+        assert not import_svc._db.get_all_tests()
+
+    def test_commit_preview_applies_group_override(self, import_svc):
+        data = {
+            "name": "Grouped Preview",
+            "group_name": "Original",
+            "questions": [
+                {
+                    "text": "Q?",
+                    "type": "multiple_choice",
+                    "options": [
+                        {"text": "A", "correct": True},
+                        {"text": "B", "correct": False},
+                    ],
+                }
+            ],
+        }
+
+        preview = import_svc.preview_from_dict(data)
+        test_id = import_svc.commit_preview(preview, group_name_override="Contracts")
+        imported = import_svc._db.get_test_by_id(test_id)
+
+        assert imported.group_name == "Contracts"
+
+    def test_commit_preview_rejects_preview_with_errors(self, import_svc):
+        data = {
+            "name": "Invalid Preview",
+            "questions": [
+                {
+                    "text": "Q?",
+                    "type": "multiple_choice",
+                    "options": [
+                        {"text": "A", "correct": False},
+                        {"text": "B", "correct": False},
+                    ],
+                }
+            ],
+        }
+
+        preview = import_svc.preview_from_dict(data)
+
+        assert preview.errors
+        with pytest.raises(ValueError, match="errors"):
+            import_svc.commit_preview(preview)
+        assert not import_svc._db.get_all_tests()
+
     def test_import_from_dict_preserves_explanation(self, import_svc):
         data = {
             "name": "Explained Test",
@@ -118,6 +184,58 @@ class TestJsonImport:
         db = import_svc._db
         question = db.get_questions_for_test(test_id)[0]
         assert question.explanation == "Because A matches the rule."
+
+    def test_transactional_insert_rolls_back_on_option_failure(self, import_svc):
+        from models.test import Test as TestModel
+
+        test = TestModel(name="Rollback Test")
+        questions = [
+            Question(
+                text="Q?",
+                type="multiple_choice",
+                correct_answer="A",
+                options=[
+                    QuestionOption(text="A", is_correct=True),
+                    QuestionOption(text=object(), is_correct=False),
+                ],
+            )
+        ]
+
+        with pytest.raises(Exception):
+            import_svc._db.create_test_with_questions(test, questions)
+
+        assert not import_svc._db.get_all_tests()
+
+    def test_commit_previews_calls_backup_service_for_bulk_import(self, import_svc):
+        class FakeBackupService:
+            def __init__(self):
+                self.called = False
+
+            def create_database_backup(self):
+                self.called = True
+                return None
+
+        fake_backup = FakeBackupService()
+        import_svc._backup_service = fake_backup
+        data = {
+            "name": "Bulk Preview",
+            "questions": [
+                {
+                    "text": "Q?",
+                    "type": "multiple_choice",
+                    "options": [
+                        {"text": "A", "correct": True},
+                        {"text": "B", "correct": False},
+                    ],
+                }
+            ],
+        }
+        preview = import_svc.preview_from_dict(data)
+
+        ids = import_svc.commit_previews([preview], create_backup=True)
+
+        assert len(ids) == 1
+        assert fake_backup.called is True
 
     def test_import_from_dict_uses_fallback_name(self, import_svc):
         data = {

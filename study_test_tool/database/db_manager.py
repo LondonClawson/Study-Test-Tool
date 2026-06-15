@@ -82,6 +82,46 @@ class DatabaseManager:
         finally:
             conn.close()
 
+    def create_test_with_questions(self, test: Test, questions: List[Question]) -> int:
+        """Create a test and all questions in one transaction."""
+        conn = self._conn()
+        try:
+            cursor = conn.execute(
+                "INSERT INTO tests (name, description, group_name) VALUES (?, ?, ?)",
+                (test.name, test.description, test.group_name),
+            )
+            test_id = cursor.lastrowid
+
+            for question in questions:
+                q_cursor = conn.execute(
+                    "INSERT INTO questions (test_id, question_text, question_type, "
+                    "correct_answer, category, explanation) VALUES (?, ?, ?, ?, ?, ?)",
+                    (
+                        test_id,
+                        question.text,
+                        question.type,
+                        question.correct_answer,
+                        question.category,
+                        question.explanation,
+                    ),
+                )
+                question_id = q_cursor.lastrowid
+
+                for option in question.options:
+                    conn.execute(
+                        "INSERT INTO question_options "
+                        "(question_id, option_text, is_correct) VALUES (?, ?, ?)",
+                        (question_id, option.text, option.is_correct),
+                    )
+
+            conn.commit()
+            return test_id
+        except Exception:
+            conn.rollback()
+            raise
+        finally:
+            conn.close()
+
     def get_all_tests(self) -> List[Test]:
         """Get all non-archived tests without loading questions (lazy)."""
         conn = self._conn()
