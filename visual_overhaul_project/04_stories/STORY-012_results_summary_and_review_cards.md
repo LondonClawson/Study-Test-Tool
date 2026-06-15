@@ -6,9 +6,9 @@ Blocked.
 
 ## Readiness
 
-- Blocked by: CTX-RESULTS, CTX-FOUNDATION.
-- Unblocked by: `R-005_results_context.md` and
-  `STORY-003_visual_foundation_spec.md`.
+- Blocked by: CTX-FOUNDATION.
+- Completed context: `R-005_results_context.md`.
+- Remaining unblocker: `STORY-003_visual_foundation_spec.md`.
 
 ## Sprint
 

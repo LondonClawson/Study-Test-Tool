@@ -2,8 +2,7 @@
 
 ## Status
 
-Blocked until R-001 or R-002 is Done. Assign before history, analytics, or review
-implementation stories.
+Done. Completed after the R-002 assignment gate was satisfied.
 
 ## Role
 

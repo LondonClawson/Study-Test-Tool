@@ -15,6 +15,8 @@ handoffs. Status changes are project-management decisions, not incidental edits.
 ## Research Task Transitions
 
 - Ready to In Progress: PM assigns the task to Dev 1.
+- In Progress to Submitted For Review: Dev 1 completes the summary, handoff,
+  context index updates, and status board updates for reviewer acceptance.
 - In Progress to Done: reviewer accepts the summary, handoff, context index, and
   status board updates.
 - In Progress to Blocked: Dev 1 cannot inspect required files, screens, or app
@@ -24,6 +26,10 @@ handoffs. Status changes are project-management decisions, not incidental edits.
 
 - Missing to Ready: reviewer confirms the summary passes the Context Summary
   Ready gate.
+- Missing to Submitted For Review: research agent creates the summary and
+  proposes it for reviewer acceptance.
+- Submitted For Review to Ready: reviewer confirms the summary passes the
+  Context Summary Ready gate.
 - Seeded to Ready: reviewer confirms the seeded summary is refreshed enough to
   replace task-specific research for dependent stories.
 - Ready to Stale: source files changed, design decisions changed, or a story

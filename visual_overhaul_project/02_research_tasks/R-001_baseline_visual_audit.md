@@ -2,7 +2,13 @@
 
 ## Status
 
-Ready.
+Blocked.
+
+Blocker: this shell cannot launch a screenshot-ready Tk/CustomTkinter window.
+The app entry point exits after macOS font-registry startup noise, and a minimal
+`tkinter.Tk()` probe exits with code `-1` before a window appears. Complete this
+task on a GUI-capable runner that can capture the required light and dark mode
+screenshots.
 
 ## Role
 

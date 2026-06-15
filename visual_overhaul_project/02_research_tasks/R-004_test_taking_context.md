@@ -2,8 +2,8 @@
 
 ## Status
 
-Blocked until R-001 or R-002 is Done. Assign before test-taking implementation
-stories.
+Done. Claimed and completed by Codex on 2026-06-03 after R-002 was marked
+Done; accepted by reviewer on 2026-06-03.
 
 ## Role
 

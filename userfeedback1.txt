@@ -14,3 +14,54 @@ I would like to be able to have a test that is a ransom selection from several d
 
 It would be nice to be able to import tests from PDF
 
+---
+
+[2026-06-15] User letter: local imports, local data separation, and safer upgrades
+
+Dear Project Owner,
+
+I wanted to share a short note after using Study Testing Tool with a real set of locally imported law-school practice materials.
+
+First, the project is clearly useful. We were able to get a working local study workflow going, and the app is already close to being a very practical everyday tool. The biggest issues we ran into were not around the core testing flow, but around the end-user experience for local imports and locally maintained study materials.
+
+The main request is this: please keep user-imported tests, local source documents, backup databases, and any helper artifacts clearly separated from git-tracked project files so users can safely pull future updates without worrying about losing work or creating merge noise.
+
+A few concrete suggestions:
+
+1. Keep imported content strictly user-local.
+The current approach of ignoring `study_test_tool/data/` and `test_source_data/` is a good start. I would continue leaning into that model and make it explicit in the product and documentation that imported tests, local backups, and user study materials should never require edits in tracked repo files.
+
+2. Add a first-class import preview / validation step.
+Real-world PDFs and DOCX files are messy. We encountered line-separator issues, bullet-only answer keys, page-footer junk, missing parser-visible question markers, and shifted question/answer alignment. A preview screen that shows detected pairs, question counts, skipped items, and suspicious formatting before import would save users a lot of confusion.
+
+3. Make imports transactional and reversible.
+If an import partially fails, the app should avoid leaving behind broken or half-shifted tests. "All-or-nothing" imports, plus an automatic local database backup before bulk import or repair actions, would make the tool much safer for normal users.
+
+4. Improve built-in normalization for common source quirks.
+It would help if the importer natively handled things like:
+- `Question 1` headings instead of only `1.`
+- bullet-only answer keys
+- odd Unicode line separators
+- page labels and repeated headers
+- mixed PDF / DOCX source pairs
+
+5. Let users assign a group during import.
+This is a small UX improvement, but it matters in practice. When importing a set of weekly materials, letting the user assign a group up front keeps the local test library organized without requiring manual cleanup afterward.
+
+6. Document a safe "upgrade without losing local work" workflow.
+I think users would benefit from a short section in the README or user guide that explains:
+- what local data lives outside version control
+- what folders are safe for imported tests and source docs
+- what happens during app updates or future git pulls
+- how to back up and restore study data
+
+7. Consider a supported location for user helper scripts.
+In practice, users sometimes need one-off normalization or import helpers for their own study materials. If the project wants to support that use case, it may be worth documenting an ignored user-local scripts location instead of pushing users toward ad hoc repo changes.
+
+Overall, the biggest theme is separation of concerns: tracked application code should stay clean and update-friendly, while imported tests and local study artifacts should live in clearly user-owned, non-versioned space.
+
+Thank you for building the project. With a slightly stronger import/normalization experience and a clearer local-data model, I think it could feel much more durable and user-friendly for people who rely on it day to day.
+
+Sincerely,
+
+A local user

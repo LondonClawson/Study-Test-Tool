@@ -2,8 +2,8 @@
 
 ## Status
 
-Blocked until R-001 or R-002 is Done. Assign before results implementation
-stories.
+Done. R-002 is Done, and this task produced CTX-RESULTS for results
+implementation context.
 
 ## Role
 

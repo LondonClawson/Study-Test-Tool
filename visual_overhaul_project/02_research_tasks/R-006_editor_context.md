@@ -2,8 +2,9 @@
 
 ## Status
 
-Blocked until R-001 or R-002 is Done. Assign before editor implementation
-stories.
+Done. Claimed and completed by Codex on 2026-06-03 after R-002 was already
+marked Done on the status board. Produced the editor context summary and
+handoff, then marked CTX-EDITOR Ready.
 
 ## Role
 

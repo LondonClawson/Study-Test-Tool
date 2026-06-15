@@ -6,7 +6,7 @@ Blocked.
 
 ## Readiness
 
-- Blocked by: CTX-EDITOR, CTX-FOUNDATION.
+- Blocked by: CTX-FOUNDATION.
 - Unblocked by: `R-006_editor_context.md` and
   `STORY-003_visual_foundation_spec.md`.
 
