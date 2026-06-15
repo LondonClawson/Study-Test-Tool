@@ -14,7 +14,9 @@
 
 This is a seed summary, not a finished audit. It captures known visual issues
 from the plan and static code so Sprint 0 research agents can start quickly.
-Replace or augment it after the baseline screenshot audit.
+It has now been superseded for implementation planning by
+`baseline_visual_audit.md` and `visual_foundation_decisions.md`; keep this file
+only as early seed context.
 
 ## Static Findings
 
@@ -55,18 +57,18 @@ The static code read supports those findings:
 
 ## Unknowns
 
-- Actual screenshots in light and dark mode have not been captured.
 - Minimum window layout behavior has not been verified.
-- Populated and empty state visuals need runtime inspection.
-- Dialog behavior and native message boxes need separate inventory.
+- Native message boxes still need separate inventory if a future story replaces
+  them with custom dialogs.
+- Some detailed runtime states remain uncaptured, including editor validation
+  warnings and expanded archived cards.
 
 ## Required Follow-Up
 
-Run `02_research_tasks/R-001_baseline_visual_audit.md` and
-`02_research_tasks/R-002_component_style_inventory.md` before writing the visual
-foundation spec.
+Use `baseline_visual_audit.md`, `style_inventory.md`, and
+`visual_foundation_decisions.md` before assigning implementation stories.
 
 ## Refresh Triggers
 
-Replace this seed summary after baseline screenshots are captured or after the
-visual foundation is approved.
+Refresh only if implementation planning still relies on this seed summary after
+the baseline audit or visual foundation changes.

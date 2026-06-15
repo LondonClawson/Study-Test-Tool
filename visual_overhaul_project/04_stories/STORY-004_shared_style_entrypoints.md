@@ -2,7 +2,7 @@
 
 ## Status
 
-Submitted For Review.
+Done.
 
 ## Readiness
 
@@ -10,6 +10,9 @@ Submitted For Review.
 - Unblocked by: `STORY-003_visual_foundation_spec.md`.
 
 CTX-FOUNDATION is Ready as of PM review on 2026-06-15.
+PM review accepted this implementation on 2026-06-15. `gui.styles` is the
+accepted shared style entry point for upcoming MVP visual stories, and
+`study_test_tool/gui/components/progress_bar.py` is the accepted proof target.
 
 ## Sprint
 

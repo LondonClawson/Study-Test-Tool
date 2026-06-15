@@ -26,59 +26,64 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 
 | Summary | Status | Unblocks |
 | --- | --- | --- |
-| `gui_architecture_summary.md` | Seeded | Most stories |
-| `screen_inventory.md` | Seeded | Most stories |
+| `gui_architecture_summary.md` | Ready | Most stories |
+| `screen_inventory.md` | Ready | Most stories |
 | `current_visual_state_seed.md` | Seeded | Sprint 0 research |
-| `baseline_visual_audit.md` | Blocked | `STORY-003`, validation stories; app launch and bare `tkinter.Tk()` both exit `-1` before any window appears in this shell |
+| `baseline_visual_audit.md` | Ready | `STORY-003`, validation stories; 42 scripted light/dark screenshots validate, with remaining uncaptured states documented |
 | `style_inventory.md` | Ready | `STORY-003`, `STORY-004` |
 | `home_screen_context.md` | Ready | `STORY-008`, `STORY-009` |
 | `test_taking_context.md` | Ready | `STORY-010`, `STORY-011` |
 | `results_context.md` | Ready | `STORY-012` |
 | `editor_context.md` | Ready | `STORY-013` |
-| `history_analytics_review_context.md` | Ready | `STORY-014`, `STORY-015` |
-| `dialog_context.md` | Missing | `STORY-015` |
-| `visual_foundation_decisions.md` | Placeholder | `STORY-004` through `STORY-017` |
+| `history_analytics_review_context.md` | Ready | `STORY-014`, `STORY-015A` |
+| `dialog_context.md` | Ready | `STORY-015B`, `STORY-015C`, `STORY-015D`, `STORY-015E` |
+| `visual_foundation_decisions.md` | Ready | `STORY-004` through `STORY-017`; accepted for MVP implementation sequencing |
 
 ## Research Task Status
 
 | Task | Status | Output | Assignment Gate |
 | --- | --- | --- | --- |
-| `R-001_baseline_visual_audit.md` | Blocked | `baseline_visual_audit.md` | None (GUI capture blocked: `python3 main.py` stops after font-registry startup noise and a minimal `tkinter.Tk()` probe also exits `-1` before window creation) |
+| `R-001_baseline_visual_audit.md` | Done | `baseline_visual_audit.md` | None |
 | `R-002_component_style_inventory.md` | Done | `style_inventory.md` | None |
 | `R-003_home_screen_context.md` | Done | `home_screen_context.md` | R-002 Done |
 | `R-004_test_taking_context.md` | Done | `test_taking_context.md` | R-002 Done |
 | `R-005_results_context.md` | Done | `results_context.md` | R-002 Done |
 | `R-006_editor_context.md` | Done | `editor_context.md` | R-002 Done |
 | `R-007_history_analytics_review_context.md` | Done | `history_analytics_review_context.md` | R-002 Done |
-| `R-008_dialog_context.md` | Blocked | `dialog_context.md` | R-001 Done |
+| `R-008_dialog_context.md` | Done | `dialog_context.md` | R-001 Done |
 
 ## Story Status
 
 | Story | Status | Blocked By |
 | --- | --- | --- |
-| `STORY-001_context_batch_one.md` | Submitted For Review | None |
-| `STORY-002_baseline_visual_audit.md` | Blocked | R-001 GUI capture environment |
-| `STORY-003_visual_foundation_spec.md` | Blocked | CTX-AUDIT-BASELINE |
-| `STORY-004_shared_style_entrypoints.md` | Submitted For Review | None |
-| `STORY-005_button_hierarchy.md` | Blocked | CTX-FOUNDATION |
-| `STORY-006_card_and_list_patterns.md` | Blocked | CTX-FOUNDATION, named pilot area |
-| `STORY-007_page_header_pattern.md` | Blocked | CTX-FOUNDATION |
-| `STORY-008_home_screen_layout.md` | Blocked | CTX-FOUNDATION |
-| `STORY-009_home_test_cards_and_actions.md` | Blocked | CTX-FOUNDATION |
-| `STORY-010_test_taking_shell.md` | Blocked | CTX-TEST-TAKING, CTX-FOUNDATION |
-| `STORY-011_answer_rows_and_practice_feedback.md` | Blocked | CTX-TEST-TAKING, CTX-FOUNDATION |
-| `STORY-012_results_summary_and_review_cards.md` | Blocked | CTX-FOUNDATION |
-| `STORY-013_editor_layout.md` | Blocked | CTX-FOUNDATION |
-| `STORY-014_history_and_analytics_polish.md` | Blocked | CTX-FOUNDATION, story split |
-| `STORY-015_review_and_dialog_polish.md` | Blocked | CTX-DIALOGS, CTX-FOUNDATION, story split |
+| `STORY-001_context_batch_one.md` | Done | None |
+| `STORY-002_baseline_visual_audit.md` | Done | None |
+| `STORY-003_visual_foundation_spec.md` | Done | None |
+| `STORY-004_shared_style_entrypoints.md` | Done | None |
+| `STORY-005_button_hierarchy.md` | Ready | None |
+| `STORY-006_card_and_list_patterns.md` | Blocked | named pilot area |
+| `STORY-007_page_header_pattern.md` | Blocked | named pilot screen/path |
+| `STORY-008_home_screen_layout.md` | Blocked | `STORY-005` |
+| `STORY-009_home_test_cards_and_actions.md` | Blocked | `STORY-006`, `STORY-008` |
+| `STORY-010_test_taking_shell.md` | Blocked | `STORY-005` |
+| `STORY-011_answer_rows_and_practice_feedback.md` | Blocked | `STORY-010` |
+| `STORY-012_results_summary_and_review_cards.md` | Blocked | `STORY-006` or shared card/badge entry points |
+| `STORY-013_editor_layout.md` | Blocked | Foundation implementation stories |
+| `STORY-014_history_and_analytics_polish.md` | Blocked | Foundation implementation stories, story split |
+| `STORY-015_review_and_dialog_polish.md` | Done | split into child stories |
+| `STORY-015A_review_screen_polish.md` | Blocked | `STORY-005`, `STORY-006`, `STORY-007` |
+| `STORY-015B_mode_dialog_polish.md` | Blocked | `STORY-005` |
+| `STORY-015C_mix_dialog_polish.md` | Blocked | `STORY-005`, list/card pattern guidance |
+| `STORY-015D_import_preview_dialog_polish.md` | Blocked | `STORY-005`, list/card pattern guidance |
+| `STORY-015E_native_dialog_inventory_followup.md` | Blocked | PM post-MVP decision |
 | `STORY-016_light_dark_and_min_size_validation.md` | Blocked | Core MVP screen stories |
 | `STORY-017_mvp_visual_regression_pass.md` | Blocked | Sprint 4 validation |
 
 ## Next Recommended Work
 
-1. Review `STORY-004_shared_style_entrypoints.md` and its handoff for PM
-   acceptance.
-2. After `STORY-004` is Done, select a narrow target area for
-   `STORY-005_button_hierarchy.md`.
-3. Assign `R-008_dialog_context.md` before `STORY-015` or any dialog-polish
-   implementation work.
+1. Assign `STORY-005_button_hierarchy.md` to Dev 2 using the Home/Test Selector
+   assignment packet.
+2. After `STORY-005` is Done, select a named pilot area for
+   `STORY-006_card_and_list_patterns.md`.
+3. Keep `STORY-015` child stories blocked until the named foundation
+   implementation stories land.

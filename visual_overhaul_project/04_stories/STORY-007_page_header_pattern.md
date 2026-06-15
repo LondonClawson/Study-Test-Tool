@@ -6,8 +6,12 @@ Blocked.
 
 ## Readiness
 
-- Blocked by: CTX-FOUNDATION.
-- Unblocked by: `STORY-003_visual_foundation_spec.md`.
+- Blocked by: a named pilot screen/path.
+- Unblocked by: PM approval of the pilot screen/path.
+
+CTX-FOUNDATION and `STORY-004_shared_style_entrypoints.md` are Done. This story
+is still blocked until PM names one pilot screen or explicitly chooses a shared
+helper path.
 
 ## Sprint
 

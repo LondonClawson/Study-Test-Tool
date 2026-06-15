@@ -15,7 +15,9 @@ Provide a concise, executable capture checklist for a GUI-capable runner to coll
   - `cd study_test_tool`
   - `python main.py`
 - If a local virtualenv already exists, activate it and install only missing requirements before launch.
-- The project docs do not name a dedicated screenshot tool. Use your normal GUI capture method once the app window is visible.
+- Prefer the dedicated capture harness when it can run:
+  `python3 visual_overhaul_project/tools/capture_baseline_screenshots.py --mode both`.
+  Use normal GUI capture only for states the harness does not cover.
 
 ## Required Capture Destinations
 
@@ -158,4 +160,3 @@ Report the exact missing state, not a substitute.
 - Whether a partial fallback screenshot was captured instead.
 
 If the state remains uncaptured, leave it explicitly listed as missing in the baseline audit summary.
-

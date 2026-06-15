@@ -2,11 +2,11 @@
 
 ## Status
 
-Blocked.
+Done.
 
 ## Readiness
 
-- Blocked by: R-001 GUI capture environment.
+- Blocked by: None.
 - Unblocked by: N/A.
 
 ## Sprint
@@ -15,8 +15,8 @@ Target sprint: Sprint 0.
 
 ## PM Assignment Note
 
-This is a coordination wrapper, not an implementation story. It remains blocked
-until `R-001_baseline_visual_audit.md` can be completed on a GUI-capable runner.
+This is a coordination wrapper, not an implementation story.
+`R-001_baseline_visual_audit.md` has been accepted by PM review.
 
 ## User Story
 

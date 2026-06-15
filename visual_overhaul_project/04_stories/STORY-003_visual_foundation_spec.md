@@ -2,13 +2,15 @@
 
 ## Status
 
-Blocked.
+Done.
 
 ## Readiness
 
-- Blocked by: CTX-AUDIT-BASELINE, CTX-STYLE-INVENTORY.
-- Unblocked by: `STORY-001_context_batch_one.md` and
-  `STORY-002_baseline_visual_audit.md`.
+- Blocked by: None.
+- Unblocked by: `STORY-001_context_batch_one.md`,
+  `STORY-002_baseline_visual_audit.md`, and PM/reviewer acceptance.
+
+PM review accepted CTX-AUDIT-BASELINE and CTX-FOUNDATION on 2026-06-15.
 
 ## Sprint
 

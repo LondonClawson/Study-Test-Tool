@@ -6,9 +6,11 @@ Blocked.
 
 ## Readiness
 
-- Blocked by: CTX-FOUNDATION and a named pilot area.
-- Unblocked by: `STORY-003_visual_foundation_spec.md` and PM approval of the
-  pilot area.
+- Blocked by: a named pilot area.
+- Unblocked by: PM approval of the pilot area.
+
+CTX-FOUNDATION and `STORY-004_shared_style_entrypoints.md` are Done. This story
+is still blocked until PM names one narrow card/list pilot area.
 
 ## Sprint
 

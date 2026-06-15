@@ -4,14 +4,14 @@ Story/Task:
 `STORY-001_context_batch_one.md`
 
 Status:
-Submitted For Review.
+Done.
 
 Summary:
 Completed the agent-side coordination wrapper for the first context batch. Confirmed
 `R-002_component_style_inventory.md` is Done, reviewed
 `style_inventory.md` against the Context Summary Ready gate, and confirmed the
 existing status board and context index already show CTX-STYLE-INVENTORY as
-Ready. The story is ready for reviewer or PM acceptance.
+Ready. PM review accepted this coordination wrapper on 2026-06-15.
 
 Files changed:
 `visual_overhaul_project/00_project/status_board.md`
@@ -47,6 +47,11 @@ Tests not run and why:
 `pytest` was not run because this was docs-only tracker work and no application
 code changed.
 
+PM acceptance notes:
+Accepted. `style_inventory.md` passes the Context Summary Ready gate, and the
+seeded architecture and screen inventory summaries are sufficient for the first
+implementation story.
+
 Acceptance criteria notes:
 `style_inventory.md` exists and covers current constants, inline styles, colors,
 fonts, repeated surfaces, candidate shared tokens/components, risks, open
@@ -55,9 +60,10 @@ questions, and Dev 2 Quick Start notes. `context_index.md` and
 Done before this story was closed.
 
 Risks:
-Foundation work remains blocked on CTX-AUDIT-BASELINE because baseline GUI
-screenshot capture is blocked in this shell.
+Historical note: this risk has been superseded by
+`R-001_baseline_visual_audit_handoff.md`, which records successful scripted
+baseline screenshot capture.
 
 Follow-up backlog items:
-Complete or unblock `R-001_baseline_visual_audit.md` so
-`STORY-003_visual_foundation_spec.md` has both required inputs.
+Baseline audit and visual foundation acceptance are now complete. Continue with
+`STORY-004_shared_style_entrypoints.md`.

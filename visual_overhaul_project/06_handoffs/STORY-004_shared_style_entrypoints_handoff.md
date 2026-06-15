@@ -4,7 +4,7 @@ Story/Task:
 `STORY-004_shared_style_entrypoints.md`
 
 Status:
-Submitted For Review.
+Done. Accepted by PM review on 2026-06-15.
 
 Summary:
 Added a small GUI style entry point and migrated only the `ProgressBar` proof
@@ -55,6 +55,13 @@ Acceptance criteria notes:
 - Progress status precedence and callback wiring were preserved.
 - No unrelated screens, cards, headers, dialogs, or buttons were migrated.
 
+PM review notes:
+Accepted. `gui.styles` is the shared style entry point for upcoming MVP visual
+stories, and `ProgressBar` is accepted as the narrow proof target. PM
+verification re-ran `py_compile` for `styles.py` and `progress_bar.py`
+successfully. The remaining risk is intentionally carried forward to
+`STORY-005`: button role helpers still need a full screen-level proof.
+
 Risks:
 - Button role helpers are available for upcoming stories but are not yet proven
   in a screen-level migration.
@@ -62,8 +69,8 @@ Risks:
   chart styling after the first pilot areas are selected.
 
 Follow-up backlog items:
-- `STORY-005_button_hierarchy.md`: select a narrow target area and use the new
-  button role entry points.
+- `STORY-005_button_hierarchy.md`: use Home/Test Selector as the narrow target
+  area and prove the new button role entry points at screen level.
 - `STORY-006_card_and_list_patterns.md`: select a named pilot area before
   starting.
 - `STORY-007_page_header_pattern.md` and screen-specific stories should reuse

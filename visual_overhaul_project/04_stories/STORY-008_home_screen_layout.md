@@ -6,9 +6,12 @@ Blocked.
 
 ## Readiness
 
-- Blocked by: CTX-FOUNDATION.
+- Blocked by: `STORY-005_button_hierarchy.md`.
 - CTX-HOME is Ready from `R-003_home_screen_context.md`.
-- Unblocked by: `STORY-003_visual_foundation_spec.md`.
+- Unblocked by: completion of the Home/Test Selector button hierarchy pilot.
+
+CTX-FOUNDATION and `STORY-004_shared_style_entrypoints.md` are Done. Keep this
+blocked until `STORY-005` settles the Home button roles.
 
 ## Sprint
 

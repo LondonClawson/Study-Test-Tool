@@ -6,9 +6,12 @@ Blocked.
 
 ## Readiness
 
-- Blocked by: CTX-TEST-TAKING, CTX-FOUNDATION.
-- Unblocked by: `R-004_test_taking_context.md` and
-  `STORY-003_visual_foundation_spec.md`.
+- Blocked by: `STORY-005_button_hierarchy.md`.
+- Unblocked by: completion of the button hierarchy pilot.
+
+CTX-TEST-TAKING, CTX-FOUNDATION, and `STORY-004_shared_style_entrypoints.md` are
+Ready or Done. Keep this blocked until `STORY-005` proves the button role model
+in a full screen.
 
 ## Sprint
 

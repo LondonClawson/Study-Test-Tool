@@ -2,13 +2,14 @@
 
 ## Status
 
-Blocked.
+Done.
 
-Blocker: this shell cannot launch a screenshot-ready Tk/CustomTkinter window.
-The app entry point exits after macOS font-registry startup noise, and a minimal
-`tkinter.Tk()` probe exits with code `-1` before a window appears. Complete this
-task on a GUI-capable runner that can capture the required light and dark mode
-screenshots.
+The baseline screenshot harness now has a validated scripted light and dark
+screenshot set. The initial capture set was produced on 2026-06-06, and the
+missing mixed-test partial/multi-group states were captured on 2026-06-15 with
+writable Matplotlib/XDG cache directories and GUI capture permission. The
+summary and handoff were accepted by PM review on 2026-06-15. Remaining
+uncaptured states are documented in the summary instead of guessed.
 
 ## Role
 

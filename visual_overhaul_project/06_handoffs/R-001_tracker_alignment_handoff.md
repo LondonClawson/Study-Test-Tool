@@ -1,5 +1,11 @@
 # R-001 Tracker Alignment Handoff
 
+Historical note:
+This handoff records the earlier tracker-alignment pass when GUI capture was
+still blocked. It has been superseded by
+`R-001_baseline_visual_audit_handoff.md`, where the scripted light/dark
+screenshot capture succeeded and the audit was submitted for review.
+
 Story/Task:
 R-001 baseline visual audit tracker alignment.
 
@@ -47,9 +53,9 @@ board. `CTX-AUDIT-BASELINE` was already Blocked in the context index and did not
 need a state change.
 
 Risks:
-The baseline summary is still source-backed only. Foundation implementation
-should wait for real light/dark screenshots from a GUI-capable runner.
+Superseded. The later baseline handoff records successful scripted light/dark
+screenshot capture. Foundation implementation should still wait for
+PM/reviewer acceptance of CTX-AUDIT-BASELINE and CTX-FOUNDATION.
 
 Follow-up backlog items:
-Run the manual baseline screenshot packet on a GUI-capable machine and refresh
-`baseline_visual_audit.md` with the captured screenshot inventory.
+Superseded by `R-001_baseline_visual_audit_handoff.md`.

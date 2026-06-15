@@ -2,7 +2,12 @@
 
 ## Status
 
-Blocked until R-001 is Done. Assign before dialog implementation stories.
+Done.
+
+`R-001_baseline_visual_audit.md` is Done. Research output was accepted in
+`visual_overhaul_project/01_context/summaries/dialog_context.md`. Dialog
+implementation should still start only after `STORY-015` is split into narrow
+child stories.
 
 ## Role
 

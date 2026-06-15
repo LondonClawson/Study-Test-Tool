@@ -2,13 +2,21 @@
 
 ## Status
 
-Blocked.
+Done.
 
 ## Readiness
 
-- Blocked by: CTX-DATA-VIEWS, CTX-DIALOGS, CTX-FOUNDATION.
-- Unblocked by: `R-007_history_analytics_review_context.md`,
-  `R-008_dialog_context.md`, and `STORY-003_visual_foundation_spec.md`.
+- Blocked by: None.
+- Superseded by: child stories below.
+
+PM split completed on 2026-06-15. Do not assign this parent story for
+implementation. Use the child stories instead:
+
+- `STORY-015A_review_screen_polish.md`.
+- `STORY-015B_mode_dialog_polish.md`.
+- `STORY-015C_mix_dialog_polish.md`.
+- `STORY-015D_import_preview_dialog_polish.md`.
+- `STORY-015E_native_dialog_inventory_followup.md`.
 
 ## Sprint
 
@@ -27,11 +35,9 @@ states while preserving modal behavior and callbacks.
 
 ## PM Refinement Note
 
-Do not assign this as a single junior implementation story. After
-`R-007_history_analytics_review_context.md` and `R-008_dialog_context.md` are
-complete, split this into narrow stories based on the research summaries.
-Expected splits are review screen polish, mode dialog polish, mix dialog polish,
-and native dialog inventory/follow-up.
+Do not assign this as a single junior implementation story. This parent is now
+a completed PM refinement placeholder. Use the child story files for actual
+implementation assignment.
 
 ## Required Context
 
@@ -79,13 +85,9 @@ Out:
 
 ## Acceptance Criteria
 
-- Review screen states are readable and action hierarchy is clear.
-- Mode and mix dialogs feel consistent with the foundation.
-- Dialog callbacks and return values are unchanged.
-- Confirmation and error dialogs that remain native are documented as deliberate
-  MVP choices or follow-up items.
-- The story has been split before junior implementation assignment, or the PM
-  handoff explains why one senior-owned story is being used instead.
+- The parent story has been split before junior implementation assignment.
+- Each child story has narrow scope, named context, behavior constraints, and
+  verification expectations.
 
 ## Verification
 
