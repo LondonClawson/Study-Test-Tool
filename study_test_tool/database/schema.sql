@@ -17,6 +17,7 @@ CREATE TABLE IF NOT EXISTS questions (
     question_type TEXT NOT NULL CHECK (question_type IN ('multiple_choice', 'essay')),
     correct_answer TEXT NOT NULL DEFAULT '',
     category TEXT DEFAULT '',
+    explanation TEXT DEFAULT '',
     created_at TIMESTAMP DEFAULT CURRENT_TIMESTAMP,
     FOREIGN KEY (test_id) REFERENCES tests (id) ON DELETE CASCADE
 );

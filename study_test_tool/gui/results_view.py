@@ -144,6 +144,7 @@ class ResultsViewFrame(ctk.CTkFrame):
                 question_type=question.type,
                 user_answer=user_answer,
                 correct_answer=question.correct_answer,
+                explanation=question.explanation,
                 is_correct=is_correct,
                 was_flagged=was_flagged,
                 options=question.options,
@@ -195,9 +196,14 @@ class ResultsViewFrame(ctk.CTkFrame):
             else:
                 line = f"{test_name}: {len(questions)} essay question(s)"
 
-            color = COLOR_CORRECT if mc_total > 0 and correct == mc_total else (
-                COLOR_INCORRECT if mc_total > 0 and correct < mc_total / 2
-                else "gray"
+            color = (
+                COLOR_CORRECT
+                if mc_total > 0 and correct == mc_total
+                else (
+                    COLOR_INCORRECT
+                    if mc_total > 0 and correct < mc_total / 2
+                    else "gray"
+                )
             )
 
             ctk.CTkLabel(
@@ -224,7 +230,9 @@ class ResultsViewFrame(ctk.CTkFrame):
             text=f"{attempt.score}/{attempt.total_questions} — {attempt.percentage}%"
         )
 
-        time_str = self._format_time(attempt.time_taken) if attempt.time_taken else "N/A"
+        time_str = (
+            self._format_time(attempt.time_taken) if attempt.time_taken else "N/A"
+        )
         self.details_label.configure(text=f"Time: {time_str}")
 
         # Load test for question details
@@ -245,6 +253,7 @@ class ResultsViewFrame(ctk.CTkFrame):
                 question_type=question.type,
                 user_answer=response.user_answer,
                 correct_answer=question.correct_answer,
+                explanation=question.explanation,
                 is_correct=response.is_correct,
                 was_flagged=response.was_flagged,
                 options=question.options,
@@ -257,6 +266,7 @@ class ResultsViewFrame(ctk.CTkFrame):
         question_type: str,
         user_answer: str,
         correct_answer: str,
+        explanation: str,
         is_correct: bool,
         was_flagged: bool,
         options=None,
@@ -366,6 +376,26 @@ class ResultsViewFrame(ctk.CTkFrame):
                     justify="left",
                     anchor="nw",
                 ).pack(fill="x")
+
+        if explanation:
+            explanation_frame = ctk.CTkFrame(card, fg_color="transparent")
+            explanation_frame.pack(fill="x", padx=15, pady=(0, 10))
+
+            ctk.CTkLabel(
+                explanation_frame,
+                text="Explanation:",
+                font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
+                anchor="w",
+            ).pack(fill="x")
+
+            ctk.CTkLabel(
+                explanation_frame,
+                text=explanation,
+                font=(FONT_FAMILY, FONT_SIZE_SMALL),
+                wraplength=600,
+                justify="left",
+                anchor="nw",
+            ).pack(fill="x")
 
     def _on_retake(self) -> None:
         """Navigate to retake the same test (mix or regular)."""

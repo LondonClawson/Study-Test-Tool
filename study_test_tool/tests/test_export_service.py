@@ -44,6 +44,7 @@ def sample_test_data():
                 "text": "What is 1+1?",
                 "type": "multiple_choice",
                 "category": "Math",
+                "explanation": "One plus one combines two units.",
                 "options": [
                     {"text": "1", "correct": False},
                     {"text": "2", "correct": True},
@@ -54,6 +55,7 @@ def sample_test_data():
                 "text": "Explain gravity.",
                 "type": "essay",
                 "category": "Physics",
+                "explanation": "Mention attraction between masses.",
                 "expected_answer": "Objects attract each other.",
             },
         ],
@@ -63,9 +65,7 @@ def sample_test_data():
 @pytest.fixture
 def imported_test_id(import_svc, sample_test_data):
     """Import the sample test and return its id."""
-    with tempfile.NamedTemporaryFile(
-        mode="w", suffix=".json", delete=False
-    ) as f:
+    with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
         json.dump(sample_test_data, f)
         path = f.name
 
@@ -79,9 +79,7 @@ class TestExportToJson:
     """Test JSON export functionality."""
 
     def test_export_creates_valid_json(self, export_svc, imported_test_id):
-        with tempfile.NamedTemporaryFile(
-            suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             path = f.name
 
         try:
@@ -97,9 +95,7 @@ class TestExportToJson:
     def test_export_format_matches_import(
         self, export_svc, imported_test_id, sample_test_data
     ):
-        with tempfile.NamedTemporaryFile(
-            suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             path = f.name
 
         try:
@@ -109,14 +105,13 @@ class TestExportToJson:
 
             assert exported["name"] == sample_test_data["name"]
             assert exported["description"] == sample_test_data["description"]
-            assert len(exported["questions"]) == len(
-                sample_test_data["questions"]
-            )
+            assert len(exported["questions"]) == len(sample_test_data["questions"])
 
             # Check MC question
             mc_q = exported["questions"][0]
             assert mc_q["type"] == "multiple_choice"
             assert mc_q["text"] == "What is 1+1?"
+            assert mc_q["explanation"] == "One plus one combines two units."
             assert len(mc_q["options"]) == 3
             correct_opts = [o for o in mc_q["options"] if o["correct"]]
             assert len(correct_opts) == 1
@@ -125,14 +120,13 @@ class TestExportToJson:
             # Check essay question
             essay_q = exported["questions"][1]
             assert essay_q["type"] == "essay"
+            assert essay_q["explanation"] == "Mention attraction between masses."
             assert essay_q["expected_answer"] == "Objects attract each other."
         finally:
             os.unlink(path)
 
     def test_export_nonexistent_test_raises(self, export_svc):
-        with tempfile.NamedTemporaryFile(
-            suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             path = f.name
 
         try:
@@ -160,9 +154,7 @@ class TestExportToJson:
                 }
             ],
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             in_path = f.name
 
@@ -171,9 +163,7 @@ class TestExportToJson:
         finally:
             os.unlink(in_path)
 
-        with tempfile.NamedTemporaryFile(
-            suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             out_path = f.name
 
         try:
@@ -184,6 +174,7 @@ class TestExportToJson:
 
             new_id = import_svc.import_from_json(out_path)
             from database.db_manager import DatabaseManager
+
             db = DatabaseManager(db_path_for_export)
             reimported = db.get_test_by_id(new_id)
             assert reimported.group_name == "Bar Prep"
@@ -194,9 +185,7 @@ class TestExportToJson:
         self, export_svc, import_svc, imported_test_id, sample_test_data
     ):
         """Export then re-import produces an equivalent test."""
-        with tempfile.NamedTemporaryFile(
-            suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f:
             export_path = f.name
 
         try:
@@ -205,9 +194,7 @@ class TestExportToJson:
             assert new_test_id != imported_test_id
 
             # Re-export the re-imported test and compare
-            with tempfile.NamedTemporaryFile(
-                suffix=".json", delete=False
-            ) as f2:
+            with tempfile.NamedTemporaryFile(suffix=".json", delete=False) as f2:
                 re_export_path = f2.name
 
             try:
@@ -226,15 +213,11 @@ class TestExportToJson:
 class TestValidateTest:
     """Test export validation."""
 
-    def test_validation_passes_complete_test(
-        self, export_svc, imported_test_id
-    ):
+    def test_validation_passes_complete_test(self, export_svc, imported_test_id):
         warnings = export_svc.validate_test(imported_test_id)
         assert warnings == []
 
-    def test_validation_catches_missing_mc_answer(
-        self, db_path_for_export
-    ):
+    def test_validation_catches_missing_mc_answer(self, db_path_for_export):
         """MC question with no correct option triggers a warning."""
         svc = ImportService(db_path_for_export)
         data = {
@@ -250,9 +233,7 @@ class TestValidateTest:
                 }
             ],
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             path = f.name
 
@@ -267,9 +248,7 @@ class TestValidateTest:
         assert "Q1" in warnings[0]
         assert "no correct answer" in warnings[0]
 
-    def test_validation_catches_missing_essay_answer(
-        self, db_path_for_export
-    ):
+    def test_validation_catches_missing_essay_answer(self, db_path_for_export):
         """Essay question with no expected answer triggers a warning."""
         svc = ImportService(db_path_for_export)
         data = {
@@ -282,9 +261,7 @@ class TestValidateTest:
                 }
             ],
         }
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             path = f.name
 

@@ -52,16 +52,12 @@ class ExportService:
         for i, question in enumerate(test.questions, start=1):
             if question.type == QUESTION_TYPE_MC:
                 if not question.correct_answer:
-                    warnings.append(
-                        f"Q{i} has no correct answer set."
-                    )
+                    warnings.append(f"Q{i} has no correct answer set.")
                 if not question.options:
                     warnings.append(f"Q{i} has no answer options.")
             elif question.type == QUESTION_TYPE_ESSAY:
                 if not question.correct_answer:
-                    warnings.append(
-                        f"Q{i} (essay) has no expected answer set."
-                    )
+                    warnings.append(f"Q{i} (essay) has no expected answer set.")
         return warnings
 
     @staticmethod
@@ -75,11 +71,12 @@ class ExportService:
             }
             if q.category:
                 q_dict["category"] = q.category
+            if q.explanation:
+                q_dict["explanation"] = q.explanation
 
             if q.type == QUESTION_TYPE_MC:
                 q_dict["options"] = [
-                    {"text": opt.text, "correct": opt.is_correct}
-                    for opt in q.options
+                    {"text": opt.text, "correct": opt.is_correct} for opt in q.options
                 ]
             elif q.type == QUESTION_TYPE_ESSAY:
                 q_dict["expected_answer"] = q.correct_answer

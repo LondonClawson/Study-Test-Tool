@@ -47,6 +47,7 @@ class TestDatabaseManagerTests:
             text="Q1?",
             type="multiple_choice",
             correct_answer="A",
+            explanation="A is correct because it matches the prompt.",
             options=[
                 QuestionOption(text="A", is_correct=True),
                 QuestionOption(text="B", is_correct=False),
@@ -59,6 +60,29 @@ class TestDatabaseManagerTests:
         assert len(questions) == 1
         assert len(questions[0].options) == 2
         assert questions[0].options[0].is_correct is True
+        assert questions[0].explanation == "A is correct because it matches the prompt."
+
+    def test_update_question_explanation(self, db):
+        test_id = db.create_test(Test(name="T"))
+        q = Question(
+            test_id=test_id,
+            text="Q?",
+            type="multiple_choice",
+            correct_answer="A",
+            explanation="Original explanation.",
+            options=[
+                QuestionOption(text="A", is_correct=True),
+                QuestionOption(text="B", is_correct=False),
+            ],
+        )
+        q_id = db.add_question(q)
+
+        q.id = q_id
+        q.explanation = "Updated explanation."
+        db.update_question(q)
+
+        question = db.get_questions_for_test(test_id)[0]
+        assert question.explanation == "Updated explanation."
 
     def test_delete_question_cascades_options(self, db):
         test_id = db.create_test(Test(name="T"))

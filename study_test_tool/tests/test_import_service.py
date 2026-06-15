@@ -40,9 +40,7 @@ class TestJsonImport:
             ],
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             path = f.name
 
@@ -55,9 +53,7 @@ class TestJsonImport:
     def test_import_json_missing_questions(self, import_svc):
         data = {"name": "Bad Test"}
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             path = f.name
 
@@ -70,9 +66,7 @@ class TestJsonImport:
     def test_import_json_empty_questions(self, import_svc):
         data = {"name": "Empty", "questions": []}
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             path = f.name
 
@@ -105,6 +99,26 @@ class TestJsonImport:
         test_id = import_svc.import_from_dict(data)
         assert test_id > 0
 
+    def test_import_from_dict_preserves_explanation(self, import_svc):
+        data = {
+            "name": "Explained Test",
+            "questions": [
+                {
+                    "text": "Q?",
+                    "type": "multiple_choice",
+                    "explanation": "Because A matches the rule.",
+                    "options": [
+                        {"text": "A", "correct": True},
+                        {"text": "B", "correct": False},
+                    ],
+                }
+            ],
+        }
+        test_id = import_svc.import_from_dict(data)
+        db = import_svc._db
+        question = db.get_questions_for_test(test_id)[0]
+        assert question.explanation == "Because A matches the rule."
+
     def test_import_from_dict_uses_fallback_name(self, import_svc):
         data = {
             "questions": [
@@ -121,6 +135,8 @@ class TestJsonImport:
         # No 'name' in payload; fallback must be used. Should not raise.
         test_id = import_svc.import_from_dict(data, fallback_name="Fallback")
         assert test_id > 0
+        question = import_svc._db.get_questions_for_test(test_id)[0]
+        assert question.explanation == ""
 
     def test_import_from_dict_rejects_missing_questions(self, import_svc):
         with pytest.raises(ValueError, match="questions"):
@@ -138,9 +154,7 @@ class TestJsonImport:
             ],
         }
 
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".json", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".json", delete=False) as f:
             json.dump(data, f)
             path = f.name
 
@@ -169,9 +183,7 @@ b. Green
 c. Blue -- correct
 d. Yellow
 """
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write(content)
             path = f.name
 
@@ -186,9 +198,7 @@ d. Yellow
 a. A -- correct
 b. B
 """
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write(content)
             path = f.name
 
@@ -205,9 +215,7 @@ b. Standard B --already establishech
 c. Standard C
 d. Standard D -- correct
 """
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write(content)
             path = f.name
 
@@ -218,9 +226,7 @@ d. Standard D -- correct
             os.unlink(path)
 
     def test_import_empty_file(self, import_svc):
-        with tempfile.NamedTemporaryFile(
-            mode="w", suffix=".txt", delete=False
-        ) as f:
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
             f.write("")
             path = f.name
 

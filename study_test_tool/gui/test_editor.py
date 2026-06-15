@@ -101,9 +101,7 @@ class TestEditorFrame(ctk.CTkFrame):
         ).grid(row=0, column=2, rowspan=3, padx=20, pady=3)
 
         # Divider
-        ctk.CTkFrame(self, height=2, fg_color="gray").pack(
-            fill="x", padx=30, pady=5
-        )
+        ctk.CTkFrame(self, height=2, fg_color="gray").pack(fill="x", padx=30, pady=5)
 
         # Main content: left = question list, right = question form
         content_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -225,6 +223,16 @@ class TestEditorFrame(ctk.CTkFrame):
 
         self.essay_answer = ctk.CTkTextbox(self.essay_frame, height=80)
         self.essay_answer.pack(fill="x", pady=(2, 5))
+
+        # Explanation
+        ctk.CTkLabel(
+            form_scroll,
+            text="Explanation (optional):",
+            font=(FONT_FAMILY, FONT_SIZE_BODY),
+        ).pack(anchor="w", pady=(5, 2))
+
+        self.explanation_text = ctk.CTkTextbox(form_scroll, height=80)
+        self.explanation_text.pack(fill="x", pady=(0, 5))
 
         # Add/Update button
         self.add_btn = ctk.CTkButton(
@@ -360,9 +368,7 @@ class TestEditorFrame(ctk.CTkFrame):
             self.options_frame.pack_forget()
             self.essay_frame.pack(fill="x", pady=5)
 
-    def _rebuild_option_rows(
-        self, option_texts: list, correct_idx: int = 0
-    ) -> None:
+    def _rebuild_option_rows(self, option_texts: list, correct_idx: int = 0) -> None:
         """Destroy current option rows and build one row per ``option_texts``.
 
         Keeps the radio-button ``value`` in lockstep with each row's index in
@@ -465,9 +471,7 @@ class TestEditorFrame(ctk.CTkFrame):
         group_name = self.group_entry.get().strip()
 
         if self._test_id is None:
-            self._test_id = self.test_service.create_test(
-                name, description, group_name
-            )
+            self._test_id = self.test_service.create_test(name, description, group_name)
             self.title_label.configure(text="Edit Test")
             messagebox.showinfo("Success", "Test created! Now add questions.")
         else:
@@ -495,6 +499,7 @@ class TestEditorFrame(ctk.CTkFrame):
 
         q_type = self.type_var.get()
         category = self.category_entry.get().strip()
+        explanation = self.explanation_text.get("1.0", "end-1c").strip()
 
         if q_type == QUESTION_TYPE_MC:
             options = []
@@ -505,17 +510,13 @@ class TestEditorFrame(ctk.CTkFrame):
                 opt_text = entry.get().strip()
                 if opt_text:
                     is_correct = i == correct_idx
-                    options.append(
-                        QuestionOption(text=opt_text, is_correct=is_correct)
-                    )
+                    options.append(QuestionOption(text=opt_text, is_correct=is_correct))
                     if is_correct:
                         correct_answer = opt_text
 
             non_empty = [o for o in options if o.text]
             if len(non_empty) < 2:
-                messagebox.showwarning(
-                    "Validation", "At least 2 options are required."
-                )
+                messagebox.showwarning("Validation", "At least 2 options are required.")
                 return
 
             if not correct_answer:
@@ -531,6 +532,7 @@ class TestEditorFrame(ctk.CTkFrame):
                 type=QUESTION_TYPE_MC,
                 correct_answer=correct_answer,
                 category=category,
+                explanation=explanation,
                 options=options,
             )
         else:
@@ -541,6 +543,7 @@ class TestEditorFrame(ctk.CTkFrame):
                 type=QUESTION_TYPE_ESSAY,
                 correct_answer=correct_answer,
                 category=category,
+                explanation=explanation,
             )
             if not correct_answer:
                 messagebox.showwarning(
@@ -569,8 +572,16 @@ class TestEditorFrame(ctk.CTkFrame):
         option_texts = [entry.get() for entry in self.option_entries]
         essay_text = self.essay_answer.get("1.0", "end-1c")
         category = self.category_entry.get()
-        return (question_text, q_type, correct_idx, tuple(option_texts),
-                essay_text, category)
+        explanation = self.explanation_text.get("1.0", "end-1c")
+        return (
+            question_text,
+            q_type,
+            correct_idx,
+            tuple(option_texts),
+            essay_text,
+            category,
+            explanation,
+        )
 
     def _form_is_dirty(self) -> bool:
         """Return True if the form has been modified since last clean state."""
@@ -605,9 +616,7 @@ class TestEditorFrame(ctk.CTkFrame):
             texts = [opt.text for opt in opts]
             while len(texts) < 4:
                 texts.append("")
-            correct_idx = next(
-                (i for i, opt in enumerate(opts) if opt.is_correct), 0
-            )
+            correct_idx = next((i for i, opt in enumerate(opts) if opt.is_correct), 0)
             self._rebuild_option_rows(texts, correct_idx=correct_idx)
         else:
             self.type_selector.set("Essay")
@@ -617,6 +626,8 @@ class TestEditorFrame(ctk.CTkFrame):
 
         self.category_entry.delete(0, "end")
         self.category_entry.insert(0, question.category or "")
+        self.explanation_text.delete("1.0", "end")
+        self.explanation_text.insert("1.0", question.explanation or "")
 
         self._clean_snapshot = self._get_form_snapshot()
 
@@ -646,6 +657,7 @@ class TestEditorFrame(ctk.CTkFrame):
         self._rebuild_option_rows(["", "", "", ""], correct_idx=0)
         self.essay_answer.delete("1.0", "end")
         self.category_entry.delete(0, "end")
+        self.explanation_text.delete("1.0", "end")
         self._editing_question_id = None
         self._clean_snapshot = self._get_form_snapshot()
 

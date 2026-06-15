@@ -76,9 +76,7 @@ class ImportService:
 
     # ── PDF Import ─────────────────────────────────────────────
 
-    def import_from_pdf_pair(
-        self, questions_pdf: str, answers_pdf: str
-    ) -> int:
+    def import_from_pdf_pair(self, questions_pdf: str, answers_pdf: str) -> int:
         """Import a test from a Questions/Answers PDF or DOCX pair.
 
         PDF text is extracted with ``pdfminer.six`` (pure Python — no system
@@ -191,6 +189,7 @@ class ImportService:
             type=q_type,
             correct_answer=correct_answer,
             category=q_data.get("category", ""),
+            explanation=q_data.get("explanation", "").strip(),
             options=options,
         )
 
@@ -254,9 +253,7 @@ class ImportService:
 
         # Split into question text and options
         # Options start with a/b/c/d followed by . or )
-        option_pattern = re.compile(
-            r"^([a-dA-D])\s*[.)]\s*(.*?)$", re.MULTILINE
-        )
+        option_pattern = re.compile(r"^([a-dA-D])\s*[.)]\s*(.*?)$", re.MULTILINE)
         option_matches = list(option_pattern.finditer(block))
 
         if not option_matches:
@@ -275,7 +272,11 @@ class ImportService:
             # Get option text: from after the letter prefix to the next option
             # or end of block
             start = match.end()
-            end = option_matches[i + 1].start() if i + 1 < len(option_matches) else len(block)
+            end = (
+                option_matches[i + 1].start()
+                if i + 1 < len(option_matches)
+                else len(block)
+            )
             raw_text = match.group(2) + block[start:end]
 
             # Clean up: join lines, collapse whitespace
@@ -287,9 +288,7 @@ class ImportService:
             # Handle garbled options (e.g., Q3 option b containing c's text)
             # If an option contains another option marker pattern mid-text,
             # truncate at that point
-            next_option_in_text = re.search(
-                r"\s+[☑]+\s+[A-Za-z]", clean_text
-            )
+            next_option_in_text = re.search(r"\s+[☑]+\s+[A-Za-z]", clean_text)
             if next_option_in_text:
                 clean_text = clean_text[: next_option_in_text.start()].strip()
 

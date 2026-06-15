@@ -31,6 +31,13 @@ MIGRATIONS: List[Tuple[int, str, List[str]]] = [
             "ALTER TABLE tests ADD COLUMN is_archived BOOLEAN DEFAULT 0",
         ],
     ),
+    (
+        4,
+        "Add explanation column to questions",
+        [
+            "ALTER TABLE questions ADD COLUMN explanation TEXT DEFAULT ''",
+        ],
+    ),
 ]
 
 

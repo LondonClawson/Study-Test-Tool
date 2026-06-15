@@ -75,9 +75,7 @@ class TestMigrations:
         conn = sqlite3.connect(db_path)
         conn.row_factory = sqlite3.Row
         try:
-            row = conn.execute(
-                "SELECT * FROM test_attempts WHERE id = 1"
-            ).fetchone()
+            row = conn.execute("SELECT * FROM test_attempts WHERE id = 1").fetchone()
             assert row is not None
             assert row["score"] == 8
             assert row["percentage"] == 80.0
@@ -99,6 +97,19 @@ class TestMigrations:
             index_names = {row[0] for row in indexes}
             assert "idx_question_responses_question_id" in index_names
             assert "idx_question_responses_is_correct" in index_names
+        finally:
+            conn.close()
+
+    def test_migration_adds_question_explanation_column(self, db_path):
+        """Migration 4 adds the explanation column to questions."""
+        initialize_database(db_path)
+        run_migrations(db_path)
+
+        conn = sqlite3.connect(db_path)
+        try:
+            cursor = conn.execute("PRAGMA table_info(questions)")
+            columns = {row[1] for row in cursor.fetchall()}
+            assert "explanation" in columns
         finally:
             conn.close()
 

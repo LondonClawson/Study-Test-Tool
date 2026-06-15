@@ -31,13 +31,20 @@ class DatabaseManager:
                 for row in conn.execute("PRAGMA table_info(tests)").fetchall()
             ]
             if "group_name" not in columns:
-                conn.execute(
-                    "ALTER TABLE tests ADD COLUMN group_name TEXT DEFAULT ''"
-                )
+                conn.execute("ALTER TABLE tests ADD COLUMN group_name TEXT DEFAULT ''")
                 conn.commit()
             if "is_archived" not in columns:
                 conn.execute(
                     "ALTER TABLE tests ADD COLUMN is_archived BOOLEAN DEFAULT 0"
+                )
+                conn.commit()
+            question_columns = [
+                row["name"]
+                for row in conn.execute("PRAGMA table_info(questions)").fetchall()
+            ]
+            if question_columns and "explanation" not in question_columns:
+                conn.execute(
+                    "ALTER TABLE questions ADD COLUMN explanation TEXT DEFAULT ''"
                 )
                 conn.commit()
         except sqlite3.OperationalError:
@@ -67,8 +74,7 @@ class DatabaseManager:
         conn = self._conn()
         try:
             cursor = conn.execute(
-                "INSERT INTO tests (name, description, group_name) "
-                "VALUES (?, ?, ?)",
+                "INSERT INTO tests (name, description, group_name) " "VALUES (?, ?, ?)",
                 (test.name, test.description, test.group_name),
             )
             conn.commit()
@@ -174,9 +180,7 @@ class DatabaseManager:
         """Set is_archived = 1 for a test."""
         conn = self._conn()
         try:
-            conn.execute(
-                "UPDATE tests SET is_archived = 1 WHERE id = ?", (test_id,)
-            )
+            conn.execute("UPDATE tests SET is_archived = 1 WHERE id = ?", (test_id,))
             conn.commit()
         finally:
             conn.close()
@@ -185,9 +189,7 @@ class DatabaseManager:
         """Set is_archived = 0 for a test."""
         conn = self._conn()
         try:
-            conn.execute(
-                "UPDATE tests SET is_archived = 0 WHERE id = ?", (test_id,)
-            )
+            conn.execute("UPDATE tests SET is_archived = 0 WHERE id = ?", (test_id,))
             conn.commit()
         finally:
             conn.close()
@@ -224,13 +226,14 @@ class DatabaseManager:
         try:
             cursor = conn.execute(
                 "INSERT INTO questions (test_id, question_text, question_type, "
-                "correct_answer, category) VALUES (?, ?, ?, ?, ?)",
+                "correct_answer, category, explanation) VALUES (?, ?, ?, ?, ?, ?)",
                 (
                     question.test_id,
                     question.text,
                     question.type,
                     question.correct_answer,
                     question.category,
+                    question.explanation,
                 ),
             )
             question_id = cursor.lastrowid
@@ -273,7 +276,8 @@ class DatabaseManager:
         """Load questions and their options from an open connection."""
         q_rows = conn.execute(
             "SELECT id, test_id, question_text, question_type, correct_answer, "
-            "category, created_at FROM questions WHERE test_id = ? ORDER BY id",
+            "category, explanation, created_at FROM questions "
+            "WHERE test_id = ? ORDER BY id",
             (test_id,),
         ).fetchall()
 
@@ -286,6 +290,7 @@ class DatabaseManager:
                 type=q_row["question_type"],
                 correct_answer=q_row["correct_answer"],
                 category=q_row["category"],
+                explanation=q_row["explanation"] or "",
                 created_at=q_row["created_at"],
             )
 
@@ -309,17 +314,18 @@ class DatabaseManager:
         return questions
 
     def update_question(self, question: Question) -> None:
-        """Update a question's text, type, correct_answer, and category."""
+        """Update a question's text, type, answer, category, and explanation."""
         conn = self._conn()
         try:
             conn.execute(
                 "UPDATE questions SET question_text = ?, question_type = ?, "
-                "correct_answer = ?, category = ? WHERE id = ?",
+                "correct_answer = ?, category = ?, explanation = ? WHERE id = ?",
                 (
                     question.text,
                     question.type,
                     question.correct_answer,
                     question.category,
+                    question.explanation,
                     question.id,
                 ),
             )
@@ -457,7 +463,9 @@ class DatabaseManager:
                     attempt_id=r["attempt_id"],
                     question_id=r["question_id"],
                     user_answer=r["user_answer"],
-                    is_correct=None if r["is_correct"] is None else bool(r["is_correct"]),
+                    is_correct=(
+                        None if r["is_correct"] is None else bool(r["is_correct"])
+                    ),
                     was_flagged=bool(r["was_flagged"]),
                     time_spent=r["time_spent"],
                 )
@@ -554,8 +562,7 @@ class DatabaseManager:
                 params.extend(test_ids)
 
             base_query += (
-                "GROUP BY q.id HAVING times_missed > 0 "
-                "ORDER BY times_missed DESC"
+                "GROUP BY q.id HAVING times_missed > 0 " "ORDER BY times_missed DESC"
             )
             rows = conn.execute(base_query, params).fetchall()
 
@@ -576,9 +583,7 @@ class DatabaseManager:
         finally:
             conn.close()
 
-    def get_question_history_stats(
-        self, question_ids: List[int]
-    ) -> Dict[int, Dict]:
+    def get_question_history_stats(self, question_ids: List[int]) -> Dict[int, Dict]:
         """Return per-question history stats used by weighted mix selection.
 
         For each question id in ``question_ids``, returns:
@@ -725,7 +730,7 @@ class DatabaseManager:
         try:
             row = conn.execute(
                 "SELECT id, test_id, question_text, question_type, "
-                "correct_answer, category, created_at "
+                "correct_answer, category, explanation, created_at "
                 "FROM questions WHERE id = ?",
                 (question_id,),
             ).fetchone()
@@ -739,6 +744,7 @@ class DatabaseManager:
                 type=row["question_type"],
                 correct_answer=row["correct_answer"],
                 category=row["category"],
+                explanation=row["explanation"] or "",
                 created_at=row["created_at"],
             )
 
@@ -835,10 +841,7 @@ class DatabaseManager:
                 "GROUP BY DATE(completed_at) ORDER BY day ASC",
                 (f"-{days} days",),
             ).fetchall()
-            return [
-                {"day": row["day"], "count": row["count"]}
-                for row in rows
-            ]
+            return [{"day": row["day"], "count": row["count"]} for row in rows]
         finally:
             conn.close()
 
@@ -938,11 +941,11 @@ class DatabaseManager:
                     "category": row["category"],
                     "total": row["total"],
                     "correct": row["correct"],
-                    "percentage": round(
-                        row["correct"] / row["total"] * 100, 1
-                    )
-                    if row["total"] > 0
-                    else 0.0,
+                    "percentage": (
+                        round(row["correct"] / row["total"] * 100, 1)
+                        if row["total"] > 0
+                        else 0.0
+                    ),
                 }
                 for row in rows
             ]

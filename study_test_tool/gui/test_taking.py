@@ -198,9 +198,7 @@ class TestTakingFrame(ctk.CTkFrame):
                 test_id, randomize=True
             )
             if not loaded:
-                messagebox.showwarning(
-                    "No Questions", "This test has no questions."
-                )
+                messagebox.showwarning("No Questions", "This test has no questions.")
                 self.controller.show_frame(SCREEN_HOME)
                 return
 
@@ -248,21 +246,15 @@ class TestTakingFrame(ctk.CTkFrame):
             self.flag_btn.configure(fg_color="gray", text="Flag")
 
         # Update nav buttons
-        self.prev_btn.configure(
-            state="normal" if idx > 0 else "disabled"
-        )
-        self.next_btn.configure(
-            state="normal" if idx < total - 1 else "disabled"
-        )
+        self.prev_btn.configure(state="normal" if idx > 0 else "disabled")
+        self.next_btn.configure(state="normal" if idx < total - 1 else "disabled")
 
         # Rebuild question widget
         for widget in self.question_area.winfo_children():
             widget.destroy()
         self._feedback_frame = None
 
-        self._question_widget = QuestionWidget(
-            self.question_area, question
-        )
+        self._question_widget = QuestionWidget(self.question_area, question)
         self._question_widget.pack(fill="both", expand=True)
 
         # Reset scroll to top for the new question
@@ -401,6 +393,23 @@ class TestTakingFrame(ctk.CTkFrame):
                 font=(FONT_FAMILY, FONT_SIZE_BODY),
                 text_color=COLOR_CORRECT,
             ).pack(anchor="w", padx=15, pady=(2, 8))
+
+        if question.explanation:
+            ctk.CTkLabel(
+                self._feedback_frame,
+                text="Explanation:",
+                font=(FONT_FAMILY, FONT_SIZE_BODY, "bold"),
+                anchor="w",
+            ).pack(fill="x", padx=15, pady=(6, 2))
+
+            ctk.CTkLabel(
+                self._feedback_frame,
+                text=question.explanation,
+                font=(FONT_FAMILY, FONT_SIZE_SMALL),
+                wraplength=550,
+                justify="left",
+                anchor="nw",
+            ).pack(fill="x", padx=15, pady=(0, 8))
 
     def _on_previous(self) -> None:
         """Navigate to the previous question."""

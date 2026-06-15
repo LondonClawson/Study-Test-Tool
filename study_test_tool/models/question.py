@@ -22,6 +22,7 @@ class Question:
     type: str  # 'multiple_choice' or 'essay'
     correct_answer: str = ""
     category: str = ""
+    explanation: str = ""
     id: Optional[int] = None
     test_id: Optional[int] = None
     options: List[QuestionOption] = field(default_factory=list)
