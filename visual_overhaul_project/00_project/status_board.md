@@ -13,6 +13,8 @@ summary, story, or sprint changes state.
 - In Progress: actively owned.
 - Submitted For Review: assigned work is complete from the agent side and is
   waiting for reviewer or PM acceptance.
+- Changes Requested: reviewer or PM inspected the submitted work and found
+  required fixes, missing evidence, or acceptance gaps before it can be accepted.
 - Blocked: waiting on a dependency, decision, or environment.
 - Done: complete and handed off.
 - Stale: artifact exists but source changes or new requirements make it unsafe
@@ -60,9 +62,9 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `STORY-002_baseline_visual_audit.md` | Done | None |
 | `STORY-003_visual_foundation_spec.md` | Done | None |
 | `STORY-004_shared_style_entrypoints.md` | Done | None |
-| `STORY-005_button_hierarchy.md` | Submitted For Review | None |
-| `STORY-006_card_and_list_patterns.md` | Submitted For Review | None |
-| `STORY-007_page_header_pattern.md` | Submitted For Review | None |
+| `STORY-005_button_hierarchy.md` | Submitted For Review | Evidence added for card action and disabled states |
+| `STORY-006_card_and_list_patterns.md` | Changes Requested | Missing visual evidence for expanded Home card states |
+| `STORY-007_page_header_pattern.md` | Done | None |
 | `STORY-008_home_screen_layout.md` | Blocked | `STORY-005` |
 | `STORY-009_home_test_cards_and_actions.md` | Blocked | `STORY-006`, `STORY-008` |
 | `STORY-010_test_taking_shell.md` | Blocked | `STORY-005` |
@@ -71,7 +73,7 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `STORY-013_editor_layout.md` | Blocked | Foundation implementation stories |
 | `STORY-014_history_and_analytics_polish.md` | Blocked | Foundation implementation stories, story split |
 | `STORY-015_review_and_dialog_polish.md` | Done | split into child stories |
-| `STORY-015A_review_screen_polish.md` | Blocked | `STORY-005`, `STORY-006`, `STORY-007` |
+| `STORY-015A_review_screen_polish.md` | Blocked | `STORY-005`, `STORY-006` |
 | `STORY-015B_mode_dialog_polish.md` | Blocked | `STORY-005` |
 | `STORY-015C_mix_dialog_polish.md` | Blocked | `STORY-005`, list/card pattern guidance |
 | `STORY-015D_import_preview_dialog_polish.md` | Blocked | `STORY-005`, list/card pattern guidance |
@@ -81,8 +83,10 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 
 ## Next Recommended Work
 
-1. Review `STORY-005_button_hierarchy.md` for acceptance.
-2. Review `STORY-006_card_and_list_patterns.md` for acceptance.
-3. Review `STORY-007_page_header_pattern.md` for acceptance.
-4. Keep `STORY-015` child stories blocked until the named foundation
-   implementation stories land.
+1. Review `STORY-005_button_hierarchy.md` evidence resubmission for acceptance.
+2. Return `STORY-006_card_and_list_patterns.md` to Dev 2 to add or capture
+   visual evidence for expanded Home cards, then resubmit for acceptance.
+3. Assign `STORY-007` follow-on header adoption only where it does not depend on
+   unresolved button or card/list evidence.
+4. Keep the remaining blocked `STORY-015` child stories blocked until their
+   named foundation dependencies land.

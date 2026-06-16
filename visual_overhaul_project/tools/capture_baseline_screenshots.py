@@ -620,6 +620,46 @@ def show_home(app: App, seed: Optional[SeedData], harness: ScreenshotHarness) ->
     harness.show_frame(SCREEN_HOME)
 
 
+def ensure_zero_question_home_test(seed: Optional[SeedData]) -> None:
+    """Add the STORY-005-only zero-question test fixture if missing."""
+    if seed is None:
+        return
+    db = DatabaseManager(str(seed.db_path))
+    if any(test.name == "Empty Intake Template" for test in db.get_all_tests()):
+        return
+    db.create_test(
+        settings_test(
+            "Empty Intake Template",
+            "Newly created test with no questions yet.",
+            "Clinical Medicine",
+        )
+    )
+
+
+def show_home_expanded_cards(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show expanded Home groups with active card actions visible."""
+    ensure_zero_question_home_test(seed)
+    harness.show_frame(SCREEN_HOME)
+    frame = app.frames[SCREEN_HOME]
+    for group_widget in frame._group_widgets.values():
+        if not group_widget.is_expanded:
+            group_widget.toggle()
+    frame._collapse_all_btn.configure(text="Collapse All")
+    harness._settle()
+
+
+def show_home_expanded_archived_cards(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show expanded Home groups scrolled to archived card actions."""
+    show_home_expanded_cards(app, seed, harness)
+    frame = app.frames[SCREEN_HOME]
+    frame.test_list_frame._parent_canvas.yview_moveto(1.0)
+    harness._settle()
+
+
 def show_mode_dialog(
     app: App, seed: Optional[SeedData], harness: ScreenshotHarness
 ) -> Callable[[], None]:
@@ -838,6 +878,13 @@ def show_empty_review(
 
 CAPTURE_STATES = [
     CaptureState("home_populated_grouped", "home", "seeded", show_home),
+    CaptureState("home_expanded_cards", "home", "seeded", show_home_expanded_cards),
+    CaptureState(
+        "home_expanded_archived_cards",
+        "home",
+        "seeded",
+        show_home_expanded_archived_cards,
+    ),
     CaptureState("mode_selection_dialog", "dialogs", "seeded", show_mode_dialog),
     CaptureState("mix_test_dialog", "dialogs", "seeded", show_mix_dialog),
     CaptureState("editor_new_test", "editor", "seeded", show_editor_new),
