@@ -22,7 +22,7 @@ from config.settings import (
 
 ThemeColor = Union[str, Tuple[str, str]]
 FontValue = Union[Tuple[str, int], Tuple[str, int, str]]
-WidgetStyle = Dict[str, Union[int, ThemeColor]]
+WidgetStyle = Dict[str, Union[int, ThemeColor, FontValue]]
 
 # Base surfaces
 COLOR_APP_BG: ThemeColor = ("#f3f5f7", "#1f2023")
@@ -164,6 +164,44 @@ BUTTON_ROLES: Dict[str, WidgetStyle] = {
     },
 }
 
+CARD_ROLES: Dict[str, WidgetStyle] = {
+    "default": {
+        "fg_color": COLOR_SURFACE,
+        "border_color": COLOR_BORDER,
+        "border_width": 1,
+        "corner_radius": RADIUS_CARD,
+    },
+    "muted": {
+        "fg_color": COLOR_SURFACE_MUTED,
+        "border_color": COLOR_BORDER,
+        "border_width": 1,
+        "corner_radius": RADIUS_CARD,
+    },
+}
+
+TEXT_ROLES: Dict[str, WidgetStyle] = {
+    "card_title": {
+        "font": FONT_CARD_TITLE,
+        "text_color": COLOR_TEXT_PRIMARY,
+    },
+    "card_description": {
+        "font": FONT_METADATA,
+        "text_color": COLOR_TEXT_SECONDARY,
+    },
+    "card_metadata": {
+        "font": FONT_METADATA,
+        "text_color": COLOR_TEXT_MUTED,
+    },
+    "card_title_muted": {
+        "font": FONT_CARD_TITLE,
+        "text_color": COLOR_TEXT_SECONDARY,
+    },
+    "card_metadata_muted": {
+        "font": FONT_METADATA,
+        "text_color": COLOR_TEXT_MUTED,
+    },
+}
+
 
 def get_color(role: str) -> ThemeColor:
     """Return a semantic color role for GUI widgets."""
@@ -173,3 +211,13 @@ def get_color(role: str) -> ThemeColor:
 def get_button_style(role: str) -> WidgetStyle:
     """Return CustomTkinter keyword values for a semantic button role."""
     return BUTTON_ROLES[role].copy()
+
+
+def get_card_style(role: str) -> WidgetStyle:
+    """Return CustomTkinter keyword values for a semantic card role."""
+    return CARD_ROLES[role].copy()
+
+
+def get_text_style(role: str) -> WidgetStyle:
+    """Return CustomTkinter keyword values for a semantic text role."""
+    return TEXT_ROLES[role].copy()

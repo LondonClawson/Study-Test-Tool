@@ -61,7 +61,7 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `STORY-003_visual_foundation_spec.md` | Done | None |
 | `STORY-004_shared_style_entrypoints.md` | Done | None |
 | `STORY-005_button_hierarchy.md` | Submitted For Review | None |
-| `STORY-006_card_and_list_patterns.md` | Blocked | named pilot area |
+| `STORY-006_card_and_list_patterns.md` | Submitted For Review | None |
 | `STORY-007_page_header_pattern.md` | Blocked | named pilot screen/path |
 | `STORY-008_home_screen_layout.md` | Blocked | `STORY-005` |
 | `STORY-009_home_test_cards_and_actions.md` | Blocked | `STORY-006`, `STORY-008` |
@@ -82,7 +82,6 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 ## Next Recommended Work
 
 1. Review `STORY-005_button_hierarchy.md` for acceptance.
-2. After `STORY-005` is Done, select a named pilot area for
-   `STORY-006_card_and_list_patterns.md`.
+2. Review `STORY-006_card_and_list_patterns.md` for acceptance.
 3. Keep `STORY-015` child stories blocked until the named foundation
    implementation stories land.

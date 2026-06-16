@@ -9,7 +9,6 @@ import customtkinter as ctk
 from config.settings import (
     FONT_FAMILY,
     FONT_SIZE_BODY,
-    FONT_SIZE_HEADING,
     FONT_SIZE_SMALL,
     FONT_SIZE_TITLE,
 )
@@ -18,7 +17,14 @@ from gui.components.import_preview_dialog import ImportPreviewDialog
 from gui.components.mix_test_dialog import MixTestDialog
 from gui.components.mode_dialog import ModeSelectionDialog
 from gui.mix_test_display import build_mix_test_display
-from gui.styles import get_button_style
+from gui.styles import (
+    SPACE_4,
+    SPACE_12,
+    SPACE_16,
+    get_button_style,
+    get_card_style,
+    get_text_style,
+)
 from services.export_service import ExportService
 from services.import_preview_service import ImportPreview
 from services.import_service import ImportService
@@ -263,27 +269,32 @@ class TestSelectorFrame(ctk.CTkFrame):
         """Create a card widget for a single test."""
         if parent is None:
             parent = self.test_list_frame
-        card = ctk.CTkFrame(parent, corner_radius=8)
-        card.pack(fill="x", pady=5, padx=5)
+        card = ctk.CTkFrame(parent, **get_card_style("default"))
+        card.pack(fill="x", pady=SPACE_4, padx=SPACE_4)
 
         # Info section
         info_frame = ctk.CTkFrame(card, fg_color="transparent")
-        info_frame.pack(side="left", fill="both", expand=True, padx=15, pady=10)
+        info_frame.pack(
+            side="left",
+            fill="both",
+            expand=True,
+            padx=SPACE_16,
+            pady=SPACE_12,
+        )
 
         ctk.CTkLabel(
             info_frame,
             text=test.name,
-            font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
             anchor="w",
+            **get_text_style("card_title"),
         ).pack(fill="x")
 
         desc_text = test.description if test.description else "No description"
         ctk.CTkLabel(
             info_frame,
             text=desc_text,
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
-            text_color="gray",
             anchor="w",
+            **get_text_style("card_description"),
         ).pack(fill="x")
 
         # Question count and group
@@ -294,14 +305,13 @@ class TestSelectorFrame(ctk.CTkFrame):
         ctk.CTkLabel(
             info_frame,
             text="  |  ".join(detail_parts),
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
-            text_color="gray",
             anchor="w",
+            **get_text_style("card_metadata"),
         ).pack(fill="x")
 
         # Action buttons
         btn_frame = ctk.CTkFrame(card, fg_color="transparent")
-        btn_frame.pack(side="right", padx=15, pady=10)
+        btn_frame.pack(side="right", padx=SPACE_16, pady=SPACE_12)
 
         take_btn = ctk.CTkButton(
             btn_frame,
@@ -310,7 +320,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             command=lambda t=test: self._on_take_test(t),
             **get_button_style("primary"),
         )
-        take_btn.pack(side="left", padx=3)
+        take_btn.pack(side="left", padx=SPACE_4)
         if q_count == 0:
             take_btn.configure(state="disabled")
 
@@ -320,7 +330,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             width=70,
             command=lambda t=test: self._on_edit_test(t),
             **get_button_style("tertiary"),
-        ).pack(side="left", padx=3)
+        ).pack(side="left", padx=SPACE_4)
 
         ctk.CTkButton(
             btn_frame,
@@ -328,7 +338,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             width=70,
             command=lambda t=test: self._on_export_test(t),
             **get_button_style("tertiary"),
-        ).pack(side="left", padx=3)
+        ).pack(side="left", padx=SPACE_4)
 
         ctk.CTkButton(
             btn_frame,
@@ -336,7 +346,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             width=70,
             command=lambda t=test: self._on_archive_test(t),
             **get_button_style("secondary"),
-        ).pack(side="left", padx=3)
+        ).pack(side="left", padx=SPACE_4)
 
         ctk.CTkButton(
             btn_frame,
@@ -344,7 +354,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             width=70,
             command=lambda t=test: self._on_delete_test(t),
             **get_button_style("danger"),
-        ).pack(side="left", padx=3)
+        ).pack(side="left", padx=SPACE_4)
 
     def _create_archived_test_card(
         self, test, parent: ctk.CTkFrame = None
@@ -352,29 +362,31 @@ class TestSelectorFrame(ctk.CTkFrame):
         """Create a dimmed card widget for an archived test."""
         if parent is None:
             parent = self.test_list_frame
-        card = ctk.CTkFrame(
-            parent, corner_radius=8, fg_color=("#d0d0d0", "#2a2a2a")
-        )
-        card.pack(fill="x", pady=5, padx=5)
+        card = ctk.CTkFrame(parent, **get_card_style("muted"))
+        card.pack(fill="x", pady=SPACE_4, padx=SPACE_4)
 
         info_frame = ctk.CTkFrame(card, fg_color="transparent")
-        info_frame.pack(side="left", fill="both", expand=True, padx=15, pady=10)
+        info_frame.pack(
+            side="left",
+            fill="both",
+            expand=True,
+            padx=SPACE_16,
+            pady=SPACE_12,
+        )
 
         ctk.CTkLabel(
             info_frame,
             text=test.name,
-            font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
-            text_color="gray",
             anchor="w",
+            **get_text_style("card_title_muted"),
         ).pack(fill="x")
 
         desc_text = test.description if test.description else "No description"
         ctk.CTkLabel(
             info_frame,
             text=desc_text,
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
-            text_color="gray",
             anchor="w",
+            **get_text_style("card_metadata_muted"),
         ).pack(fill="x")
 
         q_count = self.test_service.get_question_count(test.id)
@@ -384,13 +396,12 @@ class TestSelectorFrame(ctk.CTkFrame):
         ctk.CTkLabel(
             info_frame,
             text="  |  ".join(detail_parts),
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
-            text_color="gray",
             anchor="w",
+            **get_text_style("card_metadata_muted"),
         ).pack(fill="x")
 
         btn_frame = ctk.CTkFrame(card, fg_color="transparent")
-        btn_frame.pack(side="right", padx=15, pady=10)
+        btn_frame.pack(side="right", padx=SPACE_16, pady=SPACE_12)
 
         ctk.CTkButton(
             btn_frame,
@@ -398,7 +409,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             width=90,
             command=lambda t=test: self._on_unarchive_test(t),
             **get_button_style("secondary"),
-        ).pack(side="left", padx=3)
+        ).pack(side="left", padx=SPACE_4)
 
         ctk.CTkButton(
             btn_frame,
@@ -406,7 +417,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             width=70,
             command=lambda t=test: self._on_delete_test(t),
             **get_button_style("danger"),
-        ).pack(side="left", padx=3)
+        ).pack(side="left", padx=SPACE_4)
 
     def _on_import(self) -> None:
         """Handle Import button click — auto-detects file type."""

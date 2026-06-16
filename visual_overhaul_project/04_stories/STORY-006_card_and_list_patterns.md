@@ -2,15 +2,18 @@
 
 ## Status
 
-Blocked.
+Submitted For Review.
 
 ## Readiness
 
-- Blocked by: a named pilot area.
+- Blocked by: None.
 - Unblocked by: PM approval of the pilot area.
 
 CTX-FOUNDATION and `STORY-004_shared_style_entrypoints.md` are Done. This story
-is still blocked until PM names one narrow card/list pilot area.
+is assigned with Home test-card outer surfaces as the narrow pilot area.
+
+Use `visual_overhaul_project/06_handoffs/STORY-006_card_and_list_patterns_assignment.md`
+as the assignment packet.
 
 ## Sprint
 
@@ -43,7 +46,9 @@ In:
 
 - Padding, border, radius, title, metadata, action placement, and status
   treatment for repeated surfaces.
-- One named pilot implementation area.
+- One named pilot implementation area: Home test-card outer surfaces, including
+  active cards, archived cards, metadata hierarchy, and the existing card action
+  row container.
 
 Out:
 
@@ -53,31 +58,41 @@ Out:
 
 ## Likely Files
 
-- Shared style entry points.
-- One named pilot screen or component, such as home test cards or results review
-  cards.
+- `study_test_tool/gui/styles.py`.
+- `study_test_tool/gui/test_selector.py`.
+- `study_test_tool/gui/components/collapsible_group.py` only if the group/card
+  spacing boundary needs a local adjustment.
 
 ## Implementation Steps
 
-1. Confirm the assignment packet names one pilot area.
-2. Read CTX-FOUNDATION and the context summary for the pilot area.
-3. Define card/list rules for padding, border, radius, title, metadata, status,
-   and actions.
-4. Apply the pattern only to the named pilot area.
-5. Verify light/dark mode and the named pilot states.
-6. Document reusable rules and screen-specific exceptions.
+1. Read CTX-FOUNDATION, CTX-STYLE-INVENTORY, CTX-HOME, and the completed
+   STORY-004 and STORY-005 handoffs.
+2. Define the minimal reusable card style entry points needed for the Home
+   test-card pilot: surface, archived surface, border, radius, title,
+   description, metadata, and internal padding.
+3. Apply the pattern only to Home active and archived test-card outer surfaces
+   and text hierarchy.
+4. Preserve all existing card actions, callbacks, zero-question disabled Take
+   Test behavior, grouping, archive/delete confirmations, sorting, and refresh
+   behavior.
+5. Verify light/dark readability and the named Home pilot states.
+6. Document reusable rules and Home-specific exceptions in the handoff.
 
 ## Acceptance Criteria
 
 - The card/list pattern is documented and reusable.
 - The pilot area visibly follows the pattern.
 - The assignment packet names the pilot area before work starts.
+- Active and archived Home test cards use semantic surface, border, radius, and
+  text roles from the shared style entry point.
 - Card content remains at least as scannable as before.
 - No unrelated cards are partially migrated without verification.
 
 ## Verification
 
 - Visual check of pilot area in light and dark mode.
+- Smoke check Home populated, grouped, archived, and zero-question states where
+  practical.
 - Relevant tests if callbacks or data display code is touched.
 
 ## Dev 2 Assignment Notes
