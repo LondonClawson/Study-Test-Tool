@@ -7,8 +7,6 @@ import tkinter.messagebox as messagebox
 import customtkinter as ctk
 
 from config.settings import (
-    COLOR_DANGER,
-    COLOR_PRIMARY,
     FONT_FAMILY,
     FONT_SIZE_BODY,
     FONT_SIZE_HEADING,
@@ -20,6 +18,7 @@ from gui.components.import_preview_dialog import ImportPreviewDialog
 from gui.components.mix_test_dialog import MixTestDialog
 from gui.components.mode_dialog import ModeSelectionDialog
 from gui.mix_test_display import build_mix_test_display
+from gui.styles import get_button_style
 from services.export_service import ExportService
 from services.import_preview_service import ImportPreview
 from services.import_service import ImportService
@@ -74,6 +73,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             text="Import",
             command=self._on_import,
             width=120,
+            **get_button_style("secondary"),
         ).pack(side="left", padx=5)
 
         ctk.CTkButton(
@@ -81,6 +81,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             text="New Test",
             command=self._on_new_test,
             width=120,
+            **get_button_style("primary"),
         ).pack(side="left", padx=5)
 
         ctk.CTkButton(
@@ -88,8 +89,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             text="Mix Test",
             command=self._on_mix_test,
             width=120,
-            fg_color="#7b2d8e",
-            hover_color="#5e2270",
+            **get_button_style("special"),
         ).pack(side="left", padx=5)
 
         ctk.CTkButton(
@@ -97,8 +97,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             text="Analytics",
             command=self._on_analytics,
             width=120,
-            fg_color="#6c757d",
-            hover_color="#5a6268",
+            **get_button_style("secondary"),
         ).pack(side="right", padx=5)
 
         ctk.CTkButton(
@@ -106,6 +105,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             text="View History",
             command=self._on_view_history,
             width=120,
+            **get_button_style("secondary"),
         ).pack(side="right", padx=5)
 
         ctk.CTkButton(
@@ -113,8 +113,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             text="Review Missed",
             command=self._on_review_missed,
             width=120,
-            fg_color="#f0ad4e",
-            hover_color="#d9972d",
+            **get_button_style("warning"),
         ).pack(side="right", padx=5)
 
         # Sort toolbar
@@ -145,9 +144,8 @@ class TestSelectorFrame(ctk.CTkFrame):
             sort_frame,
             text="Collapse All",
             width=110,
-            fg_color="#6c757d",
-            hover_color="#5a6268",
             command=self._on_collapse_all_toggle,
+            **get_button_style("tertiary"),
         )
         self._collapse_all_btn.pack(side="left", padx=(10, 0))
 
@@ -310,6 +308,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             text="Take Test",
             width=90,
             command=lambda t=test: self._on_take_test(t),
+            **get_button_style("primary"),
         )
         take_btn.pack(side="left", padx=3)
         if q_count == 0:
@@ -319,35 +318,32 @@ class TestSelectorFrame(ctk.CTkFrame):
             btn_frame,
             text="Edit",
             width=70,
-            fg_color="gray",
             command=lambda t=test: self._on_edit_test(t),
+            **get_button_style("tertiary"),
         ).pack(side="left", padx=3)
 
         ctk.CTkButton(
             btn_frame,
             text="Export",
             width=70,
-            fg_color="#5cb85c",
-            hover_color="#449d44",
             command=lambda t=test: self._on_export_test(t),
+            **get_button_style("tertiary"),
         ).pack(side="left", padx=3)
 
         ctk.CTkButton(
             btn_frame,
             text="Archive",
             width=70,
-            fg_color="#6c757d",
-            hover_color="#5a6268",
             command=lambda t=test: self._on_archive_test(t),
+            **get_button_style("secondary"),
         ).pack(side="left", padx=3)
 
         ctk.CTkButton(
             btn_frame,
             text="Delete",
             width=70,
-            fg_color=COLOR_DANGER,
-            hover_color="#c9302c",
             command=lambda t=test: self._on_delete_test(t),
+            **get_button_style("danger"),
         ).pack(side="left", padx=3)
 
     def _create_archived_test_card(
@@ -400,17 +396,16 @@ class TestSelectorFrame(ctk.CTkFrame):
             btn_frame,
             text="Unarchive",
             width=90,
-            fg_color=COLOR_PRIMARY,
             command=lambda t=test: self._on_unarchive_test(t),
+            **get_button_style("secondary"),
         ).pack(side="left", padx=3)
 
         ctk.CTkButton(
             btn_frame,
             text="Delete",
             width=70,
-            fg_color=COLOR_DANGER,
-            hover_color="#c9302c",
             command=lambda t=test: self._on_delete_test(t),
+            **get_button_style("danger"),
         ).pack(side="left", padx=3)
 
     def _on_import(self) -> None:

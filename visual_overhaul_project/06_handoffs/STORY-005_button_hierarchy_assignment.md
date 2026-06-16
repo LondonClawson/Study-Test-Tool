@@ -7,7 +7,7 @@ Story:
 `visual_overhaul_project/04_stories/STORY-005_button_hierarchy.md`
 
 Status:
-Ready for Dev 2 assignment.
+Submitted For Review.
 
 Required context:
 - `visual_overhaul_project/01_context/summaries/visual_foundation_decisions.md`

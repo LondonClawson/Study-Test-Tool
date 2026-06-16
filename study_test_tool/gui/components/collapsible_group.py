@@ -10,6 +10,7 @@ from config.settings import (
     FONT_SIZE_HEADING,
     FONT_SIZE_SMALL,
 )
+from gui.styles import get_button_style
 
 
 class CollapsibleGroup(ctk.CTkFrame):
@@ -61,9 +62,8 @@ class CollapsibleGroup(ctk.CTkFrame):
                 text="Archive Group",
                 width=120,
                 font=(FONT_FAMILY, FONT_SIZE_SMALL),
-                fg_color="#6c757d",
-                hover_color="#5a6268",
                 command=self._archive_callback,
+                **get_button_style("secondary"),
             ).pack(side="right", padx=5)
 
     def _make_label(self, arrow: str) -> str:
