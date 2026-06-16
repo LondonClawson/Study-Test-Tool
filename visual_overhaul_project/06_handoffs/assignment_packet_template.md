@@ -84,7 +84,9 @@ Completed story scope, updated story status, and a handoff note.
 
 Required verification:
 Check populated home, empty home, grouped/collapsed states, toolbar action smoke
-checks, light mode, dark mode, and minimum window fit.
+checks, light mode, dark mode, and minimum window fit. Capture after screenshots
+for touched home states using `00_project/screenshot_evidence_policy.md`, or
+document the capture blocker.
 
 Handoff location:
 Use visual_overhaul_project/06_handoffs/handoff_template.md.

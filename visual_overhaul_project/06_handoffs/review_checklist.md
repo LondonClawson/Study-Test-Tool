@@ -21,6 +21,8 @@ Use this checklist when reviewing a completed visual story.
 - Empty/loading/error states in scope are intentional.
 - Light and dark mode are readable.
 - Minimum window size remains usable.
+- Required screenshot evidence is present for screen-level visual work, or the
+  handoff explains why capture was blocked and what manual check replaced it.
 
 ## Behavior
 
@@ -35,3 +37,5 @@ Use this checklist when reviewing a completed visual story.
 - Context index and status board reflect any readiness changes.
 - Context summaries touched by the story are updated.
 - New risks or follow-ups are documented.
+- Screenshot paths, missing states, and before/after comparison notes are
+  documented when required by `00_project/screenshot_evidence_policy.md`.

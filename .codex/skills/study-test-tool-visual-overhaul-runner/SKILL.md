@@ -16,6 +16,7 @@ explicitly asks for review, acceptance, or PM status changes.
    - `visual_overhaul_project/00_project/status_board.md`
    - `visual_overhaul_project/00_project/status_transition_rules.md`
    - `visual_overhaul_project/00_project/definition_of_ready.md`
+   - `visual_overhaul_project/00_project/screenshot_evidence_policy.md`
    - `visual_overhaul_project/01_context/context_index.md`
    - Relevant task, story, summary, and handoff files.
 2. Pick one safe task:
@@ -61,6 +62,8 @@ or blocked task. Keep the handoff factual and include:
 - Definition of Ready or acceptance notes.
 - Context summaries read or updated.
 - Screens/states checked.
+- Screenshot evidence or capture blocker, following
+  `visual_overhaul_project/00_project/screenshot_evidence_policy.md`.
 - Tests run, or why tests were not run.
 - Risks and follow-up backlog items.
 

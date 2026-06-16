@@ -40,8 +40,8 @@ handoffs. Status changes are project-management decisions, not incidental edits.
 - Blocked to Ready: all required summaries are Ready and the story passes the
   Implementation Story Ready gate.
 - Ready to In Progress: PM assigns the story to Dev 2.
-- In Progress to Done: reviewer accepts the implementation, verification notes,
-  and handoff.
+- In Progress to Done: reviewer accepts the implementation, required screenshot
+  evidence or documented capture blocker, verification notes, and handoff.
 - In Progress to Blocked: Dev 2 finds missing/stale context, unclear scope, or a
   required product decision.
 

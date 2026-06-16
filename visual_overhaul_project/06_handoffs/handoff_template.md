@@ -17,6 +17,8 @@ Context summaries created/updated:
 
 Screens/states checked:
 
+Screenshot evidence:
+
 Tests run:
 
 Tests not run and why:
@@ -32,6 +34,9 @@ Follow-up backlog items:
 
 - Keep handoffs factual and short.
 - Mention exact screen states, not only screen names.
+- For screen-level visual stories, include after-screenshot paths or the exact
+  reason screenshot capture was blocked. Reference the baseline summary or
+  screenshot paths used for comparison.
 - If a context summary was stale, update it before handoff.
 - If a follow-up is needed, name the proposed story or research task.
 - Update `00_project/status_board.md` when the story, task, or summary state

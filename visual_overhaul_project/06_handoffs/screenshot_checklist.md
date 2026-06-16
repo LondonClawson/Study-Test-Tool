@@ -4,6 +4,18 @@ Use this checklist for baseline audit, sprint review, and MVP closeout.
 For Sprint 0, this checklist is part of
 `02_research_tasks/R-001_baseline_visual_audit.md`.
 
+For implementation stories, use this checklist with
+`00_project/screenshot_evidence_policy.md`. Capture only the states touched by
+the story unless the assignment asks for a broader sprint or regression pass.
+
+Harness examples from the repository root:
+
+```bash
+python3 visual_overhaul_project/tools/capture_baseline_screenshots.py --mode both --group home --output visual_overhaul_project/01_context/screenshots/after/STORY-008
+python3 visual_overhaul_project/tools/capture_baseline_screenshots.py --mode both --states home_populated_grouped home_empty_state --output visual_overhaul_project/01_context/screenshots/after/STORY-008
+python3 visual_overhaul_project/tools/capture_baseline_screenshots.py --validate-only --output visual_overhaul_project/01_context/screenshots/after/STORY-008
+```
+
 ## Modes
 
 - Light mode.

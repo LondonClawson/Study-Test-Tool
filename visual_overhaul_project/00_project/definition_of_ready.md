@@ -44,6 +44,9 @@ An implementation story is ready to assign when all of these are true:
 - Acceptance criteria are observable, not only qualitative.
 - Verification lists exact screens, states, smoke checks, and test commands or
   a reason tests are not required.
+- Verification says whether screenshot evidence is required under
+  `00_project/screenshot_evidence_policy.md`, and names the states or output
+  folder when it is required.
 - Handoff requirements say what evidence the developer must provide.
 - The story status is Ready on the status board.
 

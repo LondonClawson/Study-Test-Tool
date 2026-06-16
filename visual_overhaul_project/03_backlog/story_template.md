@@ -52,9 +52,11 @@ Out:
 1. Read the required context summaries and the Dev 2 Quick Start sections.
 2. Inspect only the likely files and exact source regions named by the summary.
 3. Make the scoped visual change.
-4. Verify the named screens and states.
+4. Verify the named screens and states, using
+   `00_project/screenshot_evidence_policy.md` for screenshot evidence.
 5. Run the required tests or document why tests are not needed.
-6. Update the handoff with files changed, states checked, risks, and follow-ups.
+6. Update the handoff with files changed, states checked, screenshot evidence or
+   blocker notes, risks, and follow-ups.
 
 ## Acceptance Criteria
 
@@ -63,6 +65,8 @@ Out:
 ## Verification
 
 - 
+- Screenshot evidence required? Yes/No. If yes, name target states and output
+  folder.
 
 ## Dev 2 Assignment Notes
 
@@ -76,6 +80,7 @@ Out:
 
 - Changed files:
 - Screens/states checked:
+- Screenshot paths or capture blocker:
 - Tests run or reason skipped:
 - Follow-up backlog items:
 ```

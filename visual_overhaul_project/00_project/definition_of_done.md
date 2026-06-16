@@ -15,6 +15,10 @@ A visual overhaul story is done when all of these are true:
 - Current workflows still behave the same.
 - Relevant automated tests were run when behavior-bearing files were touched.
 - Visual verification was recorded, including light/dark notes when relevant.
+- Screen-level visual stories include after-screenshot evidence for touched
+  states, or the handoff names the runtime blocker and the manual visual checks
+  used instead. Low-level foundation stories may use startup smoke checks when
+  no finished screen state is ready to compare.
 - A handoff note was written or the story file was updated with verification,
   changed files, remaining risks, and follow-up backlog items.
 
@@ -40,6 +44,8 @@ Visual implementation is done when all of these are true:
   unless explicitly out of scope.
 - Minimum window size remains usable.
 - Light and dark mode remain readable.
+- Screenshot evidence follows `00_project/screenshot_evidence_policy.md` for
+  the story type.
 
 ## MVP Done
 
