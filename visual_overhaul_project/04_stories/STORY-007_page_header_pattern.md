@@ -2,16 +2,17 @@
 
 ## Status
 
-Blocked.
+Submitted For Review.
 
 ## Readiness
 
-- Blocked by: a named pilot screen/path.
-- Unblocked by: PM approval of the pilot screen/path.
+- Blocked by: None.
+- Unblocked by: PM approval of Home/Test Selector as the pilot screen/path.
 
 CTX-FOUNDATION and `STORY-004_shared_style_entrypoints.md` are Done. This story
-is still blocked until PM names one pilot screen or explicitly chooses a shared
-helper path.
+is assigned with Home/Test Selector as the narrow pilot screen. Use
+`visual_overhaul_project/06_handoffs/STORY-007_page_header_pattern_assignment.md`
+as the assignment packet.
 
 ## Sprint
 
@@ -38,7 +39,7 @@ In:
 
 - Header title, optional subtitle/context, back/navigation placement, and action
   placement.
-- One pilot screen.
+- One pilot screen: Home/Test Selector.
 
 Out:
 
@@ -48,22 +49,22 @@ Out:
 
 ## Likely Files
 
-- One GUI screen file selected during sprint planning.
-- Shared component file only if the pilot proves reuse is useful.
+- `study_test_tool/gui/test_selector.py`.
+- `study_test_tool/gui/styles.py` only if minimal shared header roles are needed.
 
 ## Implementation Steps
 
 1. Read CTX-FOUNDATION and the relevant pilot screen context.
-2. Confirm the assigned pilot screen or shared helper path.
+2. Confirm Home/Test Selector as the assigned pilot screen.
 3. Define title, subtitle, metadata, and action placement rules.
-4. Apply the header pattern only to the assigned pilot area.
+4. Apply the header pattern only to the assigned Home/Test Selector area.
 5. Verify minimum-window behavior and light/dark readability.
 6. Document reusable header rules and follow-up screens.
 
 ## Acceptance Criteria
 
 - Header pattern improves hierarchy without creating a marketing-style layout.
-- The pilot screen preserves existing navigation behavior.
+- The Home/Test Selector pilot preserves existing navigation behavior.
 - The pattern can be used by later home, results, editor, history, analytics, and
   review stories.
 
@@ -77,7 +78,7 @@ Out:
 - Do not introduce a shared header component unless the assignment explicitly
   names that as the implementation path.
 - Do not move navigation semantics or controller calls.
-- If the pilot screen is not named, return the story for PM refinement.
+- Keep the pilot limited to Home/Test Selector.
 
 ## Handoff Requirements
 

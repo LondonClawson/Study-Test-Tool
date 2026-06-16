@@ -179,7 +179,24 @@ CARD_ROLES: Dict[str, WidgetStyle] = {
     },
 }
 
+HEADER_ROLES: Dict[str, WidgetStyle] = {
+    "page": {
+        "fg_color": COLOR_SURFACE,
+        "border_color": COLOR_BORDER,
+        "border_width": 1,
+        "corner_radius": RADIUS_CARD,
+    },
+}
+
 TEXT_ROLES: Dict[str, WidgetStyle] = {
+    "page_title": {
+        "font": FONT_PAGE_TITLE,
+        "text_color": COLOR_TEXT_PRIMARY,
+    },
+    "page_subtitle": {
+        "font": FONT_BODY,
+        "text_color": COLOR_TEXT_SECONDARY,
+    },
     "card_title": {
         "font": FONT_CARD_TITLE,
         "text_color": COLOR_TEXT_PRIMARY,
@@ -216,6 +233,11 @@ def get_button_style(role: str) -> WidgetStyle:
 def get_card_style(role: str) -> WidgetStyle:
     """Return CustomTkinter keyword values for a semantic card role."""
     return CARD_ROLES[role].copy()
+
+
+def get_header_style(role: str) -> WidgetStyle:
+    """Return CustomTkinter keyword values for a semantic header role."""
+    return HEADER_ROLES[role].copy()
 
 
 def get_text_style(role: str) -> WidgetStyle:

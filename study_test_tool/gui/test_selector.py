@@ -10,7 +10,6 @@ from config.settings import (
     FONT_FAMILY,
     FONT_SIZE_BODY,
     FONT_SIZE_SMALL,
-    FONT_SIZE_TITLE,
 )
 from gui.components.collapsible_group import CollapsibleGroup
 from gui.components.import_preview_dialog import ImportPreviewDialog
@@ -19,10 +18,14 @@ from gui.components.mode_dialog import ModeSelectionDialog
 from gui.mix_test_display import build_mix_test_display
 from gui.styles import (
     SPACE_4,
+    SPACE_8,
     SPACE_12,
     SPACE_16,
+    SPACE_24,
     get_button_style,
     get_card_style,
+    get_color,
+    get_header_style,
     get_text_style,
 )
 from services.export_service import ExportService
@@ -62,69 +65,93 @@ class TestSelectorFrame(ctk.CTkFrame):
 
     def _build_ui(self) -> None:
         """Build the home screen layout."""
-        # Title
-        title = ctk.CTkLabel(
-            self,
-            text="Study Testing Tool",
-            font=(FONT_FAMILY, FONT_SIZE_TITLE, "bold"),
-        )
-        title.pack(pady=(20, 10))
+        self.configure(fg_color=get_color("app_bg"))
 
-        # Button bar
-        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        btn_frame.pack(fill="x", padx=30, pady=(0, 15))
+        # Page header
+        header_frame = ctk.CTkFrame(
+            self,
+            **get_header_style("page"),
+        )
+        header_frame.pack(fill="x", padx=30, pady=(20, SPACE_16))
+
+        title_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        title_frame.pack(fill="x", padx=SPACE_24, pady=(SPACE_16, SPACE_8))
+
+        ctk.CTkLabel(
+            title_frame,
+            text="Study Testing Tool",
+            anchor="w",
+            **get_text_style("page_title"),
+        ).pack(fill="x")
+
+        self._header_summary_label = ctk.CTkLabel(
+            title_frame,
+            text="",
+            anchor="w",
+            **get_text_style("page_subtitle"),
+        )
+        self._header_summary_label.pack(fill="x", pady=(SPACE_4, 0))
+
+        action_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        action_frame.pack(fill="x", padx=SPACE_24, pady=(0, SPACE_16))
+
+        primary_actions = ctk.CTkFrame(action_frame, fg_color="transparent")
+        primary_actions.pack(fill="x")
+
+        navigation_actions = ctk.CTkFrame(action_frame, fg_color="transparent")
+        navigation_actions.pack(fill="x", pady=(SPACE_8, 0))
 
         ctk.CTkButton(
-            btn_frame,
+            primary_actions,
             text="Import",
             command=self._on_import,
             width=120,
             **get_button_style("secondary"),
-        ).pack(side="left", padx=5)
+        ).pack(side="left", padx=(0, SPACE_8))
 
         ctk.CTkButton(
-            btn_frame,
+            primary_actions,
             text="New Test",
             command=self._on_new_test,
             width=120,
             **get_button_style("primary"),
-        ).pack(side="left", padx=5)
+        ).pack(side="left", padx=(0, SPACE_8))
 
         ctk.CTkButton(
-            btn_frame,
+            primary_actions,
             text="Mix Test",
             command=self._on_mix_test,
             width=120,
             **get_button_style("special"),
-        ).pack(side="left", padx=5)
+        ).pack(side="left")
 
         ctk.CTkButton(
-            btn_frame,
+            navigation_actions,
             text="Analytics",
             command=self._on_analytics,
             width=120,
             **get_button_style("secondary"),
-        ).pack(side="right", padx=5)
+        ).pack(side="right", padx=(SPACE_8, 0))
 
         ctk.CTkButton(
-            btn_frame,
+            navigation_actions,
             text="View History",
             command=self._on_view_history,
             width=120,
             **get_button_style("secondary"),
-        ).pack(side="right", padx=5)
+        ).pack(side="right", padx=(SPACE_8, 0))
 
         ctk.CTkButton(
-            btn_frame,
+            navigation_actions,
             text="Review Missed",
             command=self._on_review_missed,
             width=120,
             **get_button_style("warning"),
-        ).pack(side="right", padx=5)
+        ).pack(side="right")
 
         # Sort toolbar
         sort_frame = ctk.CTkFrame(self, fg_color="transparent")
-        sort_frame.pack(fill="x", padx=30, pady=(0, 5))
+        sort_frame.pack(fill="x", padx=30, pady=(0, SPACE_8))
 
         ctk.CTkLabel(
             sort_frame,
@@ -171,6 +198,22 @@ class TestSelectorFrame(ctk.CTkFrame):
         """Refresh the test list when this screen is shown."""
         self._refresh_test_list()
 
+    def _update_header_summary(self, active_count: int, archived_count: int) -> None:
+        """Update the page header metadata from the current test list."""
+        if active_count == 0 and archived_count == 0:
+            summary = "No tests yet"
+        else:
+            active_text = f"{active_count} active test{'s' if active_count != 1 else ''}"
+            if archived_count:
+                archived_text = (
+                    f"{archived_count} archived test"
+                    f"{'s' if archived_count != 1 else ''}"
+                )
+                summary = f"{active_text} | {archived_text}"
+            else:
+                summary = active_text
+        self._header_summary_label.configure(text=summary)
+
     def _on_sort_changed(self, value: str) -> None:
         """Handle sort dropdown change."""
         self._sort_by = value
@@ -213,6 +256,7 @@ class TestSelectorFrame(ctk.CTkFrame):
 
         tests = self.test_service.get_all_tests()
         archived_tests = self.test_service.get_archived_tests()
+        self._update_header_summary(len(tests), len(archived_tests))
 
         if not tests and not archived_tests:
             self.empty_label.pack(pady=40)
