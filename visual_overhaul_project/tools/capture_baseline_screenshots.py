@@ -61,6 +61,7 @@ from config.database import initialize_database
 from database.db_manager import DatabaseManager
 from models.question import Question, QuestionOption
 from models.test_result import QuestionResponse, TestAttempt
+from services.import_preview_service import ImportPreview
 from services.scoring_service import ScoringService
 from services.test_session import TestSession
 from utils.constants import (
@@ -76,6 +77,7 @@ from utils.constants import (
 )
 
 App = None
+ImportPreviewDialog = None
 MixTestDialog = None
 build_mix_test_display = None
 ModeSelectionDialog = None
@@ -83,13 +85,17 @@ ModeSelectionDialog = None
 
 def ensure_gui_modules() -> None:
     """Load GUI modules only when capture mode needs them."""
-    global App, MixTestDialog, build_mix_test_display, ModeSelectionDialog
+    global App, ImportPreviewDialog, MixTestDialog, build_mix_test_display
+    global ModeSelectionDialog
 
     if ctk is None:
         raise RuntimeError("customtkinter is required for capture.")
     if App is not None:
         return
 
+    from gui.components.import_preview_dialog import (
+        ImportPreviewDialog as ImportedImportPreviewDialog,
+    )
     from gui.components.mix_test_dialog import MixTestDialog as ImportedMixTestDialog
     from gui.components.mode_dialog import (
         ModeSelectionDialog as ImportedModeSelectionDialog,
@@ -100,6 +106,7 @@ def ensure_gui_modules() -> None:
     )
 
     App = ImportedApp
+    ImportPreviewDialog = ImportedImportPreviewDialog
     MixTestDialog = ImportedMixTestDialog
     build_mix_test_display = imported_build_mix_test_display
     ModeSelectionDialog = ImportedModeSelectionDialog
@@ -871,6 +878,146 @@ def show_mix_dialog_deselected(
     return capture_mix_dialog_state(app, seed, harness, configure)
 
 
+def import_preview_all_ready_fixtures() -> List[ImportPreview]:
+    """Return import previews with all rows ready for import."""
+    return [
+        ImportPreview(
+            source_name="cardiology_board.json",
+            test_name="Cardiology Board Review",
+            description="Imported cardiology questions.",
+            group_name="Clinical Medicine",
+            question_count=18,
+        ),
+        ImportPreview(
+            source_name="renal_drill.txt",
+            test_name="Renal Pharmacology Drill",
+            description="Imported renal pharmacology questions.",
+            group_name="Clinical Medicine",
+            question_count=12,
+        ),
+    ]
+
+
+def import_preview_mixed_fixtures() -> List[ImportPreview]:
+    """Return import previews with ready, warning, and skipped rows."""
+    return [
+        ImportPreview(
+            source_name="cardiology_board.json",
+            test_name="Cardiology Board Review",
+            description="Imported cardiology questions.",
+            group_name="Clinical Medicine",
+            question_count=18,
+        ),
+        ImportPreview(
+            source_name="abdominal_pain.txt",
+            test_name="Abdominal Pain Quick Check",
+            description="Imported abdominal pain questions.",
+            group_name="Clinical Medicine",
+            question_count=2,
+            warnings=["Only 2 question(s) were detected."],
+        ),
+        ImportPreview(
+            source_name="broken_answers.pdf",
+            test_name="Broken Answer Key",
+            description="Could not import malformed answers.",
+            group_name="Clinical Medicine",
+            question_count=0,
+            errors=[
+                "Question 1 has no answer options.",
+                "Question 2 has no correct answer set.",
+            ],
+        ),
+    ]
+
+
+def import_preview_no_importable_fixtures() -> List[ImportPreview]:
+    """Return import previews where every row is skipped."""
+    return [
+        ImportPreview(
+            source_name="empty_questions.pdf",
+            test_name="Empty Questions File",
+            description="No importable questions were detected.",
+            group_name="",
+            question_count=0,
+            errors=["Test must contain at least one question."],
+        ),
+        ImportPreview(
+            source_name="missing_answers.pdf",
+            test_name="Missing Answers File",
+            description="Missing matching answer content.",
+            group_name="",
+            question_count=0,
+            errors=["Question 1 has no correct answer set."],
+        ),
+    ]
+
+
+def capture_import_preview_state(
+    app: App,
+    harness: ScreenshotHarness,
+    previews: List[ImportPreview],
+    configure: Optional[Callable] = None,
+) -> Callable[[], None]:
+    """Open Import Preview and apply an optional capture-state action."""
+    harness.show_frame(SCREEN_HOME)
+    dialog = ImportPreviewDialog(app, previews)
+    if configure is not None:
+        configure(dialog)
+    app.update_idletasks()
+    app.update()
+
+    def cleanup() -> None:
+        dialog.destroy()
+        app.update_idletasks()
+        app.update()
+
+    return cleanup
+
+
+def show_import_preview_all_ready(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> Callable[[], None]:
+    """Show Import Preview with all rows ready."""
+    return capture_import_preview_state(
+        app, harness, import_preview_all_ready_fixtures()
+    )
+
+
+def show_import_preview_mixed_warnings(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> Callable[[], None]:
+    """Show Import Preview with ready, warning, and skipped rows."""
+    return capture_import_preview_state(app, harness, import_preview_mixed_fixtures())
+
+
+def show_import_preview_no_importable(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> Callable[[], None]:
+    """Show Import Preview with all rows skipped and Import disabled."""
+    return capture_import_preview_state(
+        app,
+        harness,
+        import_preview_no_importable_fixtures(),
+    )
+
+
+def show_import_preview_group_override(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> Callable[[], None]:
+    """Show Import Preview after entering a group override."""
+
+    def configure(dialog) -> None:
+        dialog._group_entry.delete(0, "end")
+        dialog._group_entry.insert(0, "Board Prep")
+
+    return capture_import_preview_state(
+        app,
+        harness,
+        import_preview_all_ready_fixtures(),
+        configure,
+    )
+
+
 def show_editor_new(
     app: App, seed: Optional[SeedData], harness: ScreenshotHarness
 ) -> None:
@@ -1570,6 +1717,30 @@ CAPTURE_STATES = [
         "dialogs",
         "seeded",
         show_mix_dialog_deselected,
+    ),
+    CaptureState(
+        "import_preview_all_ready",
+        "dialogs",
+        "seeded",
+        show_import_preview_all_ready,
+    ),
+    CaptureState(
+        "import_preview_mixed_warnings",
+        "dialogs",
+        "seeded",
+        show_import_preview_mixed_warnings,
+    ),
+    CaptureState(
+        "import_preview_no_importable",
+        "dialogs",
+        "seeded",
+        show_import_preview_no_importable,
+    ),
+    CaptureState(
+        "import_preview_group_override",
+        "dialogs",
+        "seeded",
+        show_import_preview_group_override,
     ),
     CaptureState("editor_new_test", "editor", "seeded", show_editor_new),
     CaptureState(

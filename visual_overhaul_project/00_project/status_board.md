@@ -79,15 +79,16 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `STORY-015A_review_screen_polish.md`              | Done                 | None                     |
 | `STORY-015B_mode_dialog_polish.md`                | Done                 | None                     |
 | `STORY-015C_mix_dialog_polish.md`                 | Done                 | None                     |
-| `STORY-015D_import_preview_dialog_polish.md`      | Ready                | None                     |
+| `STORY-015D_import_preview_dialog_polish.md`      | Submitted For Review | PM/reviewer acceptance   |
 | `STORY-015E_native_dialog_inventory_followup.md`  | Blocked              | PM post-MVP decision     |
 | `STORY-016_light_dark_and_min_size_validation.md` | Blocked              | Core MVP screen stories  |
 | `STORY-017_mvp_visual_regression_pass.md`         | Blocked              | Sprint 4 validation      |
 
 ## Next Recommended Work
 
-1. `STORY-015D_import_preview_dialog_polish.md` is Ready as the next dialog
-   lane once developer capacity is available.
+1. Review `STORY-015D_import_preview_dialog_polish.md` after Import Preview
+   dialog polish was submitted with light/dark all-ready, mixed-warning,
+   no-importable, and group-override screenshot evidence.
 2. `STORY-015C_mix_dialog_polish.md` is accepted after PM review of light/dark
    Mix Test dialog empty, Select All, one-group-selected, and deselected
    evidence plus selection sync, invalid-start, valid-start, and cancel
