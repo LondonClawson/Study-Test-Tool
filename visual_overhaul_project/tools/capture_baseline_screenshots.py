@@ -793,17 +793,82 @@ def show_mode_dialog(
     return capture_dialog(app, harness, lambda: ModeSelectionDialog(app))
 
 
-def show_mix_dialog(
-    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
-) -> Callable[[], None]:
-    """Show the mix-test dialog."""
+def mix_dialog_tests_with_counts(seed: SeedData) -> list:
+    """Return seeded test/count tuples for Mix Test dialog captures."""
     tests_with_counts = [
         (DatabaseManager(str(seed.db_path)).get_test_by_id(seed.active_test_id), 3),
         (DatabaseManager(str(seed.db_path)).get_test_by_id(seed.second_test_id), 2),
         (DatabaseManager(str(seed.db_path)).get_test_by_id(seed.essay_test_id), 1),
     ]
+    return tests_with_counts
+
+
+def capture_mix_dialog_state(
+    app: App,
+    seed: Optional[SeedData],
+    harness: ScreenshotHarness,
+    configure: Optional[Callable] = None,
+) -> Callable[[], None]:
+    """Open the Mix Test dialog and apply an optional capture-state action."""
+    if seed is None:
+        raise RuntimeError("Mix Test dialog captures require seeded data.")
     harness.show_frame(SCREEN_HOME)
-    return capture_dialog(app, harness, lambda: MixTestDialog(app, tests_with_counts))
+    dialog = MixTestDialog(app, mix_dialog_tests_with_counts(seed))
+    if configure is not None:
+        configure(dialog)
+    app.update_idletasks()
+    app.update()
+
+    def cleanup() -> None:
+        dialog.destroy()
+        app.update_idletasks()
+        app.update()
+
+    return cleanup
+
+
+def show_mix_dialog(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> Callable[[], None]:
+    """Show the mix-test dialog with no selected tests."""
+    return capture_mix_dialog_state(app, seed, harness)
+
+
+def show_mix_dialog_select_all(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> Callable[[], None]:
+    """Show the mix-test dialog after Select All."""
+    return capture_mix_dialog_state(
+        app,
+        seed,
+        harness,
+        lambda dialog: dialog._select_all(),
+    )
+
+
+def show_mix_dialog_group_selected(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> Callable[[], None]:
+    """Show the mix-test dialog with one source group selected."""
+
+    def configure(dialog) -> None:
+        group_name = next(iter(dialog._group_vars))
+        dialog._group_vars[group_name].set(True)
+        dialog._on_group_toggled(group_name)
+
+    return capture_mix_dialog_state(app, seed, harness, configure)
+
+
+def show_mix_dialog_deselected(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> Callable[[], None]:
+    """Show the mix-test dialog after Select All then Deselect All."""
+
+    def configure(dialog) -> None:
+        dialog._select_all()
+        dialog._deselect_all()
+
+    return capture_mix_dialog_state(app, seed, harness, configure)
 
 
 def show_editor_new(
@@ -1488,6 +1553,24 @@ CAPTURE_STATES = [
     ),
     CaptureState("mode_selection_dialog", "dialogs", "seeded", show_mode_dialog),
     CaptureState("mix_test_dialog", "dialogs", "seeded", show_mix_dialog),
+    CaptureState(
+        "mix_test_dialog_select_all",
+        "dialogs",
+        "seeded",
+        show_mix_dialog_select_all,
+    ),
+    CaptureState(
+        "mix_test_dialog_group_selected",
+        "dialogs",
+        "seeded",
+        show_mix_dialog_group_selected,
+    ),
+    CaptureState(
+        "mix_test_dialog_deselected",
+        "dialogs",
+        "seeded",
+        show_mix_dialog_deselected,
+    ),
     CaptureState("editor_new_test", "editor", "seeded", show_editor_new),
     CaptureState(
         "editor_existing_test_with_questions",

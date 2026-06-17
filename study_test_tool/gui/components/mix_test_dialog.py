@@ -4,12 +4,18 @@ from typing import Dict, List, Optional, Tuple
 
 import customtkinter as ctk
 
-from config.settings import (
-    COLOR_PRIMARY,
-    FONT_FAMILY,
-    FONT_SIZE_BODY,
-    FONT_SIZE_HEADING,
-    FONT_SIZE_SMALL,
+from gui.styles import (
+    RADIUS_CARD,
+    RADIUS_ROW,
+    SPACE_12,
+    SPACE_16,
+    SPACE_24,
+    SPACE_4,
+    SPACE_8,
+    get_button_style,
+    get_card_style,
+    get_color,
+    get_text_style,
 )
 from gui.mix_test_display import group_tests_by_name
 from models.test import Test
@@ -18,6 +24,9 @@ from models.test import Test
 class MixTestDialog(ctk.CTkToplevel):
     """Modal dialog for selecting tests and question count for a mix test."""
 
+    DIALOG_WIDTH = 540
+    DIALOG_HEIGHT = 640
+
     def __init__(
         self,
         parent,
@@ -25,8 +34,9 @@ class MixTestDialog(ctk.CTkToplevel):
     ) -> None:
         super().__init__(parent)
         self.title("Mix Test")
-        self.geometry("450x560")
+        self.geometry(f"{self.DIALOG_WIDTH}x{self.DIALOG_HEIGHT}")
         self.resizable(False, False)
+        self.configure(fg_color=get_color("app_bg"))
 
         self._result: Optional[Tuple[List[int], int]] = None
         self._tests_with_counts = tests_with_counts
@@ -43,127 +53,238 @@ class MixTestDialog(ctk.CTkToplevel):
 
         # Center on parent
         self.update_idletasks()
-        x = parent.winfo_rootx() + (parent.winfo_width() - 450) // 2
-        y = parent.winfo_rooty() + (parent.winfo_height() - 560) // 2
+        x = parent.winfo_rootx() + (parent.winfo_width() - self.DIALOG_WIDTH) // 2
+        y = parent.winfo_rooty() + (parent.winfo_height() - self.DIALOG_HEIGHT) // 2
         self.geometry(f"+{x}+{y}")
 
     def _build_ui(self) -> None:
         """Build the dialog layout."""
-        ctk.CTkLabel(
-            self,
-            text="Mix Test",
-            font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
-        ).pack(pady=(15, 5))
+        container = ctk.CTkFrame(self, fg_color="transparent")
+        container.pack(fill="both", expand=True, padx=SPACE_16, pady=SPACE_16)
+
+        shell = ctk.CTkFrame(container, **get_card_style("default"))
+        shell.pack(fill="both", expand=True)
 
         ctk.CTkLabel(
-            self,
-            text="Select tests to draw questions from:",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-            text_color="gray",
-        ).pack(pady=(0, 10))
+            shell,
+            text="Build a Mixed Test",
+            **get_text_style("section_title"),
+        ).pack(pady=(SPACE_16, SPACE_4))
 
-        # Select All / Deselect All buttons
-        sel_frame = ctk.CTkFrame(self, fg_color="transparent")
-        sel_frame.pack(fill="x", padx=25, pady=(0, 5))
+        ctk.CTkLabel(
+            shell,
+            text="Choose source tests, then set how many questions to include.",
+            wraplength=430,
+            justify="center",
+            **get_text_style("card_description"),
+        ).pack(padx=SPACE_24, pady=(0, SPACE_12))
+
+        utility_frame = ctk.CTkFrame(shell, fg_color="transparent")
+        utility_frame.pack(fill="x", padx=SPACE_24, pady=(0, SPACE_8))
 
         ctk.CTkButton(
-            sel_frame,
+            utility_frame,
             text="Select All",
             width=90,
             height=28,
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
             command=self._select_all,
-        ).pack(side="left", padx=3)
+            **get_button_style("tertiary"),
+        ).pack(side="left", padx=(0, SPACE_8))
 
         ctk.CTkButton(
-            sel_frame,
+            utility_frame,
             text="Deselect All",
             width=90,
             height=28,
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
-            fg_color="gray",
             command=self._deselect_all,
-        ).pack(side="left", padx=3)
+            **get_button_style("tertiary"),
+        ).pack(side="left")
 
-        # Scrollable test list, organized by group
-        scroll = ctk.CTkScrollableFrame(self, height=300)
-        scroll.pack(fill="both", expand=True, padx=25, pady=5)
+        scroll = ctk.CTkScrollableFrame(
+            shell,
+            height=250,
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_CARD,
+            scrollbar_button_color=get_color("surface_muted"),
+            scrollbar_button_hover_color=get_color("border"),
+        )
+        scroll.pack(fill="both", expand=True, padx=SPACE_24, pady=(0, SPACE_12))
 
         grouped = group_tests_by_name(self._tests_with_counts)
         test_index = 0
 
         for group_name, group_tests in grouped:
-            group_var = ctk.BooleanVar(value=False)
-            self._group_vars[group_name] = group_var
-            self._group_to_test_indices[group_name] = []
-
-            group_cb = ctk.CTkCheckBox(
+            test_index = self._add_group_section(
                 scroll,
-                text=group_name,
-                font=(FONT_FAMILY, FONT_SIZE_BODY, "bold"),
-                variable=group_var,
-                command=lambda gn=group_name: self._on_group_toggled(gn),
+                group_name,
+                group_tests,
+                test_index,
             )
-            group_cb.pack(anchor="w", pady=(8, 2), padx=2)
 
-            for test, q_count in group_tests:
-                var = ctk.BooleanVar(value=False)
-                self._check_vars.append(var)
+        setup_frame = ctk.CTkFrame(shell, fg_color="transparent")
+        setup_frame.pack(fill="x", padx=SPACE_24, pady=(0, SPACE_12))
+        setup_frame.grid_columnconfigure(0, weight=1)
+        setup_frame.grid_columnconfigure(1, weight=0)
 
-                cb = ctk.CTkCheckBox(
-                    scroll,
-                    text=f"{test.name}  ({q_count} questions)",
-                    font=(FONT_FAMILY, FONT_SIZE_BODY),
-                    variable=var,
-                    command=lambda gn=group_name: self._on_test_checkbox_changed(gn),
-                )
-                cb.pack(anchor="w", pady=2, padx=25)
-                self._checkboxes.append((cb, test.id))
-                self._group_to_test_indices[group_name].append(test_index)
-                test_index += 1
-
-        # Total available label
-        self._total_label = ctk.CTkLabel(
-            self,
-            text="Total available: 0",
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
-            text_color="gray",
+        total_card = ctk.CTkFrame(
+            setup_frame,
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_CARD,
         )
-        self._total_label.pack(pady=(5, 2))
-
-        # Question count input
-        count_frame = ctk.CTkFrame(self, fg_color="transparent")
-        count_frame.pack(fill="x", padx=25, pady=5)
+        total_card.grid(row=0, column=0, sticky="ew", padx=(0, SPACE_12))
 
         ctk.CTkLabel(
-            count_frame,
-            text="Number of questions:",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).pack(side="left", padx=(0, 10))
+            total_card,
+            text="Selected pool",
+            anchor="w",
+            **get_text_style("card_metadata"),
+        ).pack(fill="x", padx=SPACE_12, pady=(SPACE_8, 0))
 
-        self._count_entry = ctk.CTkEntry(count_frame, width=80)
+        self._total_label = ctk.CTkLabel(
+            total_card,
+            text="Total available: 0",
+            anchor="w",
+            **get_text_style("body_bold"),
+        )
+        self._total_label.pack(fill="x", padx=SPACE_12, pady=(0, SPACE_8))
+
+        count_card = ctk.CTkFrame(
+            setup_frame,
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_CARD,
+        )
+        count_card.grid(row=0, column=1, sticky="e")
+
+        ctk.CTkLabel(
+            count_card,
+            text="Questions",
+            anchor="w",
+            **get_text_style("card_metadata"),
+        ).pack(fill="x", padx=SPACE_12, pady=(SPACE_8, 0))
+
+        self._count_entry = ctk.CTkEntry(
+            count_card,
+            width=96,
+            height=34,
+            justify="center",
+            fg_color=get_color("surface"),
+            border_color=get_color("border"),
+            text_color=get_color("text_primary"),
+        )
         self._count_entry.insert(0, "10")
-        self._count_entry.pack(side="left")
+        self._count_entry.pack(padx=SPACE_12, pady=(0, SPACE_8))
 
-        # OK / Cancel buttons
-        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        btn_frame.pack(fill="x", padx=25, pady=(10, 15))
+        btn_frame = ctk.CTkFrame(shell, fg_color="transparent")
+        btn_frame.pack(fill="x", padx=SPACE_24, pady=(0, SPACE_16))
+        btn_frame.grid_columnconfigure((0, 1), weight=1, uniform="mix_actions")
 
         ctk.CTkButton(
             btn_frame,
             text="Start Mix Test",
-            width=130,
-            fg_color=COLOR_PRIMARY,
+            height=36,
             command=self._on_ok,
-        ).pack(side="left", padx=5, expand=True)
+            **get_button_style("primary"),
+        ).grid(row=0, column=0, sticky="ew", padx=(0, SPACE_8))
 
         ctk.CTkButton(
             btn_frame,
             text="Cancel",
-            width=100,
-            fg_color="gray",
+            height=36,
             command=self.destroy,
-        ).pack(side="right", padx=5, expand=True)
+            **get_button_style("secondary"),
+        ).grid(row=0, column=1, sticky="ew", padx=(SPACE_8, 0))
+
+    def _add_group_section(
+        self,
+        parent,
+        group_name: str,
+        group_tests: List[Tuple[Test, int]],
+        test_index: int,
+    ) -> int:
+        """Add a grouped checkbox section and return the next test index."""
+        group_var = ctk.BooleanVar(value=False)
+        self._group_vars[group_name] = group_var
+        self._group_to_test_indices[group_name] = []
+
+        group_card = ctk.CTkFrame(parent, **get_card_style("default"))
+        group_card.pack(fill="x", padx=SPACE_4, pady=(SPACE_4, SPACE_8))
+
+        group_header = ctk.CTkFrame(group_card, fg_color="transparent")
+        group_header.pack(fill="x", padx=SPACE_12, pady=(SPACE_12, SPACE_8))
+
+        group_cb = ctk.CTkCheckBox(
+            group_header,
+            text=group_name,
+            variable=group_var,
+            command=lambda gn=group_name: self._on_group_toggled(gn),
+            **self._checkbox_style("body_bold"),
+        )
+        group_cb.pack(side="left", fill="x", expand=True)
+
+        group_total = sum(q_count for _, q_count in group_tests)
+        ctk.CTkLabel(
+            group_header,
+            text=f"{len(group_tests)} test(s) / {group_total} questions",
+            anchor="e",
+            **get_text_style("card_metadata"),
+        ).pack(side="right", padx=(SPACE_8, 0))
+
+        for test, q_count in group_tests:
+            test_index = self._add_test_row(
+                group_card,
+                group_name,
+                test,
+                q_count,
+                test_index,
+            )
+
+        return test_index
+
+    def _add_test_row(
+        self,
+        parent,
+        group_name: str,
+        test: Test,
+        q_count: int,
+        test_index: int,
+    ) -> int:
+        """Add one test checkbox row and return the next test index."""
+        var = ctk.BooleanVar(value=False)
+        self._check_vars.append(var)
+
+        row = ctk.CTkFrame(
+            parent,
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_ROW,
+        )
+        row.pack(fill="x", padx=SPACE_12, pady=(0, SPACE_8))
+
+        cb = ctk.CTkCheckBox(
+            row,
+            text=f"{test.name}  ({q_count} questions)",
+            variable=var,
+            command=lambda gn=group_name: self._on_test_checkbox_changed(gn),
+            **self._checkbox_style("body"),
+        )
+        cb.pack(anchor="w", fill="x", padx=SPACE_12, pady=SPACE_8)
+
+        self._checkboxes.append((cb, test.id))
+        self._group_to_test_indices[group_name].append(test_index)
+        return test_index + 1
+
+    @staticmethod
+    def _checkbox_style(text_role: str) -> dict:
+        """Return shared checkbox styling for grouped test selection."""
+        style = get_text_style(text_role)
+        style.update(
+            {
+                "fg_color": get_color("primary"),
+                "hover_color": get_color("primary_hover"),
+                "border_color": get_color("border"),
+                "checkmark_color": get_color("text_inverse"),
+            }
+        )
+        return style
 
     def _on_checkbox_changed(self) -> None:
         """Update the total available label when checkboxes change."""
