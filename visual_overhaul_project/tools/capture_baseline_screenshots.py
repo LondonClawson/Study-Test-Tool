@@ -1225,6 +1225,36 @@ def show_analytics(
     harness.show_frame(SCREEN_ANALYTICS)
 
 
+def show_analytics_test_comparison(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Analytics Test Comparison chart tab."""
+    harness.show_frame(SCREEN_ANALYTICS)
+    frame = app.frames[SCREEN_ANALYTICS]
+    frame.tab_var.set("Test Comparison")
+    frame._render_current_tab()
+    harness._settle()
+
+
+def show_analytics_study_activity(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Analytics Study Activity chart tab."""
+    harness.show_frame(SCREEN_ANALYTICS)
+    frame = app.frames[SCREEN_ANALYTICS]
+    frame.tab_var.set("Study Activity")
+    frame._render_current_tab()
+    harness._settle()
+
+
+def show_analytics_minimum_score_trends(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Analytics Score Trends at the documented minimum window size."""
+    harness.use_minimum_geometry()
+    harness.show_frame(SCREEN_ANALYTICS)
+
+
 def show_review(app: App, seed: Optional[SeedData], harness: ScreenshotHarness) -> None:
     """Show missed-question review."""
     harness.show_frame(SCREEN_REVIEW)
@@ -1460,6 +1490,24 @@ CAPTURE_STATES = [
         show_history_minimum_populated,
     ),
     CaptureState("analytics_populated", "data", "seeded", show_analytics),
+    CaptureState(
+        "analytics_test_comparison",
+        "data",
+        "seeded",
+        show_analytics_test_comparison,
+    ),
+    CaptureState(
+        "analytics_study_activity",
+        "data",
+        "seeded",
+        show_analytics_study_activity,
+    ),
+    CaptureState(
+        "analytics_minimum_score_trends",
+        "data",
+        "seeded",
+        show_analytics_minimum_score_trends,
+    ),
     CaptureState("review_missed_questions", "data", "seeded", show_review),
     CaptureState("home_empty_state", "empty", "empty", show_empty_home),
     CaptureState(

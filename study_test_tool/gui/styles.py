@@ -59,6 +59,13 @@ COLOR_STATUS_UNANSWERED: ThemeColor = COLOR_UNANSWERED
 COLOR_STATUS_NEUTRAL: ThemeColor = COLOR_UNANSWERED
 COLOR_STATUS_FLAGGED: ThemeColor = COLOR_FLAGGED
 
+# Chart roles
+COLOR_CHART_SERIES_PRIMARY: ThemeColor = "#2f80d1"
+COLOR_CHART_SERIES_SECONDARY: ThemeColor = "#7b2d8e"
+COLOR_CHART_SERIES_SUCCESS: ThemeColor = COLOR_SUCCESS
+COLOR_CHART_SERIES_WARNING: ThemeColor = COLOR_WARNING
+COLOR_CHART_SERIES_DANGER: ThemeColor = COLOR_DANGER
+
 # Radius roles
 RADIUS_ROW = 4
 RADIUS_CONTROL = 6
@@ -115,6 +122,15 @@ COLOR_ROLES: Dict[str, ThemeColor] = {
     "status_unanswered": COLOR_STATUS_UNANSWERED,
     "status_neutral": COLOR_STATUS_NEUTRAL,
     "status_flagged": COLOR_STATUS_FLAGGED,
+    "chart_bg": COLOR_SURFACE,
+    "chart_plot_bg": COLOR_SURFACE_SUBTLE,
+    "chart_text": COLOR_TEXT_SECONDARY,
+    "chart_grid": COLOR_DIVIDER,
+    "chart_series_primary": COLOR_CHART_SERIES_PRIMARY,
+    "chart_series_secondary": COLOR_CHART_SERIES_SECONDARY,
+    "chart_series_success": COLOR_CHART_SERIES_SUCCESS,
+    "chart_series_warning": COLOR_CHART_SERIES_WARNING,
+    "chart_series_danger": COLOR_CHART_SERIES_DANGER,
 }
 
 PROGRESS_STATUS_COLORS: Dict[str, ThemeColor] = {

@@ -7,22 +7,35 @@ from config.settings import (
     COLOR_TOPIC_STRONG,
     COLOR_TOPIC_WEAK,
     FONT_FAMILY,
-    FONT_SIZE_BODY,
     FONT_SIZE_HEADING,
     FONT_SIZE_SMALL,
-    FONT_SIZE_TITLE,
 )
 from gui.components.graph_widget import GraphWidget
+from gui.styles import (
+    RADIUS_CONTROL,
+    SPACE_4,
+    SPACE_8,
+    SPACE_12,
+    SPACE_16,
+    SPACE_24,
+    get_button_style,
+    get_card_style,
+    get_color,
+    get_header_style,
+    get_text_style,
+)
 from services.analytics_service import AnalyticsService
 from services.test_service import TestService
 from utils.constants import SCREEN_HOME
+
+ANALYTICS_TABS = ["Score Trends", "Test Comparison", "Study Activity", "Weak Topics"]
 
 
 class AnalyticsViewFrame(ctk.CTkFrame):
     """Screen for viewing performance analytics and graphs."""
 
     def __init__(self, parent: ctk.CTkFrame, controller) -> None:
-        super().__init__(parent)
+        super().__init__(parent, fg_color=get_color("app_bg"))
         self.controller = controller
         self.analytics_service = AnalyticsService()
         self.test_service = TestService()
@@ -31,88 +44,178 @@ class AnalyticsViewFrame(ctk.CTkFrame):
 
     def _build_ui(self) -> None:
         """Build the analytics layout."""
-        # Top bar
-        top_frame = ctk.CTkFrame(self, fg_color="transparent")
-        top_frame.pack(fill="x", padx=30, pady=(20, 10))
+        page_header = ctk.CTkFrame(self, **get_header_style("page"))
+        page_header.pack(fill="x", padx=SPACE_24, pady=(SPACE_24, SPACE_12))
+        page_header.grid_columnconfigure(1, weight=1)
 
         ctk.CTkButton(
-            top_frame,
+            page_header,
             text="< Back",
             width=80,
-            fg_color="gray",
+            **get_button_style("secondary"),
             command=lambda: self.controller.show_frame(SCREEN_HOME),
-        ).pack(side="left")
+        ).grid(row=0, column=0, padx=(SPACE_16, SPACE_12), pady=SPACE_16)
+
+        title_frame = ctk.CTkFrame(page_header, fg_color="transparent")
+        title_frame.grid(row=0, column=1, sticky="ew", pady=SPACE_12)
 
         ctk.CTkLabel(
-            top_frame,
+            title_frame,
             text="Analytics",
-            font=(FONT_FAMILY, FONT_SIZE_TITLE, "bold"),
-        ).pack(side="left", padx=20)
+            **get_text_style("page_title"),
+        ).pack(anchor="w")
 
-        # Tab selector
-        tab_frame = ctk.CTkFrame(self, fg_color="transparent")
-        tab_frame.pack(fill="x", padx=30, pady=(0, 5))
+        self.header_meta_label = ctk.CTkLabel(
+            title_frame,
+            text="Score trends and study activity",
+            **get_text_style("page_subtitle"),
+        )
+        self.header_meta_label.pack(anchor="w", pady=(SPACE_4, 0))
+
+        controls_frame = ctk.CTkFrame(self, **get_card_style("default"))
+        controls_frame.pack(fill="x", padx=SPACE_24, pady=(0, SPACE_12))
+        controls_frame.grid_columnconfigure(1, weight=1)
+        controls_frame.grid_columnconfigure(3, weight=1)
+
+        ctk.CTkLabel(
+            controls_frame,
+            text="View",
+            **get_text_style("body"),
+        ).grid(row=0, column=0, sticky="w", padx=(SPACE_16, SPACE_8), pady=SPACE_16)
 
         self.tab_var = ctk.StringVar(value="Score Trends")
         self.tab_seg = ctk.CTkSegmentedButton(
-            tab_frame,
-            values=["Score Trends", "Test Comparison", "Study Activity", "Weak Topics"],
+            controls_frame,
+            values=ANALYTICS_TABS,
             variable=self.tab_var,
             command=self._on_tab_change,
+            **self._segmented_style(),
         )
-        self.tab_seg.pack(side="left")
-
-        # Filter row
-        filter_frame = ctk.CTkFrame(self, fg_color="transparent")
-        filter_frame.pack(fill="x", padx=30, pady=(0, 10))
+        self.tab_seg.grid(row=0, column=1, columnspan=3, sticky="ew", pady=SPACE_16)
 
         ctk.CTkLabel(
-            filter_frame,
-            text="Test:",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).pack(side="left", padx=(0, 10))
+            controls_frame,
+            text="Test",
+            **get_text_style("body"),
+        ).grid(
+            row=1,
+            column=0,
+            sticky="w",
+            padx=(SPACE_16, SPACE_8),
+            pady=(0, SPACE_16),
+        )
 
         self.test_filter_var = ctk.StringVar(value="All Tests")
         self.test_filter_menu = ctk.CTkOptionMenu(
-            filter_frame,
+            controls_frame,
             variable=self.test_filter_var,
             values=["All Tests"],
             command=self._on_filter_change,
             width=250,
+            **self._option_menu_style(),
         )
-        self.test_filter_menu.pack(side="left")
+        self.test_filter_menu.grid(row=1, column=1, sticky="w", pady=(0, SPACE_16))
 
-        # Group-by selector (only shown on Weak Topics tab)
         self.group_by_label = ctk.CTkLabel(
-            filter_frame,
-            text="Group by:",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
+            controls_frame,
+            text="Group by",
+            **get_text_style("body"),
         )
         self.group_by_var = ctk.StringVar(value="Test")
         self.group_by_seg = ctk.CTkSegmentedButton(
-            filter_frame,
+            controls_frame,
             values=["Test", "Group", "Category"],
             variable=self.group_by_var,
             command=self._on_filter_change,
+            **self._segmented_style(),
         )
 
-        # Content area — holds either graph or weak topics list
         self.content_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.content_frame.pack(fill="both", expand=True, padx=30, pady=(0, 20))
+        self.content_frame.pack(
+            fill="both",
+            expand=True,
+            padx=SPACE_24,
+            pady=(0, SPACE_24),
+        )
 
-        # Graph widget (created once, reused)
-        self.graph_widget = GraphWidget(self.content_frame, figsize=(8, 4))
+        self.chart_shell = ctk.CTkFrame(self.content_frame, **get_card_style("default"))
+        self.chart_body = ctk.CTkFrame(
+            self.chart_shell,
+            fg_color=get_color("chart_bg"),
+            corner_radius=RADIUS_CONTROL,
+        )
+        self.chart_body.pack(
+            fill="both",
+            expand=True,
+            padx=SPACE_16,
+            pady=SPACE_16,
+        )
 
-        # Scrollable frame for weak topics (created once, shown when needed)
-        self.weak_topics_frame = ctk.CTkScrollableFrame(self.content_frame)
+        self.graph_widget = GraphWidget(
+            self.chart_body,
+            figsize=(8, 4),
+            fg_color=get_color("chart_bg"),
+        )
 
-        # Empty state
+        self.chart_empty_state = self._build_chart_empty_state()
+
+        self.weak_topics_frame = ctk.CTkScrollableFrame(
+            self.content_frame,
+            fg_color="transparent",
+            scrollbar_button_color=get_color("surface_muted"),
+            scrollbar_button_hover_color=get_color("border"),
+        )
+
         self.empty_label = ctk.CTkLabel(
             self.content_frame,
             text="No data available yet. Take some tests first!",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-            text_color="gray",
+            **get_text_style("body"),
         )
+
+    def _option_menu_style(self) -> dict:
+        """Return semantic option-menu styling for Analytics filters."""
+        return {
+            "fg_color": get_color("surface_subtle"),
+            "button_color": get_color("primary"),
+            "button_hover_color": get_color("primary_hover"),
+            "dropdown_fg_color": get_color("surface"),
+            "dropdown_hover_color": get_color("surface_subtle"),
+            "dropdown_text_color": get_color("text_primary"),
+            "text_color": get_color("text_primary"),
+            "corner_radius": RADIUS_CONTROL,
+        }
+
+    def _segmented_style(self) -> dict:
+        """Return semantic segmented-button styling."""
+        return {
+            "fg_color": get_color("surface_subtle"),
+            "selected_color": get_color("surface_muted"),
+            "selected_hover_color": get_color("surface_muted"),
+            "unselected_color": get_color("surface_subtle"),
+            "unselected_hover_color": get_color("surface_muted"),
+            "text_color": get_color("text_primary"),
+            "corner_radius": RADIUS_CONTROL,
+        }
+
+    def _build_chart_empty_state(self) -> ctk.CTkFrame:
+        """Create the chart-tab no-data surface."""
+        state = ctk.CTkFrame(self.chart_body, **get_card_style("default"))
+
+        self.chart_empty_title = ctk.CTkLabel(
+            state,
+            text="No chart data yet",
+            **get_text_style("card_title"),
+        )
+        self.chart_empty_title.pack(pady=(SPACE_24, SPACE_4))
+
+        self.chart_empty_helper = ctk.CTkLabel(
+            state,
+            text="Take a test to populate this chart.",
+            wraplength=520,
+            **get_text_style("card_description"),
+        )
+        self.chart_empty_helper.pack(padx=SPACE_24, pady=(0, SPACE_24))
+        return state
 
     def on_show(self, **kwargs) -> None:
         """Load data when shown."""
@@ -148,18 +251,24 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         """Render the currently selected tab."""
         tab = self.tab_var.get()
 
-        # Hide everything first
+        self.chart_shell.pack_forget()
         self.graph_widget.pack_forget()
+        self.chart_empty_state.pack_forget()
         self.weak_topics_frame.pack_forget()
         self.empty_label.pack_forget()
 
-        # Show group-by control only on Weak Topics tab
         if tab == "Weak Topics":
-            self.group_by_label.pack(side="left", padx=(20, 6))
-            self.group_by_seg.pack(side="left")
+            self.group_by_label.grid(
+                row=1,
+                column=2,
+                sticky="e",
+                padx=(SPACE_16, SPACE_8),
+                pady=(0, SPACE_16),
+            )
+            self.group_by_seg.grid(row=1, column=3, sticky="ew", pady=(0, SPACE_16))
         else:
-            self.group_by_label.pack_forget()
-            self.group_by_seg.pack_forget()
+            self.group_by_label.grid_remove()
+            self.group_by_seg.grid_remove()
 
         if tab == "Score Trends":
             self._render_score_trends()
@@ -170,19 +279,35 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         elif tab == "Weak Topics":
             self._render_weak_topics()
 
+    def _show_chart_shell(self) -> None:
+        """Show the shared chart surface."""
+        self.chart_shell.pack(fill="both", expand=True)
+        self.graph_widget.pack(fill="both", expand=True)
+
+    def _show_chart_empty(self, title: str, helper: str) -> None:
+        """Show a chart no-data surface."""
+        self.chart_shell.pack(fill="both", expand=True)
+        self.graph_widget.pack_forget()
+        self.chart_empty_title.configure(text=title)
+        self.chart_empty_helper.configure(text=helper)
+        self.chart_empty_state.pack(fill="x", padx=SPACE_24, pady=SPACE_24)
+
     def _render_score_trends(self) -> None:
         """Render score trends line chart."""
         test_id = self._get_selected_test_id()
         data = self.analytics_service.get_scores_over_time(test_id=test_id)
 
         if not data:
-            self.empty_label.pack(pady=40)
+            self._show_chart_empty(
+                "No score trend yet",
+                "Complete a test attempt to plot score changes over time.",
+            )
             return
 
         x_data = list(range(1, len(data) + 1))
         y_data = [d["percentage"] for d in data]
 
-        self.graph_widget.pack(fill="both", expand=True)
+        self._show_chart_shell()
         self.graph_widget.draw_line_chart(
             x_data,
             y_data,
@@ -196,13 +321,16 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         data = self.analytics_service.get_average_scores_by_test()
 
         if not data:
-            self.empty_label.pack(pady=40)
+            self._show_chart_empty(
+                "No comparison data yet",
+                "Complete attempts across tests to compare average scores.",
+            )
             return
 
         labels = [d["test_name"] for d in data]
         values = [d["avg_score"] for d in data]
 
-        self.graph_widget.pack(fill="both", expand=True)
+        self._show_chart_shell()
         self.graph_widget.draw_bar_chart(
             labels,
             values,
@@ -215,15 +343,17 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         data = self.analytics_service.get_attempt_frequency(days=30)
 
         if not data:
-            self.empty_label.pack(pady=40)
+            self._show_chart_empty(
+                "No study activity yet",
+                "Complete attempts to see activity from the last 30 days.",
+            )
             return
 
         dates = [d["day"] for d in data]
-        # Shorten date labels
         short_dates = [d[-5:] if d and len(d) >= 5 else d for d in dates]
         counts = [d["count"] for d in data]
 
-        self.graph_widget.pack(fill="both", expand=True)
+        self._show_chart_shell()
         self.graph_widget.draw_activity_chart(
             short_dates,
             counts,
@@ -257,7 +387,6 @@ class AnalyticsViewFrame(ctk.CTkFrame):
             self.empty_label.pack(pady=40)
             return
 
-        # Clear and show scrollable frame
         for widget in self.weak_topics_frame.winfo_children():
             widget.destroy()
 
@@ -279,15 +408,12 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         card = ctk.CTkFrame(self.weak_topics_frame, corner_radius=8)
         card.pack(fill="x", pady=4, padx=5)
 
-        # Color indicator bar
         indicator = ctk.CTkFrame(card, width=6, corner_radius=3, fg_color=color)
         indicator.pack(side="left", fill="y", padx=(4, 0), pady=4)
 
-        # Content
         content = ctk.CTkFrame(card, fg_color="transparent")
         content.pack(side="left", fill="both", expand=True, padx=10, pady=8)
 
-        # Top: category name and status
         top_row = ctk.CTkFrame(content, fg_color="transparent")
         top_row.pack(fill="x")
 
@@ -305,13 +431,11 @@ class AnalyticsViewFrame(ctk.CTkFrame):
             text_color=color,
         ).pack(side="right")
 
-        # Progress bar
         progress = ctk.CTkProgressBar(content, height=12)
         progress.pack(fill="x", pady=(5, 2))
         progress.set(topic["percentage"] / 100.0)
         progress.configure(progress_color=color)
 
-        # Stats
         ctk.CTkLabel(
             content,
             text=f"{topic['correct']}/{topic['total']} correct ({topic['percentage']}%)",

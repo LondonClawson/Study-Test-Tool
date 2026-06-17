@@ -7,6 +7,7 @@ matplotlib.use("TkAgg")
 from typing import List, Optional, Tuple
 
 import customtkinter as ctk
+from gui.styles import get_color
 from matplotlib.backends.backend_tkagg import FigureCanvasTkAgg
 from matplotlib.figure import Figure
 
@@ -27,23 +28,22 @@ class GraphWidget(ctk.CTkFrame):
         self._init_figure()
 
     def _get_theme_colors(self) -> dict:
-        """Get colors based on current appearance mode."""
-        mode = ctk.get_appearance_mode()
-        if mode == "Dark":
-            return {
-                "bg": "#2b2b2b",
-                "text": "#ffffff",
-                "grid": "#404040",
-                "line": "#4a9eff",
-                "bar": "#4a9eff",
-            }
+        """Get chart colors from shared visual roles."""
         return {
-            "bg": "#ffffff",
-            "text": "#333333",
-            "grid": "#e0e0e0",
-            "line": "#1f6aa5",
-            "bar": "#1f6aa5",
+            "bg": self._resolve_color(get_color("chart_bg")),
+            "plot_bg": self._resolve_color(get_color("chart_plot_bg")),
+            "text": self._resolve_color(get_color("chart_text")),
+            "grid": self._resolve_color(get_color("chart_grid")),
+            "line": self._resolve_color(get_color("chart_series_primary")),
+            "bar": self._resolve_color(get_color("chart_series_primary")),
         }
+
+    @staticmethod
+    def _resolve_color(color):
+        """Resolve a CustomTkinter tuple color for matplotlib."""
+        if isinstance(color, tuple):
+            return color[1] if ctk.get_appearance_mode() == "Dark" else color[0]
+        return color
 
     def _init_figure(self) -> None:
         """Create the matplotlib figure and embed in tkinter."""
@@ -53,11 +53,15 @@ class GraphWidget(ctk.CTkFrame):
         self._figure.patch.set_facecolor(colors["bg"])
 
         self._figure_canvas = FigureCanvasTkAgg(self._figure, master=self)
+        self._figure_canvas.get_tk_widget().configure(bg=colors["bg"])
         self._figure_canvas.get_tk_widget().pack(fill="both", expand=True)
 
     def clear(self) -> None:
         """Clear the current chart."""
+        colors = self._get_theme_colors()
         self._figure.clear()
+        self._figure.patch.set_facecolor(colors["bg"])
+        self._figure_canvas.get_tk_widget().configure(bg=colors["bg"])
         self._figure_canvas.draw()
 
     def refresh(self) -> None:
@@ -84,9 +88,11 @@ class GraphWidget(ctk.CTkFrame):
         """
         colors = self._get_theme_colors()
         self._figure.clear()
+        self._figure.patch.set_facecolor(colors["bg"])
+        self._figure_canvas.get_tk_widget().configure(bg=colors["bg"])
 
         ax = self._figure.add_subplot(111)
-        ax.set_facecolor(colors["bg"])
+        ax.set_facecolor(colors["plot_bg"])
         ax.plot(x_data, y_data, color=colors["line"], marker="o", linewidth=2)
 
         if title:
@@ -126,9 +132,11 @@ class GraphWidget(ctk.CTkFrame):
         """
         theme = self._get_theme_colors()
         self._figure.clear()
+        self._figure.patch.set_facecolor(theme["bg"])
+        self._figure_canvas.get_tk_widget().configure(bg=theme["bg"])
 
         ax = self._figure.add_subplot(111)
-        ax.set_facecolor(theme["bg"])
+        ax.set_facecolor(theme["plot_bg"])
 
         bar_colors = colors_list if colors_list else [theme["bar"]] * len(labels)
         bars = ax.bar(range(len(labels)), values, color=bar_colors)
@@ -164,9 +172,11 @@ class GraphWidget(ctk.CTkFrame):
         """
         theme = self._get_theme_colors()
         self._figure.clear()
+        self._figure.patch.set_facecolor(theme["bg"])
+        self._figure_canvas.get_tk_widget().configure(bg=theme["bg"])
 
         ax = self._figure.add_subplot(111)
-        ax.set_facecolor(theme["bg"])
+        ax.set_facecolor(theme["plot_bg"])
 
         ax.bar(range(len(dates)), counts, color=theme["bar"], alpha=0.7)
         ax.set_xticks(range(len(dates)))
