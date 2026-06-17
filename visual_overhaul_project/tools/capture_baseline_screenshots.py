@@ -201,8 +201,7 @@ class ScreenshotHarness:
         self.app._current_screen = SCREEN_HISTORY
         frame = self.app.frames[SCREEN_HISTORY]
         frame.tkraise()
-        frame.loading_label.pack(pady=10)
-        frame._clear_table()
+        frame._show_loading_state()
         attempts = frame.scoring_service.get_all_attempts()
         tests = frame.test_service.get_all_tests()
         frame._on_data_loaded(attempts, tests)
@@ -1174,6 +1173,49 @@ def show_history(
 ) -> None:
     """Show history with data loaded synchronously."""
     harness.show_history_sync()
+    frame = app.frames[SCREEN_HISTORY]
+    frame.filter_var.set("All Tests")
+    frame.mode_filter_var.set("All Modes")
+    frame._apply_filters()
+    harness._settle()
+
+
+def show_history_filtered(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show history filtered to one practice-mode test."""
+    harness.show_history_sync()
+    frame = app.frames[SCREEN_HISTORY]
+    frame.filter_var.set("Pharmacology Quick Drill")
+    frame.mode_filter_var.set("Practice")
+    frame._apply_filters()
+    harness._settle()
+
+
+def show_history_loading(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show the designed history loading state."""
+    app._current_screen = SCREEN_HISTORY
+    frame = app.frames[SCREEN_HISTORY]
+    frame.tkraise()
+    frame.filter_var.set("All Tests")
+    frame.mode_filter_var.set("All Modes")
+    frame._show_loading_state()
+    harness._settle()
+
+
+def show_history_minimum_populated(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show populated History at the documented minimum window size."""
+    harness.use_minimum_geometry()
+    harness.show_history_sync()
+    frame = app.frames[SCREEN_HISTORY]
+    frame.filter_var.set("All Tests")
+    frame.mode_filter_var.set("All Modes")
+    frame._apply_filters()
+    harness._settle()
 
 
 def show_analytics(
@@ -1409,6 +1451,14 @@ CAPTURE_STATES = [
         "results_loaded_from_history", "results", "seeded", show_results_history
     ),
     CaptureState("history_populated", "data", "seeded", show_history),
+    CaptureState("history_filtered", "data", "seeded", show_history_filtered),
+    CaptureState("history_loading_state", "data", "seeded", show_history_loading),
+    CaptureState(
+        "history_minimum_populated",
+        "data",
+        "seeded",
+        show_history_minimum_populated,
+    ),
     CaptureState("analytics_populated", "data", "seeded", show_analytics),
     CaptureState("review_missed_questions", "data", "seeded", show_review),
     CaptureState("home_empty_state", "empty", "empty", show_empty_home),

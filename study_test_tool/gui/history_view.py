@@ -5,23 +5,39 @@ import tkinter.messagebox as messagebox
 
 import customtkinter as ctk
 
-from config.settings import (
-    FONT_FAMILY,
-    FONT_SIZE_BODY,
-    FONT_SIZE_HEADING,
-    FONT_SIZE_SMALL,
-    FONT_SIZE_TITLE,
+from gui.styles import (
+    RADIUS_CONTROL,
+    RADIUS_ROW,
+    SPACE_4,
+    SPACE_8,
+    SPACE_12,
+    SPACE_16,
+    SPACE_24,
+    get_button_style,
+    get_card_style,
+    get_color,
+    get_header_style,
+    get_text_style,
 )
 from services.scoring_service import ScoringService
 from services.test_service import TestService
 from utils.constants import SCREEN_HOME, SCREEN_RESULTS
+
+HISTORY_COLUMNS = (
+    ("Date", 145, 2),
+    ("Test Name", 220, 3),
+    ("Mode", 90, 1),
+    ("Score", 90, 1),
+    ("%", 70, 1),
+    ("Time", 80, 1),
+)
 
 
 class HistoryViewFrame(ctk.CTkFrame):
     """Displays filterable history of all test attempts."""
 
     def __init__(self, parent: ctk.CTkFrame, controller) -> None:
-        super().__init__(parent)
+        super().__init__(parent, fg_color=get_color("app_bg"))
         self.controller = controller
         self.scoring_service = ScoringService()
         self.test_service = TestService()
@@ -33,33 +49,45 @@ class HistoryViewFrame(ctk.CTkFrame):
 
     def _build_ui(self) -> None:
         """Build the history layout."""
-        # Top bar
-        top_frame = ctk.CTkFrame(self, fg_color="transparent")
-        top_frame.pack(fill="x", padx=30, pady=(20, 10))
+        page_header = ctk.CTkFrame(self, **get_header_style("page"))
+        page_header.pack(fill="x", padx=SPACE_24, pady=(SPACE_24, SPACE_12))
+        page_header.grid_columnconfigure(1, weight=1)
 
         ctk.CTkButton(
-            top_frame,
+            page_header,
             text="< Back",
             width=80,
-            fg_color="gray",
+            **get_button_style("secondary"),
             command=lambda: self.controller.show_frame(SCREEN_HOME),
-        ).pack(side="left")
+        ).grid(row=0, column=0, padx=(SPACE_16, SPACE_12), pady=SPACE_16)
+
+        title_frame = ctk.CTkFrame(page_header, fg_color="transparent")
+        title_frame.grid(row=0, column=1, sticky="ew", pady=SPACE_12)
 
         ctk.CTkLabel(
-            top_frame,
+            title_frame,
             text="Test History",
-            font=(FONT_FAMILY, FONT_SIZE_TITLE, "bold"),
-        ).pack(side="left", padx=20)
+            **get_text_style("page_title"),
+        ).pack(anchor="w")
 
-        # Filter row
-        filter_frame = ctk.CTkFrame(self, fg_color="transparent")
-        filter_frame.pack(fill="x", padx=30, pady=(0, 10))
+        self.header_meta_label = ctk.CTkLabel(
+            title_frame,
+            text="Loading history",
+            **get_text_style("page_subtitle"),
+        )
+        self.header_meta_label.pack(anchor="w", pady=(SPACE_4, 0))
+
+        filter_frame = ctk.CTkFrame(self, **get_card_style("default"))
+        filter_frame.pack(fill="x", padx=SPACE_24, pady=(0, SPACE_12))
+        filter_frame.grid_columnconfigure(1, minsize=250)
+        filter_frame.grid_columnconfigure(3, minsize=150)
+        filter_frame.grid_columnconfigure(4, weight=1)
 
         ctk.CTkLabel(
             filter_frame,
-            text="Filter by test:",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).pack(side="left", padx=(0, 10))
+            text="Test",
+            **get_text_style("body"),
+        ).grid(row=0, column=0, sticky="w", padx=(SPACE_16, SPACE_8), pady=SPACE_16)
 
         self.filter_var = ctk.StringVar(value="All Tests")
         self.filter_menu = ctk.CTkOptionMenu(
@@ -68,14 +96,15 @@ class HistoryViewFrame(ctk.CTkFrame):
             values=["All Tests"],
             command=self._on_filter_change,
             width=250,
+            **self._option_menu_style(),
         )
-        self.filter_menu.pack(side="left")
+        self.filter_menu.grid(row=0, column=1, sticky="ew", pady=SPACE_16)
 
         ctk.CTkLabel(
             filter_frame,
-            text="Mode:",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).pack(side="left", padx=(20, 10))
+            text="Mode",
+            **get_text_style("body"),
+        ).grid(row=0, column=2, sticky="w", padx=(SPACE_16, SPACE_8), pady=SPACE_16)
 
         self.mode_filter_var = ctk.StringVar(value="All Modes")
         self.mode_filter_menu = ctk.CTkOptionMenu(
@@ -84,54 +113,160 @@ class HistoryViewFrame(ctk.CTkFrame):
             values=["All Modes", "Test", "Practice"],
             command=self._on_filter_change,
             width=150,
+            **self._option_menu_style(),
         )
-        self.mode_filter_menu.pack(side="left")
+        self.mode_filter_menu.grid(row=0, column=3, sticky="ew", pady=SPACE_16)
 
-        # Loading indicator
-        self.loading_label = ctk.CTkLabel(
+        self.count_label = ctk.CTkLabel(
+            filter_frame,
+            text="",
+            anchor="e",
+            **get_text_style("metadata"),
+        )
+        self.count_label.grid(
+            row=0,
+            column=4,
+            sticky="e",
+            padx=(SPACE_16, SPACE_16),
+            pady=SPACE_16,
+        )
+
+        self.table_header = ctk.CTkFrame(
             self,
-            text="Loading...",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-            text_color="gray",
+            fg_color=get_color("surface_subtle"),
+            border_color=get_color("border"),
+            border_width=1,
+            corner_radius=RADIUS_ROW,
         )
+        self.table_header.pack(fill="x", padx=SPACE_24, pady=(0, SPACE_8))
+        self._configure_table_columns(self.table_header)
 
-        # Table header
-        self.table_header = ctk.CTkFrame(self, fg_color="transparent")
-        self.table_header.pack(fill="x", padx=30)
-
-        headers = [
-            ("Date", 160),
-            ("Test Name", 200),
-            ("Mode", 80),
-            ("Score", 80),
-            ("%", 60),
-            ("Time", 70),
-        ]
-        for text, width in headers:
+        for column, (text, _, _) in enumerate(HISTORY_COLUMNS):
             ctk.CTkLabel(
                 self.table_header,
                 text=text,
-                font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
-                width=width,
                 anchor="w",
-            ).pack(side="left", padx=5)
+                **get_text_style("metadata"),
+            ).grid(
+                row=0,
+                column=column,
+                sticky="ew",
+                padx=SPACE_8,
+                pady=SPACE_8,
+            )
 
-        # Scrollable table body
-        self.table_body = ctk.CTkScrollableFrame(self)
-        self.table_body.pack(fill="both", expand=True, padx=30, pady=(0, 20))
-
-        # Empty state
-        self.empty_label = ctk.CTkLabel(
-            self.table_body,
-            text="No test history yet.",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-            text_color="gray",
+        self.table_body = ctk.CTkScrollableFrame(
+            self,
+            fg_color="transparent",
+            scrollbar_button_color=get_color("surface_muted"),
+            scrollbar_button_hover_color=get_color("border"),
         )
+        self.table_body.pack(
+            fill="both",
+            expand=True,
+            padx=SPACE_24,
+            pady=(0, SPACE_24),
+        )
+
+        self.loading_state = self._build_state_surface(
+            self.table_body,
+            "Loading history",
+            "Preparing recent attempts.",
+        )
+        self.empty_state = self._build_state_surface(
+            self.table_body,
+            "No test history yet",
+            "Complete a test or practice session to see attempts here.",
+        )
+
+    def _option_menu_style(self) -> dict:
+        """Return semantic option-menu styling for History filters."""
+        return {
+            "fg_color": get_color("surface_subtle"),
+            "button_color": get_color("primary"),
+            "button_hover_color": get_color("primary_hover"),
+            "dropdown_fg_color": get_color("surface"),
+            "dropdown_hover_color": get_color("surface_subtle"),
+            "dropdown_text_color": get_color("text_primary"),
+            "text_color": get_color("text_primary"),
+            "corner_radius": RADIUS_CONTROL,
+        }
+
+    @staticmethod
+    def _configure_table_columns(frame: ctk.CTkFrame) -> None:
+        """Apply shared column sizing to headers and attempt rows."""
+        for index, (_, min_width, weight) in enumerate(HISTORY_COLUMNS):
+            frame.grid_columnconfigure(index, minsize=min_width, weight=weight)
+
+    def _build_state_surface(
+        self,
+        parent: ctk.CTkFrame,
+        title: str,
+        helper: str,
+    ) -> ctk.CTkFrame:
+        """Create an empty/loading state surface."""
+        state = ctk.CTkFrame(parent, **get_card_style("default"))
+
+        title_label = ctk.CTkLabel(
+            state,
+            text=title,
+            anchor="center",
+            **get_text_style("card_title"),
+        )
+        title_label.pack(pady=(SPACE_24, SPACE_4))
+
+        helper_label = ctk.CTkLabel(
+            state,
+            text=helper,
+            anchor="center",
+            wraplength=520,
+            **get_text_style("card_description"),
+        )
+        helper_label.pack(padx=SPACE_24, pady=(0, SPACE_24))
+
+        state.title_label = title_label
+        state.helper_label = helper_label
+        return state
+
+    def _show_loading_state(self) -> None:
+        """Show the designed loading surface while background data loads."""
+        self._clear_table()
+        self.empty_state.pack_forget()
+        self.loading_state.pack(fill="x", pady=SPACE_24)
+        self.header_meta_label.configure(text="Loading history")
+        self.count_label.configure(text="Loading...")
+
+    def _show_empty_state(self, title: str, helper: str) -> None:
+        """Show the designed empty state with state-specific text."""
+        self.loading_state.pack_forget()
+        self.empty_state.title_label.configure(text=title)
+        self.empty_state.helper_label.configure(text=helper)
+        self.empty_state.pack(fill="x", pady=SPACE_24)
+
+    def _hide_state_surfaces(self) -> None:
+        """Hide empty and loading surfaces."""
+        self.loading_state.pack_forget()
+        self.empty_state.pack_forget()
+
+    def _update_attempt_summary(self, visible_count: int) -> None:
+        """Update count labels without changing filtering behavior."""
+        total_count = len(self._all_attempts)
+        if total_count == 0:
+            text = "No attempts"
+        elif visible_count == total_count:
+            text = f"{total_count} attempt{'s' if total_count != 1 else ''}"
+        else:
+            text = (
+                f"Showing {visible_count} of {total_count} "
+                f"attempt{'s' if total_count != 1 else ''}"
+            )
+
+        self.header_meta_label.configure(text=text)
+        self.count_label.configure(text=text)
 
     def on_show(self, **kwargs) -> None:
         """Load data using a background thread."""
-        self.loading_label.pack(pady=10)
-        self._clear_table()
+        self._show_loading_state()
 
         thread = threading.Thread(target=self._load_data, daemon=True)
         thread.start()
@@ -147,11 +282,10 @@ class HistoryViewFrame(ctk.CTkFrame):
 
     def _on_data_loaded(self, attempts, tests) -> None:
         """Update the UI with loaded data (runs on main thread)."""
-        self.loading_label.pack_forget()
+        self.loading_state.pack_forget()
         self._all_attempts = attempts
         self._tests = tests
 
-        # Update filter menu
         test_names = ["All Tests"] + [t.name for t in tests]
         self.filter_menu.configure(values=test_names)
 
@@ -159,7 +293,9 @@ class HistoryViewFrame(ctk.CTkFrame):
 
     def _on_load_error(self, error: str) -> None:
         """Handle loading errors."""
-        self.loading_label.pack_forget()
+        self.loading_state.pack_forget()
+        self.header_meta_label.configure(text="Unable to load history")
+        self.count_label.configure(text="Load failed")
         messagebox.showerror("Error", f"Failed to load history: {error}")
 
     def _on_filter_change(self, value: str) -> None:
@@ -184,32 +320,41 @@ class HistoryViewFrame(ctk.CTkFrame):
     def _clear_table(self) -> None:
         """Remove all rows from the table."""
         for widget in self.table_body.winfo_children():
-            if widget != self.empty_label:
+            if widget not in (self.empty_state, self.loading_state):
                 widget.destroy()
 
     def _display_attempts(self, attempts) -> None:
         """Render the attempt list as table rows."""
         self._clear_table()
+        self._update_attempt_summary(len(attempts))
 
         if not attempts:
-            self.empty_label.pack(pady=40)
+            if self._all_attempts:
+                self._show_empty_state(
+                    "No matching attempts",
+                    "Adjust the History filters to show more attempts.",
+                )
+            else:
+                self._show_empty_state(
+                    "No test history yet",
+                    "Complete a test or practice session to see attempts here.",
+                )
             return
 
-        self.empty_label.pack_forget()
+        self._hide_state_surfaces()
 
         for attempt in attempts:
             self._create_row(attempt)
 
     def _create_row(self, attempt) -> None:
         """Create one clickable row in the history table."""
-        row = ctk.CTkFrame(self.table_body, corner_radius=4, cursor="hand2")
-        row.pack(fill="x", pady=2)
+        row_style = get_card_style("default")
+        row_style["corner_radius"] = RADIUS_ROW
+        row = ctk.CTkFrame(self.table_body, cursor="hand2", **row_style)
+        row.pack(fill="x", pady=(0, SPACE_8))
+        self._configure_table_columns(row)
 
-        # Make the whole row clickable
-        row.bind(
-            "<Button-1>",
-            lambda e, a=attempt: self._on_row_click(a),
-        )
+        self._bind_row_events(row, row, attempt)
 
         date_str = attempt.completed_at or "N/A"
         if len(date_str) > 16:
@@ -218,27 +363,42 @@ class HistoryViewFrame(ctk.CTkFrame):
         mode_label = attempt.mode.capitalize() if attempt.mode else "Test"
 
         values = [
-            (date_str, 160),
-            (attempt.test_name or "Unknown", 200),
-            (mode_label, 80),
-            (f"{attempt.score}/{attempt.total_questions}", 80),
-            (f"{attempt.percentage}%", 60),
-            (self._format_time(attempt.time_taken), 70),
+            (date_str, "metadata"),
+            (attempt.test_name or "Unknown", "body"),
+            (mode_label, "metadata"),
+            (f"{attempt.score}/{attempt.total_questions}", "body"),
+            (f"{attempt.percentage}%", "body"),
+            (self._format_time(attempt.time_taken), "metadata"),
         ]
 
-        for text, width in values:
+        for column, (text, text_role) in enumerate(values):
             lbl = ctk.CTkLabel(
                 row,
                 text=text,
-                font=(FONT_FAMILY, FONT_SIZE_SMALL),
-                width=width,
                 anchor="w",
+                wraplength=220 if column == 1 else 120,
+                **get_text_style(text_role),
             )
-            lbl.pack(side="left", padx=5, pady=5)
-            lbl.bind(
-                "<Button-1>",
-                lambda e, a=attempt: self._on_row_click(a),
+            lbl.grid(
+                row=0,
+                column=column,
+                sticky="ew",
+                padx=SPACE_8,
+                pady=SPACE_12,
             )
+            self._bind_row_events(lbl, row, attempt)
+
+    def _bind_row_events(self, widget, row: ctk.CTkFrame, attempt) -> None:
+        """Attach shared click and hover affordances to a row child."""
+        widget.bind("<Button-1>", lambda e, a=attempt: self._on_row_click(a))
+        widget.bind(
+            "<Enter>",
+            lambda e, r=row: r.configure(fg_color=get_color("surface_subtle")),
+        )
+        widget.bind(
+            "<Leave>",
+            lambda e, r=row: r.configure(fg_color=get_color("surface")),
+        )
 
     def _on_row_click(self, attempt) -> None:
         """Navigate to the detailed results view for this attempt."""

@@ -68,3 +68,14 @@ Notes:
   save/cancel paths.
 - Keep this as an evidence fix unless recapture proves the dropdown persists
   because of runtime editor behavior.
+
+Resubmission Acceptance Addendum - 2026-06-17:
+- Accepted. `STORY-013_editor_layout.md` is Done.
+- The screenshot harness now returns a cleanup callback from
+  `show_editor_group_autocomplete(...)` and closes the group autocomplete
+  dropdown after that evidence state.
+- The light and dark `editor_minimum_existing` screenshots were recaptured and
+  no longer show the autocomplete dropdown over the editor layout.
+- Screenshot validation passed for the full 16-image `STORY-013` evidence set.
+- Compileall and Black checks passed for the screenshot harness during the
+  resubmission review.

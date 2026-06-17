@@ -2,7 +2,7 @@
 
 ## Status
 
-Submitted For Review.
+Done.
 
 ## Readiness
 
@@ -18,7 +18,7 @@ Dev 2 implementation submitted for PM/reviewer acceptance, then returned with
 Changes Requested on 2026-06-17 because the required minimum-window editor
 screenshots are contaminated by the group autocomplete dropdown.
 Screenshot harness cleanup was fixed and the light/dark editor evidence set was
-recaptured and resubmitted for PM/reviewer acceptance.
+recaptured, resubmitted, and accepted by PM/reviewer on 2026-06-17.
 
 ## Sprint
 

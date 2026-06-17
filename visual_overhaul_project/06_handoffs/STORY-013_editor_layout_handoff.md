@@ -2,8 +2,8 @@ Story/Task:
 `STORY-013_editor_layout.md`
 
 Status:
-Submitted For Review. PM/reviewer acceptance is still required; this is not
-marked Done.
+Done. Accepted by PM/reviewer on 2026-06-17 after clean minimum-window evidence
+resubmission.
 
 Summary:
 Polished the editor page header, metadata area, two-column panel hierarchy,

@@ -70,9 +70,9 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `STORY-010_test_taking_shell.md` | Done | None |
 | `STORY-011_answer_rows_and_practice_feedback.md` | Done | None |
 | `STORY-012_results_summary_and_review_cards.md` | Done | None |
-| `STORY-013_editor_layout.md` | Submitted For Review | PM/reviewer acceptance |
+| `STORY-013_editor_layout.md` | Done | None |
 | `STORY-014_history_and_analytics_polish.md` | Done | split into child stories |
-| `STORY-014A_history_list_and_filters.md` | In Progress | None |
+| `STORY-014A_history_list_and_filters.md` | Submitted For Review | PM/reviewer acceptance |
 | `STORY-014B_analytics_chart_shell.md` | Ready | None |
 | `STORY-014C_analytics_weak_topics_and_no_data.md` | Ready | None |
 | `STORY-015_review_and_dialog_polish.md` | Done | split into child stories |
@@ -86,15 +86,12 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 
 ## Next Recommended Work
 
-1. Review the `STORY-013_editor_layout.md` evidence resubmission for
-   PM/reviewer acceptance. The screenshot harness now closes the group
-   autocomplete dropdown after the dropdown evidence state, and the
-   minimum-window editor screenshots were recaptured without the dropdown
-   obscuring the layout.
-2. `STORY-014A_history_list_and_filters.md` is In Progress as the additional
-   implementation lane while PM/reviewer capacity handles `STORY-013`. Keep
-   `STORY-014B` and `STORY-014C` behind this lane unless another
-   implementation lane opens.
+1. Review `STORY-014A_history_list_and_filters.md` for PM/reviewer acceptance.
+   The submitted work should be checked against populated, filtered, loading,
+   empty, and minimum-window History states plus row-to-results navigation.
+2. `STORY-013_editor_layout.md` is accepted after the clean minimum-window
+   evidence resubmission. No follow-up editor work should be assigned unless a
+   new bug or validation story names it.
 3. `STORY-012_results_summary_and_review_cards.md` is accepted after the
    retake-state resubmission. No follow-up results work should be assigned
    unless a new bug or validation story names it.
