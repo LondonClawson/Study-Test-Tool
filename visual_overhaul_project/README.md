@@ -36,6 +36,8 @@ authoritative when older root documents conflict with the current app.
 ## Fast Navigation
 
 - Current state: [status_board.md](00_project/status_board.md).
+- Lessons learned:
+  [lessons_learned.md](00_project/lessons_learned.md).
 - Definition of Ready:
   [definition_of_ready.md](00_project/definition_of_ready.md).
 - Status transitions:
