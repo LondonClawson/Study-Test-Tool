@@ -82,13 +82,14 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `STORY-015D_import_preview_dialog_polish.md`      | Done                 | None                     |
 | `STORY-015E_native_dialog_inventory_followup.md`  | Done                 | None                     |
 | `STORY-016_light_dark_and_min_size_validation.md` | Done                 | None                     |
-| `STORY-017_mvp_visual_regression_pass.md`         | Submitted For Review | None                     |
+| `STORY-017_mvp_visual_regression_pass.md`         | Done                 | None                     |
 
 ## Next Recommended Work
 
-1. Review `STORY-017_mvp_visual_regression_pass.md` final closeout package.
-   Dev 2 submitted the acceptance-matrix review notes, evidence validation,
-   full pytest summary, final classifications, and handoff on 2026-06-17.
+1. The MVP visual overhaul is closed. `STORY-017_mvp_visual_regression_pass.md`
+   is accepted after PM review of the closeout package, acceptance-matrix
+   review notes, baseline validation, final screenshot validation, and full
+   pytest summary.
 2. `STORY-016_light_dark_and_min_size_validation.md` is accepted after PM
    review of the 138-screenshot light/dark and minimum-size evidence set plus
    the screen-family validation matrix. Long-content stress coverage gaps and
@@ -138,5 +139,18 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
    retake-state resubmission. No follow-up results work should be assigned
    unless a new bug or validation story names it.
 13. Use the PM readiness pass handoff before assigning Sprint 2 or Sprint 3
-   Ready stories so developers follow the priority order instead of cherry
-   picking lower-priority work.
+    Ready stories so developers follow the priority order instead of cherry
+    picking lower-priority work.
+
+## Post-MVP Recommendations
+
+- Add long-content stress screenshot fixtures for Home, Test Taking, Results,
+  Editor, History, Analytics Weak Topics, Review, Mix dialog, and Import
+  Preview.
+- Add a chart-readability follow-up for Analytics Study Activity when only one
+  populated day renders as a very wide bar.
+- Consider a custom report or confirmation pattern for native import reports,
+  export warnings, missing-answer confirmations, and other native dialogs after
+  MVP acceptance.
+- Track the pre-existing History loading exception callback issue as a
+  non-visual engineering cleanup if it is not already handled elsewhere.

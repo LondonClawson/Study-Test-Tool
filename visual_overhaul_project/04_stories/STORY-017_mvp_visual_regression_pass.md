@@ -2,7 +2,7 @@
 
 ## Status
 
-Submitted For Review.
+Done.
 
 ## Readiness
 
@@ -17,6 +17,7 @@ follow-up, or accepted limitation.
 
 PM assigned `STORY-017` to Dev 2 on 2026-06-17.
 Dev 2 submitted the final MVP closeout package for PM review on 2026-06-17.
+PM accepted the final MVP closeout package on 2026-06-17.
 
 ## Sprint
 

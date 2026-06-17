@@ -2,7 +2,7 @@ Story/Task:
 STORY-017: MVP Visual Regression Pass
 
 Status:
-Submitted For Review. PM acceptance is still required; this is not marked Done.
+Done.
 
 Summary:
 Completed the final MVP visual closeout package. Reviewed the acceptance matrix,
@@ -10,6 +10,12 @@ baseline audit, foundation decisions, `STORY-016` validation package, and PM
 review notes from `STORY-008` through `STORY-015E`. No new app runtime code was
 changed. The closeout found no MVP visual blocker in accepted evidence or in the
 full test run.
+
+PM acceptance:
+Accepted on 2026-06-17 after PM verification of the submitted closeout package,
+baseline screenshot validation, final screenshot validation, and full pytest
+run. The MVP visual overhaul is closed with no active MVP blockers. Remaining
+items are post-MVP recommendations or accepted MVP limitations.
 
 Files changed:
 - `visual_overhaul_project/00_project/status_board.md`

@@ -44,3 +44,19 @@ reviewed.
 For the current project scan, use
 `visual_overhaul_project/00_project/status_board.md`. For dependency planning,
 use `visual_overhaul_project/03_backlog/dependency_map.md`.
+
+## Post-MVP Recommendation Queue
+
+The MVP visual overhaul is closed through
+`STORY-017_mvp_visual_regression_pass.md`. Do not assign these recommendations
+as MVP work unless the product owner reopens scope.
+
+1. Add long-content stress screenshot fixtures across Home, Test Taking,
+   Results, Editor, History, Analytics Weak Topics, Review, Mix dialog, and
+   Import Preview.
+2. Tune Analytics Study Activity for one populated day, where the current chart
+   renders a readable but visually heavy wide bar.
+3. Evaluate custom report or confirmation patterns for native import reports,
+   export warnings, missing-answer confirmations, and other native dialogs.
+4. Track the pre-existing History loading exception callback issue as a
+   non-visual engineering cleanup if it is not already handled elsewhere.
