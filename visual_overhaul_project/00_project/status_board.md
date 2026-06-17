@@ -74,7 +74,7 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `STORY-014_history_and_analytics_polish.md` | Done | split into child stories |
 | `STORY-014A_history_list_and_filters.md` | Done | None |
 | `STORY-014B_analytics_chart_shell.md` | Done | None |
-| `STORY-014C_analytics_weak_topics_and_no_data.md` | Ready | None |
+| `STORY-014C_analytics_weak_topics_and_no_data.md` | Submitted For Review | PM/reviewer acceptance |
 | `STORY-015_review_and_dialog_polish.md` | Done | split into child stories |
 | `STORY-015A_review_screen_polish.md` | Submitted For Review | PM/reviewer acceptance |
 | `STORY-015B_mode_dialog_polish.md` | Ready | None |
@@ -86,29 +86,32 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 
 ## Next Recommended Work
 
-1. Review `STORY-015A_review_screen_polish.md` for PM/reviewer acceptance. The
+1. Review `STORY-014C_analytics_weak_topics_and_no_data.md` for PM/reviewer
+   acceptance. The submitted work should be checked against light/dark Weak
+   Topics grouped by Test, Group, and Category, no-category, no-data, and
+   minimum-window evidence plus focused analytics verification.
+2. Review `STORY-015A_review_screen_polish.md` for PM/reviewer acceptance. The
    submitted work should be checked against light/dark missed questions,
    selected scope, selected question, no selected tests, no missed questions,
    no active tests, and minimum-window evidence plus Start Review smoke
    coverage.
-2. `STORY-014C_analytics_weak_topics_and_no_data.md` is Ready as the next
-   Analytics lane when implementation capacity opens, focused on Weak Topics
-   polish and non-chart no-data states.
-3. `STORY-014B_analytics_chart_shell.md` is accepted after PM review of
+3. `STORY-015B_mode_dialog_polish.md` is Ready as the next dialog lane once
+   developer capacity is available.
+4. `STORY-014B_analytics_chart_shell.md` is accepted after PM review of
    light/dark Score Trends, Test Comparison, Study Activity, chart no-data,
    and minimum-window evidence plus analytics service test coverage. No
    follow-up chart-shell work should be assigned unless a validation story or
    new bug names it.
-4. `STORY-014A_history_list_and_filters.md` is accepted after PM review of
+5. `STORY-014A_history_list_and_filters.md` is accepted after PM review of
    light/dark populated, filtered, loading, empty, and minimum-window History
    evidence plus row-to-results smoke coverage. No follow-up History list work
    should be assigned unless a new bug or validation story names it.
-5. `STORY-013_editor_layout.md` is accepted after the clean minimum-window
+6. `STORY-013_editor_layout.md` is accepted after the clean minimum-window
    evidence resubmission. No follow-up editor work should be assigned unless a
    new bug or validation story names it.
-6. `STORY-012_results_summary_and_review_cards.md` is accepted after the
+7. `STORY-012_results_summary_and_review_cards.md` is accepted after the
    retake-state resubmission. No follow-up results work should be assigned
    unless a new bug or validation story names it.
-7. Use the PM readiness pass handoff before assigning Sprint 2 or Sprint 3
+8. Use the PM readiness pass handoff before assigning Sprint 2 or Sprint 3
    Ready stories so developers follow the priority order instead of cherry
    picking lower-priority work.

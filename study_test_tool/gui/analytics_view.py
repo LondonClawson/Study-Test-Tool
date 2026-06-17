@@ -2,14 +2,6 @@
 
 import customtkinter as ctk
 
-from config.settings import (
-    COLOR_TOPIC_MODERATE,
-    COLOR_TOPIC_STRONG,
-    COLOR_TOPIC_WEAK,
-    FONT_FAMILY,
-    FONT_SIZE_HEADING,
-    FONT_SIZE_SMALL,
-)
 from gui.components.graph_widget import GraphWidget
 from gui.styles import (
     RADIUS_CONTROL,
@@ -166,11 +158,7 @@ class AnalyticsViewFrame(ctk.CTkFrame):
             scrollbar_button_hover_color=get_color("border"),
         )
 
-        self.empty_label = ctk.CTkLabel(
-            self.content_frame,
-            text="No data available yet. Take some tests first!",
-            **get_text_style("body"),
-        )
+        self.weak_topics_empty_state = self._build_weak_topics_empty_state()
 
     def _option_menu_style(self) -> dict:
         """Return semantic option-menu styling for Analytics filters."""
@@ -217,6 +205,27 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         self.chart_empty_helper.pack(padx=SPACE_24, pady=(0, SPACE_24))
         return state
 
+    def _build_weak_topics_empty_state(self) -> ctk.CTkFrame:
+        """Create the Weak Topics empty-state surface."""
+        state = ctk.CTkFrame(self.content_frame, **get_card_style("default"))
+
+        self.weak_topics_empty_title = ctk.CTkLabel(
+            state,
+            text="No weak-topic data yet",
+            **get_text_style("card_title"),
+        )
+        self.weak_topics_empty_title.pack(pady=(SPACE_24, SPACE_4))
+
+        self.weak_topics_empty_helper = ctk.CTkLabel(
+            state,
+            text="Complete scored attempts to identify topics that need review.",
+            wraplength=560,
+            justify="center",
+            **get_text_style("card_description"),
+        )
+        self.weak_topics_empty_helper.pack(padx=SPACE_24, pady=(0, SPACE_24))
+        return state
+
     def on_show(self, **kwargs) -> None:
         """Load data when shown."""
         tests = self.test_service.get_all_tests()
@@ -255,7 +264,7 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         self.graph_widget.pack_forget()
         self.chart_empty_state.pack_forget()
         self.weak_topics_frame.pack_forget()
-        self.empty_label.pack_forget()
+        self.weak_topics_empty_state.pack_forget()
 
         if tab == "Weak Topics":
             self.group_by_label.grid(
@@ -291,6 +300,12 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         self.chart_empty_title.configure(text=title)
         self.chart_empty_helper.configure(text=helper)
         self.chart_empty_state.pack(fill="x", padx=SPACE_24, pady=SPACE_24)
+
+    def _show_weak_topics_empty(self, title: str, helper: str) -> None:
+        """Show a Weak Topics empty-state surface."""
+        self.weak_topics_empty_title.configure(text=title)
+        self.weak_topics_empty_helper.configure(text=helper)
+        self.weak_topics_empty_state.pack(fill="x", pady=SPACE_24)
 
     def _render_score_trends(self) -> None:
         """Render score trends line chart."""
@@ -374,17 +389,15 @@ class AnalyticsViewFrame(ctk.CTkFrame):
 
         if not topics:
             if group_by == "category":
-                self.empty_label.configure(
-                    text=(
-                        "No categories tagged on your questions. "
-                        "Try grouping by Test or Group."
-                    )
+                self._show_weak_topics_empty(
+                    "No categories tagged",
+                    "Add question categories or switch to Test or Group grouping.",
                 )
             else:
-                self.empty_label.configure(
-                    text="No data available yet. Take some tests first!"
+                self._show_weak_topics_empty(
+                    "No weak-topic data yet",
+                    "Complete scored attempts to identify topics that need review.",
                 )
-            self.empty_label.pack(pady=40)
             return
 
         for widget in self.weak_topics_frame.winfo_children():
@@ -397,22 +410,29 @@ class AnalyticsViewFrame(ctk.CTkFrame):
 
     def _create_topic_card(self, topic: dict) -> None:
         """Create a color-coded topic card."""
-        status = topic["status"]
-        if status == "weak":
-            color = COLOR_TOPIC_WEAK
-        elif status == "moderate":
-            color = COLOR_TOPIC_MODERATE
-        else:
-            color = COLOR_TOPIC_STRONG
+        status_label, color_role = self._topic_status_style(topic["status"])
+        color = get_color(color_role)
 
-        card = ctk.CTkFrame(self.weak_topics_frame, corner_radius=8)
-        card.pack(fill="x", pady=4, padx=5)
+        card = ctk.CTkFrame(self.weak_topics_frame, **get_card_style("default"))
+        card.pack(fill="x", pady=(0, SPACE_8), padx=SPACE_4)
 
-        indicator = ctk.CTkFrame(card, width=6, corner_radius=3, fg_color=color)
-        indicator.pack(side="left", fill="y", padx=(4, 0), pady=4)
+        indicator = ctk.CTkFrame(
+            card,
+            width=6,
+            height=1,
+            corner_radius=RADIUS_CONTROL,
+            fg_color=color,
+        )
+        indicator.pack(side="left", fill="y", padx=(SPACE_8, 0), pady=SPACE_8)
 
         content = ctk.CTkFrame(card, fg_color="transparent")
-        content.pack(side="left", fill="both", expand=True, padx=10, pady=8)
+        content.pack(
+            side="left",
+            fill="both",
+            expand=True,
+            padx=SPACE_12,
+            pady=SPACE_12,
+        )
 
         top_row = ctk.CTkFrame(content, fg_color="transparent")
         top_row.pack(fill="x")
@@ -420,26 +440,64 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         ctk.CTkLabel(
             top_row,
             text=topic["category"],
-            font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
+            wraplength=560,
             anchor="w",
+            justify="left",
+            **get_text_style("card_title"),
+        ).pack(side="left", fill="x", expand=True)
+
+        status_pill = ctk.CTkFrame(
+            top_row,
+            height=28,
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_CONTROL,
+        )
+        status_pill.pack(side="right", padx=(SPACE_12, 0))
+
+        status_style = get_text_style("metadata")
+        status_style["text_color"] = color
+        ctk.CTkLabel(
+            status_pill,
+            text=status_label,
+            **status_style,
+        ).pack(padx=SPACE_8, pady=SPACE_4)
+
+        progress_row = ctk.CTkFrame(content, fg_color="transparent")
+        progress_row.pack(fill="x", pady=(SPACE_12, SPACE_4))
+
+        progress = ctk.CTkProgressBar(
+            progress_row,
+            height=10,
+            fg_color=get_color("surface_subtle"),
+            progress_color=color,
+        )
+        progress.pack(fill="x", expand=True)
+        progress.set(topic["percentage"] / 100.0)
+
+        meta_row = ctk.CTkFrame(content, fg_color="transparent")
+        meta_row.pack(fill="x")
+
+        ctk.CTkLabel(
+            meta_row,
+            text=f"{topic['correct']}/{topic['total']} correct",
+            anchor="w",
+            **get_text_style("card_metadata"),
         ).pack(side="left")
 
+        percent_style = get_text_style("metadata")
+        percent_style["text_color"] = color
         ctk.CTkLabel(
-            top_row,
-            text=status.capitalize(),
-            font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
-            text_color=color,
+            meta_row,
+            text=f"{topic['percentage']}%",
+            anchor="e",
+            **percent_style,
         ).pack(side="right")
 
-        progress = ctk.CTkProgressBar(content, height=12)
-        progress.pack(fill="x", pady=(5, 2))
-        progress.set(topic["percentage"] / 100.0)
-        progress.configure(progress_color=color)
-
-        ctk.CTkLabel(
-            content,
-            text=f"{topic['correct']}/{topic['total']} correct ({topic['percentage']}%)",
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
-            text_color="gray",
-            anchor="w",
-        ).pack(fill="x")
+    @staticmethod
+    def _topic_status_style(status: str) -> tuple[str, str]:
+        """Return display text and semantic color role for a topic status."""
+        if status == "weak":
+            return "Weak", "status_incorrect"
+        if status == "moderate":
+            return "Moderate", "status_warning"
+        return "Strong", "status_correct"

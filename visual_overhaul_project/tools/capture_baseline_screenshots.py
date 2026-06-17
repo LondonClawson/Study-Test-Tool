@@ -749,6 +749,18 @@ def ensure_no_missed_review_test(seed: Optional[SeedData]) -> Optional[int]:
     return test_id
 
 
+def clear_question_categories(seed: Optional[SeedData]) -> None:
+    """Remove question category tags from a seeded database."""
+    if seed is None:
+        return
+    conn = database_config.get_connection(str(seed.db_path))
+    try:
+        conn.execute("UPDATE questions SET category = ''")
+        conn.commit()
+    finally:
+        conn.close()
+
+
 def show_home_expanded_cards(
     app: App, seed: Optional[SeedData], harness: ScreenshotHarness
 ) -> None:
@@ -1281,6 +1293,56 @@ def show_analytics_minimum_score_trends(
     harness.show_frame(SCREEN_ANALYTICS)
 
 
+def show_analytics_weak_topics_group(
+    app: App,
+    harness: ScreenshotHarness,
+    group_by: str,
+) -> None:
+    """Show Analytics Weak Topics for one grouping mode."""
+    harness.show_frame(SCREEN_ANALYTICS)
+    frame = app.frames[SCREEN_ANALYTICS]
+    frame.tab_var.set("Weak Topics")
+    frame.group_by_var.set(group_by)
+    frame._render_current_tab()
+    harness._settle()
+
+
+def show_analytics_weak_topics_test(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Analytics Weak Topics grouped by Test."""
+    show_analytics_weak_topics_group(app, harness, "Test")
+
+
+def show_analytics_weak_topics_grouped(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Analytics Weak Topics grouped by Group."""
+    show_analytics_weak_topics_group(app, harness, "Group")
+
+
+def show_analytics_weak_topics_category(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Analytics Weak Topics grouped by Category."""
+    show_analytics_weak_topics_group(app, harness, "Category")
+
+
+def show_analytics_weak_topics_no_category(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Analytics Weak Topics category grouping with no tagged categories."""
+    show_analytics_weak_topics_group(app, harness, "Category")
+
+
+def show_analytics_weak_topics_minimum(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Analytics Weak Topics at the documented minimum window size."""
+    harness.use_minimum_geometry()
+    show_analytics_weak_topics_group(app, harness, "Test")
+
+
 def show_review(app: App, seed: Optional[SeedData], harness: ScreenshotHarness) -> None:
     """Show missed-question review."""
     harness.show_frame(SCREEN_REVIEW)
@@ -1393,6 +1455,13 @@ def show_empty_analytics(
 ) -> None:
     """Show the analytics no-data state."""
     harness.show_frame(SCREEN_ANALYTICS)
+
+
+def show_empty_analytics_weak_topics(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show the analytics Weak Topics no-data state."""
+    show_analytics_weak_topics_group(app, harness, "Test")
 
 
 def show_empty_review(
@@ -1603,6 +1672,36 @@ CAPTURE_STATES = [
         "seeded",
         show_analytics_minimum_score_trends,
     ),
+    CaptureState(
+        "analytics_weak_topics_test",
+        "data",
+        "seeded",
+        show_analytics_weak_topics_test,
+    ),
+    CaptureState(
+        "analytics_weak_topics_group",
+        "data",
+        "seeded",
+        show_analytics_weak_topics_grouped,
+    ),
+    CaptureState(
+        "analytics_weak_topics_category",
+        "data",
+        "seeded",
+        show_analytics_weak_topics_category,
+    ),
+    CaptureState(
+        "analytics_weak_topics_minimum",
+        "data",
+        "seeded",
+        show_analytics_weak_topics_minimum,
+    ),
+    CaptureState(
+        "analytics_weak_topics_no_category",
+        "data",
+        "no_category",
+        show_analytics_weak_topics_no_category,
+    ),
     CaptureState("review_missed_questions", "data", "seeded", show_review),
     CaptureState(
         "review_selected_scope",
@@ -1643,6 +1742,12 @@ CAPTURE_STATES = [
     ),
     CaptureState("history_empty_state", "empty", "empty", show_empty_history),
     CaptureState("analytics_no_data", "empty", "empty", show_empty_analytics),
+    CaptureState(
+        "analytics_weak_topics_no_data",
+        "empty",
+        "empty",
+        show_empty_analytics_weak_topics,
+    ),
     CaptureState("review_empty_state", "empty", "empty", show_empty_review),
 ]
 
@@ -1783,6 +1888,7 @@ def run_capture(args: argparse.Namespace) -> None:
     modes = selected_modes(args.mode)
     states = selected_capture_states(args)
     seeded_states = [state for state in states if state.source == "seeded"]
+    no_category_states = [state for state in states if state.source == "no_category"]
     empty_states = [state for state in states if state.source == "empty"]
     expected_paths = expected_screenshot_paths(args.output, modes, states)
 
@@ -1801,6 +1907,16 @@ def run_capture(args: argparse.Namespace) -> None:
                 app = create_app(mode)
                 harness = ScreenshotHarness(app, args.output, mode)
                 capture_state_group(app, seed, harness, seeded_states)
+                app.destroy()
+                app = None
+
+            if no_category_states:
+                no_category_db_path = tmp_dir / f"visual_no_category_{mode}.db"
+                seed = seed_database(no_category_db_path)
+                clear_question_categories(seed)
+                app = create_app(mode)
+                harness = ScreenshotHarness(app, args.output, mode)
+                capture_state_group(app, seed, harness, no_category_states)
                 app.destroy()
                 app = None
 
