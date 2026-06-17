@@ -80,3 +80,20 @@ Notes:
   clips the top of the first visible card. I am not making that a blocker for
   this review, but the resubmission should avoid introducing new screenshot
   evidence gaps.
+
+Resubmission Acceptance Addendum - 2026-06-17:
+- Accepted. `STORY-012_results_summary_and_review_cards.md` is Done.
+- The submitted fix now resets retained retake routing state before each new
+  Results payload through `_reset_retake_state()` in
+  `study_test_tool/gui/results_view.py`.
+- History-loaded attempts repopulate `_test_id` and `_mode` from the saved
+  attempt, while stale `_mix_questions`, `_mix_name`, and `_mix_subtitle` are
+  cleared before the history result renders.
+- Direct regression check passed:
+  `[(('test_taking',), {'test_id': 42, 'mode': 'test'})]`
+- Focused automated verification passed during PM review:
+  compileall, Black check, scoring/mix/group subset where relevant, screenshot
+  validation for 12 results screenshots, and `git diff --check`.
+- Representative visual review of
+  `visual_overhaul_project/01_context/screenshots/after/STORY-012/light/light_results_partial_score_essay_flagged.png`
+  found no acceptance blocker.

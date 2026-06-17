@@ -2,7 +2,7 @@
 
 ## Status
 
-Submitted For Review.
+Done.
 
 ## Readiness
 
@@ -12,7 +12,8 @@ Submitted For Review.
   pilot from `STORY-006_card_and_list_patterns.md`.
 - Dev 2 implementation submitted for PM/reviewer acceptance, then returned with
   Changes Requested on 2026-06-16 for a retake-state reset issue.
-- Retake-state reset fix completed and resubmitted for PM/reviewer acceptance.
+- Retake-state reset fix completed, resubmitted, and accepted by PM/reviewer on
+  2026-06-17.
 
 ## Sprint
 

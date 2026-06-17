@@ -12,6 +12,12 @@ panel, add/update/cancel actions, and group autocomplete styling. Existing
 editor CRUD, validation rules, group persistence, dirty-form protection, native
 messagebox behavior, and save/cancel behavior were preserved.
 
+Resubmission addendum:
+PM/reviewer returned the story because the minimum-window editor screenshots
+were contaminated by the previous group autocomplete dropdown capture. The
+screenshot harness now closes the autocomplete dropdown after the dropdown
+evidence state, and the full light/dark editor evidence set was recaptured.
+
 Files changed:
 - `study_test_tool/gui/test_editor.py`
 - `study_test_tool/gui/components/autocomplete_entry.py`
@@ -74,6 +80,8 @@ Tests run:
   add/remove, group autocomplete selection, delete question, and dirty-back
   confirmation.
 - `MPLCONFIGDIR=/private/tmp/study-test-tool-mpl XDG_CACHE_HOME=/private/tmp/study-test-tool-xdg PYTHONPATH=study_test_tool python3 visual_overhaul_project/tools/capture_baseline_screenshots.py --mode both --states editor_new_test editor_existing_test_with_questions editor_saved_empty_test editor_mc_add_form editor_essay_add_form editor_edit_question editor_group_autocomplete editor_minimum_existing --output visual_overhaul_project/01_context/screenshots/after/STORY-013`
+- Recaptured the same STORY-013 light/dark editor screenshot set after adding
+  autocomplete dropdown cleanup; validation passed for 16 screenshots.
 - `git diff --check`
 
 Tests not run and why:
@@ -92,6 +100,9 @@ Acceptance criteria notes:
   checked with messagebox stubs because native dialogs block scripted capture.
 - Dense two-column editing is preserved at the documented minimum window size,
   with both columns independently scrollable.
+- Minimum-window editor evidence is now clean in light and dark mode; the group
+  autocomplete dropdown is visible only in the dedicated autocomplete evidence
+  screenshots.
 
 Risks:
 - Minimum-width editor layout remains dense. It is usable in the captured state,

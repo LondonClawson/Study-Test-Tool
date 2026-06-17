@@ -14,7 +14,11 @@ Submitted For Review.
 CTX-EDITOR and CTX-FOUNDATION are Ready. `STORY-004`, `STORY-005`,
 `STORY-006`, and `STORY-007` are Done, so the editor has accepted style,
 button, card/list, and page-header guidance available for implementation.
-Dev 2 implementation submitted for PM/reviewer acceptance.
+Dev 2 implementation submitted for PM/reviewer acceptance, then returned with
+Changes Requested on 2026-06-17 because the required minimum-window editor
+screenshots are contaminated by the group autocomplete dropdown.
+Screenshot harness cleanup was fixed and the light/dark editor evidence set was
+recaptured and resubmitted for PM/reviewer acceptance.
 
 ## Sprint
 

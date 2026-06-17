@@ -2,8 +2,7 @@ Story/Task:
 `STORY-012_results_summary_and_review_cards.md`
 
 Status:
-Submitted For Review. PM/reviewer acceptance is still required; this is not
-marked Done.
+Done. Accepted by PM/reviewer on 2026-06-17 after retake-state resubmission.
 
 Summary:
 Polished the Results screen score summary, result metadata, status badges,

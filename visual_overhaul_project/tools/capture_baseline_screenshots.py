@@ -842,7 +842,7 @@ def show_editor_edit_question(
 
 def show_editor_group_autocomplete(
     app: App, seed: Optional[SeedData], harness: ScreenshotHarness
-) -> None:
+) -> Callable[[], None]:
     """Show the editor group autocomplete dropdown."""
     harness.show_frame(SCREEN_EDITOR, test_id=seed.active_test_id)
     frame = app.frames[SCREEN_EDITOR]
@@ -850,6 +850,12 @@ def show_editor_group_autocomplete(
     frame.group_entry._entry.focus_force()
     frame.group_entry._show_dropdown()
     harness._settle()
+
+    def cleanup() -> None:
+        frame.group_entry._close_dropdown()
+        harness._settle()
+
+    return cleanup
 
 
 def show_editor_minimum_existing(
