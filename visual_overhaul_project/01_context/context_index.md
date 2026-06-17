@@ -8,7 +8,8 @@ Only mark a summary Ready after it passes
 `00_project/definition_of_ready.md`.
 
 Status terms match `00_project/status_board.md`: Missing, Placeholder, Seeded,
-Ready, In Progress, Submitted For Review, Blocked, Done, and Stale.
+Ready, In Progress, Submitted For Review, Changes Requested, Blocked, Done, and
+Stale.
 
 | Context ID | Summary | Source Scope | Status | Refresh Trigger | Research Task |
 | --- | --- | --- | --- | --- | --- |

@@ -4,21 +4,23 @@ import tkinter.messagebox as messagebox
 from typing import List, Optional
 
 import customtkinter as ctk
-
-from config.settings import (
-    COLOR_CORRECT,
-    COLOR_FLAGGED,
-    COLOR_INCORRECT,
-    COLOR_WARNING,
-    FONT_FAMILY,
-    FONT_SIZE_BODY,
-    FONT_SIZE_HEADING,
-    FONT_SIZE_SMALL,
-    FONT_SIZE_TITLE,
-)
 from gui.components.progress_bar import ProgressBar
 from gui.components.question_widget import QuestionWidget
 from gui.components.timer_widget import TimerWidget
+from gui.styles import (
+    RADIUS_CARD,
+    RADIUS_CONTROL,
+    SPACE_4,
+    SPACE_8,
+    SPACE_12,
+    SPACE_16,
+    SPACE_24,
+    get_button_style,
+    get_card_style,
+    get_color,
+    get_header_style,
+    get_text_style,
+)
 from services.question_service import QuestionService
 from services.review_service import ReviewService
 from services.scoring_service import ScoringService
@@ -49,101 +51,182 @@ class TestTakingFrame(ctk.CTkFrame):
 
     def _build_ui(self) -> None:
         """Build the test-taking layout."""
+        self.configure(fg_color=get_color("app_bg"))
+
         # Top bar
-        self.top_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.top_frame.pack(fill="x", padx=20, pady=(15, 5))
+        self.top_frame = ctk.CTkFrame(self, **get_header_style("page"))
+        self.top_frame.pack(fill="x", padx=SPACE_24, pady=(SPACE_24, SPACE_12))
+        self.top_frame.grid_columnconfigure(0, weight=1)
 
         title_frame = ctk.CTkFrame(self.top_frame, fg_color="transparent")
-        title_frame.pack(side="left", fill="x", expand=True)
+        title_frame.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            padx=SPACE_24,
+            pady=(SPACE_16, SPACE_16),
+        )
 
         self.test_name_label = ctk.CTkLabel(
             title_frame,
             text="",
-            font=(FONT_FAMILY, FONT_SIZE_TITLE, "bold"),
             anchor="w",
+            wraplength=470,
+            justify="left",
+            **get_text_style("page_title"),
         )
-        self.test_name_label.pack(anchor="w")
+        self.test_name_label.pack(fill="x", anchor="w")
 
         self.mix_subtitle_label = ctk.CTkLabel(
             title_frame,
             text="",
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
-            text_color="gray",
             anchor="w",
+            wraplength=470,
+            justify="left",
+            **get_text_style("metadata"),
         )
-        self.mix_subtitle_label.pack(anchor="w", pady=(2, 0))
+        self.mix_subtitle_label.pack(fill="x", anchor="w", pady=(SPACE_4, 0))
 
-        self.timer_widget = TimerWidget(self.top_frame)
-        self.timer_widget.pack(side="right", padx=10)
+        status_frame = ctk.CTkFrame(self.top_frame, fg_color="transparent")
+        status_frame.grid(
+            row=0,
+            column=1,
+            sticky="e",
+            padx=(SPACE_8, SPACE_24),
+            pady=(SPACE_16, SPACE_16),
+        )
+        status_frame.grid_columnconfigure((0, 1), weight=1)
+
+        self.timer_widget = TimerWidget(
+            status_frame,
+            fg_color=get_color("surface_subtle"),
+            text_color=get_color("text_primary"),
+            corner_radius=RADIUS_CONTROL,
+        )
+        self.timer_widget.grid(
+            row=0,
+            column=0,
+            sticky="ew",
+            padx=(0, SPACE_8),
+            pady=(0, SPACE_8),
+        )
 
         # Progress text
         self.progress_label = ctk.CTkLabel(
-            self.top_frame,
+            status_frame,
             text="",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_CONTROL,
+            **get_text_style("body"),
         )
-        self.progress_label.pack(side="right", padx=20)
+        self.progress_label.grid(
+            row=0,
+            column=1,
+            sticky="ew",
+            padx=(0, 0),
+            pady=(0, SPACE_8),
+        )
 
         # Flag button
         self.flag_btn = ctk.CTkButton(
-            self.top_frame,
+            status_frame,
             text="Flag",
-            width=70,
-            fg_color="gray",
+            width=172,
+            height=34,
             command=self._on_flag,
+            **get_button_style("tertiary"),
         )
-        self.flag_btn.pack(side="right", padx=5)
+        self.flag_btn.grid(row=1, column=0, columnspan=2, sticky="ew")
 
         # Center: question area
-        self.question_area = ctk.CTkScrollableFrame(self)
-        self.question_area.pack(fill="both", expand=True, padx=30, pady=10)
+        self.question_area = ctk.CTkScrollableFrame(
+            self,
+            fg_color=get_color("surface_subtle"),
+            border_color=get_color("border"),
+            border_width=1,
+            corner_radius=RADIUS_CARD,
+            scrollbar_button_color=get_color("secondary"),
+            scrollbar_button_hover_color=get_color("secondary_hover"),
+        )
+        self.question_area.pack(
+            fill="both",
+            expand=True,
+            padx=SPACE_24,
+            pady=(0, SPACE_12),
+        )
 
         # Bottom: nav buttons + progress bar
-        bottom_frame = ctk.CTkFrame(self, fg_color="transparent")
-        bottom_frame.pack(fill="x", padx=20, pady=(5, 10))
+        bottom_frame = ctk.CTkFrame(
+            self,
+            fg_color=get_color("surface"),
+            border_color=get_color("border"),
+            border_width=1,
+            corner_radius=RADIUS_CARD,
+        )
+        bottom_frame.pack(fill="x", padx=SPACE_24, pady=(0, SPACE_24))
+
+        # Progress bar container
+        self.progress_container = ctk.CTkFrame(
+            bottom_frame,
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_CONTROL,
+        )
+        self.progress_container.pack(
+            fill="x",
+            padx=SPACE_16,
+            pady=(SPACE_16, SPACE_8),
+        )
 
         nav_frame = ctk.CTkFrame(bottom_frame, fg_color="transparent")
-        nav_frame.pack(fill="x", pady=(0, 5))
+        nav_frame.pack(fill="x", padx=SPACE_16, pady=(SPACE_4, SPACE_16))
+
+        navigation_actions = ctk.CTkFrame(nav_frame, fg_color="transparent")
+        navigation_actions.pack(side="left")
+
+        completion_actions = ctk.CTkFrame(nav_frame, fg_color="transparent")
+        completion_actions.pack(side="right")
 
         self.prev_btn = ctk.CTkButton(
-            nav_frame,
+            navigation_actions,
             text="< Previous",
-            width=100,
+            width=110,
+            height=36,
             command=self._on_previous,
+            **get_button_style("secondary"),
         )
-        self.prev_btn.pack(side="left", padx=5)
+        self.prev_btn.pack(side="left", padx=(0, SPACE_8))
 
         self.next_btn = ctk.CTkButton(
-            nav_frame,
+            navigation_actions,
             text="Next >",
-            width=100,
+            width=110,
+            height=36,
             command=self._on_next,
+            **get_button_style("secondary"),
         )
-        self.next_btn.pack(side="left", padx=5)
+        self.next_btn.pack(side="left")
 
         # Check Answer button (practice mode only, hidden by default)
         self.check_btn = ctk.CTkButton(
-            nav_frame,
+            completion_actions,
             text="Check Answer",
-            width=120,
-            fg_color="#2fa572",
-            hover_color="#258a5e",
+            width=130,
+            height=36,
             command=self._on_check_answer,
+            **get_button_style("primary"),
         )
+        self.check_btn.grid(row=0, column=0, padx=(0, SPACE_8))
+        self.check_btn.grid_remove()
 
         self.finish_btn = ctk.CTkButton(
-            nav_frame,
+            completion_actions,
             text="Finish Test",
-            width=120,
-            fg_color="#d9534f",
-            hover_color="#c9302c",
+            width=130,
+            height=36,
             command=self._on_finish,
+            **get_button_style("primary"),
         )
-        self.finish_btn.pack(side="right", padx=5)
-
-        # Progress bar container
-        self.progress_container = ctk.CTkFrame(bottom_frame, fg_color="transparent")
-        self.progress_container.pack(fill="x", pady=5)
+        self.finish_btn.grid(row=0, column=1)
 
     def on_show(
         self,
@@ -169,10 +252,11 @@ class TestTakingFrame(ctk.CTkFrame):
 
         # Configure UI for mode
         if mode == MODE_PRACTICE:
-            self.check_btn.pack(side="right", padx=5)
+            self.check_btn.grid()
+            self._enable_check_answer()
             self.finish_btn.configure(text="Finish Practice")
         else:
-            self.check_btn.pack_forget()
+            self.check_btn.grid_remove()
             self.finish_btn.configure(text="Finish Test")
 
         # Mix test: questions already provided
@@ -238,7 +322,7 @@ class TestTakingFrame(ctk.CTkFrame):
             total=len(self._session.questions),
             on_click=self._on_progress_click,
         )
-        self._progress_bar.pack()
+        self._progress_bar.pack(anchor="center", pady=SPACE_8)
 
         self.timer_widget.start()
         self._display_question()
@@ -263,9 +347,9 @@ class TestTakingFrame(ctk.CTkFrame):
 
         # Update flag button
         if self._session.is_question_flagged:
-            self.flag_btn.configure(fg_color=COLOR_FLAGGED, text="Unflag")
+            self.flag_btn.configure(text="Unflag", **get_button_style("warning"))
         else:
-            self.flag_btn.configure(fg_color="gray", text="Flag")
+            self.flag_btn.configure(text="Flag", **get_button_style("tertiary"))
 
         # Update nav buttons
         self.prev_btn.configure(state="normal" if idx > 0 else "disabled")
@@ -276,8 +360,17 @@ class TestTakingFrame(ctk.CTkFrame):
             widget.destroy()
         self._feedback_frame = None
 
-        self._question_widget = QuestionWidget(self.question_area, question)
-        self._question_widget.pack(fill="both", expand=True)
+        self._question_widget = QuestionWidget(
+            self.question_area,
+            question,
+            **get_card_style("default"),
+        )
+        self._question_widget.pack(
+            fill="x",
+            expand=True,
+            padx=SPACE_12,
+            pady=SPACE_12,
+        )
 
         # Reset scroll to top for the new question
         self.question_area._parent_canvas.yview_moveto(0.0)
@@ -293,18 +386,23 @@ class TestTakingFrame(ctk.CTkFrame):
             if question.id in self._session.checked_responses:
                 checked_answer = self._session.checked_responses[question.id]
                 self._question_widget.set_answer(checked_answer)
-                self._question_widget.disable()
                 is_correct = self.scoring_service.score_question(
                     question, checked_answer if checked_answer else None
                 )
+                self._question_widget.show_checked_state(
+                    question.correct_answer,
+                    checked_answer if checked_answer else None,
+                    is_correct,
+                )
+                self._question_widget.disable()
                 self._show_feedback(
                     question,
                     checked_answer if checked_answer else None,
                     is_correct,
                 )
-                self.check_btn.configure(state="disabled")
+                self._disable_check_answer()
             else:
-                self.check_btn.configure(state="normal")
+                self._enable_check_answer()
 
         # Update progress bar
         self._update_progress_bar()
@@ -361,77 +459,161 @@ class TestTakingFrame(ctk.CTkFrame):
         )
 
         is_correct = self.scoring_service.score_question(question, user_answer)
+        self._question_widget.show_checked_state(
+            question.correct_answer,
+            user_answer,
+            is_correct,
+        )
+        self._question_widget.disable()
         self._show_feedback(question, user_answer, is_correct)
 
         # Visually lock the answer input and disable the Check Answer button.
-        self._question_widget.disable()
-        self.check_btn.configure(state="disabled")
+        self._disable_check_answer()
+
+    def _enable_check_answer(self) -> None:
+        """Restore Check Answer to the active primary action style."""
+        self.check_btn.configure(state="normal", **get_button_style("primary"))
+
+    def _disable_check_answer(self) -> None:
+        """Show Check Answer as unavailable after a practice answer is locked."""
+        self.check_btn.configure(
+            state="disabled",
+            fg_color=get_color("surface_muted"),
+            hover_color=get_color("surface_muted"),
+            text_color=get_color("text_disabled"),
+            border_color=get_color("border"),
+            border_width=1,
+        )
 
     def _show_feedback(self, question, user_answer, is_correct) -> None:
-        """Display correct/incorrect feedback below the question widget."""
+        """Display practice feedback below the question widget."""
         # Remove existing feedback if any
         if self._feedback_frame is not None:
             self._feedback_frame.destroy()
 
-        self._feedback_frame = ctk.CTkFrame(self.question_area, corner_radius=8)
-        self._feedback_frame.pack(fill="x", padx=10, pady=(5, 10))
+        if is_correct is None:
+            title = "Essay response"
+            message = "Compare your response with the expected answer."
+            status_color = get_color("status_neutral")
+            title_color = get_color("text_secondary")
+        elif is_correct:
+            title = "Correct"
+            message = "Your answer matches the correct answer."
+            status_color = get_color("status_correct")
+            title_color = status_color
+        else:
+            title = "Incorrect"
+            message = "Review the correct answer before moving on."
+            status_color = get_color("status_incorrect")
+            title_color = status_color
+
+        self._feedback_frame = ctk.CTkFrame(
+            self.question_area,
+            fg_color=get_color("surface"),
+            border_color=status_color,
+            border_width=1,
+            corner_radius=RADIUS_CARD,
+        )
+        self._feedback_frame.pack(fill="x", padx=SPACE_12, pady=(0, SPACE_12))
+
+        content_frame = ctk.CTkFrame(self._feedback_frame, fg_color="transparent")
+        content_frame.pack(fill="x", padx=SPACE_16, pady=SPACE_12)
+
+        ctk.CTkLabel(
+            content_frame,
+            text=title,
+            anchor="w",
+            **self._feedback_text_style("section_title", title_color),
+        ).pack(fill="x")
+
+        ctk.CTkLabel(
+            content_frame,
+            text=message,
+            wraplength=620,
+            justify="left",
+            anchor="w",
+            **get_text_style("body"),
+        ).pack(fill="x", pady=(SPACE_4, 0))
 
         if is_correct is None:
-            # Essay question
-            ctk.CTkLabel(
-                self._feedback_frame,
-                text="Essay — Compare with expected answer:",
-                font=(FONT_FAMILY, FONT_SIZE_BODY, "bold"),
-                text_color="gray",
-            ).pack(anchor="w", padx=15, pady=(8, 2))
-
             if question.correct_answer:
-                ctk.CTkLabel(
-                    self._feedback_frame,
-                    text=question.correct_answer,
-                    font=(FONT_FAMILY, FONT_SIZE_SMALL),
-                    wraplength=550,
-                    justify="left",
-                    anchor="nw",
-                ).pack(fill="x", padx=15, pady=(2, 8))
-        elif is_correct:
-            ctk.CTkLabel(
-                self._feedback_frame,
-                text="Correct!",
-                font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
-                text_color=COLOR_CORRECT,
-            ).pack(anchor="w", padx=15, pady=8)
-        else:
-            ctk.CTkLabel(
-                self._feedback_frame,
-                text="Incorrect",
-                font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
-                text_color=COLOR_INCORRECT,
-            ).pack(anchor="w", padx=15, pady=(8, 2))
-
-            ctk.CTkLabel(
-                self._feedback_frame,
-                text=f"Correct answer: {question.correct_answer}",
-                font=(FONT_FAMILY, FONT_SIZE_BODY),
-                text_color=COLOR_CORRECT,
-            ).pack(anchor="w", padx=15, pady=(2, 8))
+                self._add_feedback_detail(
+                    content_frame,
+                    "Expected answer",
+                    question.correct_answer,
+                    title_color,
+                )
+        elif not is_correct:
+            if user_answer:
+                self._add_feedback_detail(
+                    content_frame,
+                    "Your answer",
+                    user_answer,
+                    get_color("status_incorrect"),
+                )
+            if question.correct_answer:
+                self._add_feedback_detail(
+                    content_frame,
+                    "Correct answer",
+                    question.correct_answer,
+                    get_color("status_correct"),
+                )
 
         if question.explanation:
-            ctk.CTkLabel(
-                self._feedback_frame,
-                text="Explanation:",
-                font=(FONT_FAMILY, FONT_SIZE_BODY, "bold"),
-                anchor="w",
-            ).pack(fill="x", padx=15, pady=(6, 2))
+            self._add_feedback_detail(
+                content_frame,
+                "Explanation",
+                question.explanation,
+            )
+        self._scroll_feedback_into_view()
 
-            ctk.CTkLabel(
-                self._feedback_frame,
-                text=question.explanation,
-                font=(FONT_FAMILY, FONT_SIZE_SMALL),
-                wraplength=550,
-                justify="left",
-                anchor="nw",
-            ).pack(fill="x", padx=15, pady=(0, 8))
+    def _scroll_feedback_into_view(self) -> None:
+        """Scroll the practice feedback surface into the visible question area."""
+        self.question_area.update_idletasks()
+        self.question_area._parent_canvas.yview_moveto(1.0)
+
+    def _feedback_text_style(self, role: str, text_color=None):
+        """Return a text style with an optional feedback status color."""
+        style = get_text_style(role)
+        if text_color is not None:
+            style["text_color"] = text_color
+        return style
+
+    def _add_feedback_detail(
+        self,
+        parent: ctk.CTkFrame,
+        label: str,
+        text: str,
+        label_color=None,
+    ) -> None:
+        """Add a labeled feedback detail row."""
+        detail_frame = ctk.CTkFrame(
+            parent,
+            fg_color=get_color("surface_subtle"),
+            border_color=get_color("divider"),
+            border_width=1,
+            corner_radius=RADIUS_CONTROL,
+        )
+        detail_frame.pack(fill="x", pady=(SPACE_8, 0))
+
+        ctk.CTkLabel(
+            detail_frame,
+            text=label,
+            anchor="w",
+            **self._feedback_text_style(
+                "metadata",
+                label_color or get_color("text_secondary"),
+            ),
+        ).pack(fill="x", padx=SPACE_12, pady=(SPACE_8, SPACE_4))
+
+        ctk.CTkLabel(
+            detail_frame,
+            text=text,
+            wraplength=620,
+            justify="left",
+            anchor="nw",
+            **get_text_style("body"),
+        ).pack(fill="x", padx=SPACE_12, pady=(0, SPACE_8))
 
     def _on_previous(self) -> None:
         """Navigate to the previous question."""
@@ -462,9 +644,9 @@ class TestTakingFrame(ctk.CTkFrame):
 
         is_flagged = self._session.flag_question(question.id)
         if is_flagged:
-            self.flag_btn.configure(fg_color=COLOR_FLAGGED, text="Unflag")
+            self.flag_btn.configure(text="Unflag", **get_button_style("warning"))
         else:
-            self.flag_btn.configure(fg_color="gray", text="Flag")
+            self.flag_btn.configure(text="Flag", **get_button_style("tertiary"))
 
         self._update_progress_bar()
 

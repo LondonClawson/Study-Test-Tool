@@ -5,16 +5,25 @@ from collections import defaultdict
 import customtkinter as ctk
 
 from config.settings import (
-    COLOR_CORRECT,
-    COLOR_INCORRECT,
-    COLOR_PRIMARY,
     FONT_FAMILY,
-    FONT_SIZE_BODY,
-    FONT_SIZE_HEADING,
-    FONT_SIZE_SMALL,
     FONT_SIZE_TITLE,
-    QUESTION_TYPE_ESSAY,
     QUESTION_TYPE_MC,
+)
+from gui.styles import (
+    FONT_BODY_BOLD,
+    FONT_CARD_TITLE,
+    RADIUS_CARD,
+    RADIUS_CONTROL,
+    SPACE_4,
+    SPACE_8,
+    SPACE_12,
+    SPACE_16,
+    SPACE_24,
+    get_button_style,
+    get_card_style,
+    get_color,
+    get_header_style,
+    get_text_style,
 )
 from services.scoring_service import ScoringService
 from services.test_service import TestService
@@ -39,47 +48,95 @@ class ResultsViewFrame(ctk.CTkFrame):
 
     def _build_ui(self) -> None:
         """Build the results layout."""
+        self.configure(fg_color=get_color("app_bg"))
+
         # Header
-        self.header_frame = ctk.CTkFrame(self, fg_color="transparent")
-        self.header_frame.pack(fill="x", padx=30, pady=(20, 10))
+        self.header_frame = ctk.CTkFrame(self, **get_header_style("page"))
+        self.header_frame.pack(fill="x", padx=SPACE_24, pady=(SPACE_24, SPACE_12))
+        self.header_frame.grid_columnconfigure(0, weight=1)
+
+        summary_frame = ctk.CTkFrame(self.header_frame, fg_color="transparent")
+        summary_frame.grid(
+            row=0,
+            column=0,
+            sticky="nsew",
+            padx=SPACE_24,
+            pady=SPACE_16,
+        )
+
+        ctk.CTkLabel(
+            summary_frame,
+            text="Results",
+            anchor="w",
+            **get_text_style("page_title"),
+        ).pack(fill="x")
+
+        score_row = ctk.CTkFrame(summary_frame, fg_color="transparent")
+        score_row.pack(fill="x", pady=(SPACE_8, SPACE_4))
 
         self.score_label = ctk.CTkLabel(
-            self.header_frame,
+            score_row,
             text="",
             font=(FONT_FAMILY, FONT_SIZE_TITLE + 4, "bold"),
+            text_color=get_color("text_primary"),
+            anchor="w",
         )
-        self.score_label.pack()
+        self.score_label.pack(side="left")
 
-        self.details_label = ctk.CTkLabel(
-            self.header_frame,
+        self.percentage_label = ctk.CTkLabel(
+            score_row,
             text="",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-            text_color="gray",
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_CONTROL,
+            **get_text_style("section_title"),
         )
-        self.details_label.pack(pady=5)
+        self.percentage_label.pack(side="left", padx=(SPACE_12, 0), ipadx=SPACE_12)
 
-        # Button bar
-        btn_frame = ctk.CTkFrame(self, fg_color="transparent")
-        btn_frame.pack(fill="x", padx=30, pady=5)
+        self.metrics_frame = ctk.CTkFrame(summary_frame, fg_color="transparent")
+        self.metrics_frame.pack(fill="x", pady=(SPACE_8, 0))
+
+        btn_frame = ctk.CTkFrame(self.header_frame, fg_color="transparent")
+        btn_frame.grid(
+            row=0,
+            column=1,
+            sticky="ne",
+            padx=(SPACE_8, SPACE_24),
+            pady=SPACE_16,
+        )
 
         ctk.CTkButton(
             btn_frame,
             text="Back to Home",
             width=120,
             command=lambda: self.controller.show_frame(SCREEN_HOME),
-        ).pack(side="left", padx=5)
+            **get_button_style("secondary"),
+        ).pack(fill="x", pady=(0, SPACE_8))
 
         self.retake_btn = ctk.CTkButton(
             btn_frame,
             text="Retake Test",
             width=120,
             command=self._on_retake,
+            **get_button_style("primary"),
         )
-        self.retake_btn.pack(side="left", padx=5)
+        self.retake_btn.pack(fill="x")
 
         # Scrollable question review
-        self.review_frame = ctk.CTkScrollableFrame(self)
-        self.review_frame.pack(fill="both", expand=True, padx=30, pady=(5, 20))
+        self.review_frame = ctk.CTkScrollableFrame(
+            self,
+            fg_color=get_color("surface_subtle"),
+            border_color=get_color("border"),
+            border_width=1,
+            corner_radius=RADIUS_CARD,
+            scrollbar_button_color=get_color("secondary"),
+            scrollbar_button_hover_color=get_color("secondary_hover"),
+        )
+        self.review_frame.pack(
+            fill="both",
+            expand=True,
+            padx=SPACE_24,
+            pady=(0, SPACE_24),
+        )
 
     def on_show(
         self,
@@ -95,6 +152,8 @@ class ResultsViewFrame(ctk.CTkFrame):
             session: The TestSession (available if coming from test-taking).
             score_data: Score dict (available if coming from test-taking).
         """
+        self._reset_retake_state()
+
         # Clear previous review
         for widget in self.review_frame.winfo_children():
             widget.destroy()
@@ -103,6 +162,15 @@ class ResultsViewFrame(ctk.CTkFrame):
             self._show_from_session(session, score_data)
         elif attempt_id:
             self._show_from_db(attempt_id)
+        self._reset_review_scroll()
+
+    def _reset_retake_state(self) -> None:
+        """Clear retained retake routing before loading a new result payload."""
+        self._test_id = None
+        self._mode = None
+        self._mix_questions = None
+        self._mix_name = None
+        self._mix_subtitle = None
 
     def _show_from_session(self, session, score_data: dict) -> None:
         """Display results from a just-completed session."""
@@ -124,14 +192,14 @@ class ResultsViewFrame(ctk.CTkFrame):
         time_taken = score_data.get("time_taken", 0)
         essays = score_data.get("essay_questions", 0)
 
-        self.score_label.configure(text=f"{score}/{total} — {pct}%")
-
-        details = f"Time: {self._format_time(time_taken)}"
+        metrics = [("Time", self._format_time(time_taken))]
+        metrics.append(("Scored", f"{total} question{'s' if total != 1 else ''}"))
         if essays > 0:
-            details += f"  |  {essays} essay question(s) for self-evaluation"
-        self.details_label.configure(text=details)
+            metrics.append(("Essays", f"{essays} self-evaluate"))
+        self._set_score_summary(score, total, pct, metrics)
 
         # Build question review
+        self._add_review_section_title("Question Review")
         for i, question in enumerate(session.questions, 1):
             user_answer = session.responses.get(question.id)
             response = next(
@@ -170,15 +238,15 @@ class ResultsViewFrame(ctk.CTkFrame):
             return
 
         # Section header
-        section = ctk.CTkFrame(self.review_frame, corner_radius=8)
-        section.pack(fill="x", pady=(15, 5), padx=5)
+        section = ctk.CTkFrame(self.review_frame, **get_card_style("default"))
+        section.pack(fill="x", pady=(SPACE_16, SPACE_8), padx=SPACE_12)
 
         ctk.CTkLabel(
             section,
             text="Score by Source Test",
-            font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
-            text_color=COLOR_PRIMARY,
-        ).pack(anchor="w", padx=15, pady=(10, 5))
+            anchor="w",
+            **get_text_style("section_title"),
+        ).pack(fill="x", padx=SPACE_16, pady=(SPACE_16, SPACE_8))
 
         for test_id, questions in grouped.items():
             test = self.test_service.get_test_by_id(test_id)
@@ -195,56 +263,52 @@ class ResultsViewFrame(ctk.CTkFrame):
 
             if mc_total > 0:
                 pct = round(correct / mc_total * 100, 1)
-                line = f"{test_name}: {correct}/{mc_total} ({pct}%)"
+                detail = f"{correct}/{mc_total}"
+                summary = f"{pct}%"
             else:
-                line = f"{test_name}: {len(questions)} essay question(s)"
+                detail = f"{len(questions)} essay question(s)"
+                summary = "Essay"
 
-            color = (
-                COLOR_CORRECT
-                if mc_total > 0 and correct == mc_total
-                else (
-                    COLOR_INCORRECT
-                    if mc_total > 0 and correct < mc_total / 2
-                    else "gray"
-                )
-            )
+            if mc_total > 0 and correct == mc_total:
+                status_color = get_color("status_correct")
+            elif mc_total > 0 and correct < mc_total / 2:
+                status_color = get_color("status_incorrect")
+            else:
+                status_color = get_color("status_neutral")
 
-            ctk.CTkLabel(
-                section,
-                text=line,
-                font=(FONT_FAMILY, FONT_SIZE_BODY),
-                text_color=color,
-                anchor="w",
-            ).pack(fill="x", padx=25, pady=2)
+            self._add_source_row(section, test_name, detail, summary, status_color)
 
-        # Bottom padding
-        ctk.CTkFrame(section, height=8, fg_color="transparent").pack()
+        ctk.CTkFrame(section, height=SPACE_8, fg_color="transparent").pack()
 
     def _show_from_db(self, attempt_id: int) -> None:
         """Display results loaded from the database."""
         attempt = self.scoring_service.get_attempt_details(attempt_id)
         if not attempt:
-            self.score_label.configure(text="Results not found.")
+            self._show_missing_results()
             return
 
         self._test_id = attempt.test_id
-
-        self.score_label.configure(
-            text=f"{attempt.score}/{attempt.total_questions} — {attempt.percentage}%"
-        )
+        self._mode = attempt.mode
 
         time_str = (
             self._format_time(attempt.time_taken) if attempt.time_taken else "N/A"
         )
-        self.details_label.configure(text=f"Time: {time_str}")
+        self._set_score_summary(
+            attempt.score,
+            attempt.total_questions,
+            attempt.percentage,
+            [("Time", time_str)],
+        )
 
         # Load test for question details
         test = self.test_service.get_test_by_id(attempt.test_id)
         if not test:
+            self._add_empty_review_message("The test for this attempt is unavailable.")
             return
 
         q_map = {q.id: q for q in test.questions}
 
+        self._add_review_section_title("Question Review")
         for i, response in enumerate(attempt.responses, 1):
             question = q_map.get(response.question_id)
             if not question:
@@ -275,130 +339,258 @@ class ResultsViewFrame(ctk.CTkFrame):
         options=None,
     ) -> None:
         """Create a review card for one question."""
-        card = ctk.CTkFrame(self.review_frame, corner_radius=8)
-        card.pack(fill="x", pady=5, padx=5)
+        card = ctk.CTkFrame(self.review_frame, **get_card_style("default"))
+        card.pack(fill="x", pady=SPACE_8, padx=SPACE_12)
 
         # Question header
         header_frame = ctk.CTkFrame(card, fg_color="transparent")
-        header_frame.pack(fill="x", padx=10, pady=(8, 2))
+        header_frame.pack(fill="x", padx=SPACE_16, pady=(SPACE_16, SPACE_8))
 
-        flag_text = " [Flagged]" if was_flagged else ""
         ctk.CTkLabel(
             header_frame,
-            text=f"Q{num}.{flag_text}",
-            font=(FONT_FAMILY, FONT_SIZE_BODY, "bold"),
-            anchor="w",
-        ).pack(side="left")
+            text=f"Q{num}",
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_CONTROL,
+            **get_text_style("metadata"),
+        ).pack(side="left", ipadx=SPACE_8, ipady=SPACE_4)
 
         # Status indicator
         if is_correct is None:
-            status_text = "Essay — Self-evaluate"
-            status_color = "gray"
+            status_text = "Essay"
+            status_color = get_color("status_neutral")
         elif is_correct:
             status_text = "Correct"
-            status_color = COLOR_CORRECT
+            status_color = get_color("status_correct")
         else:
             status_text = "Incorrect"
-            status_color = COLOR_INCORRECT
+            status_color = get_color("status_incorrect")
 
-        ctk.CTkLabel(
-            header_frame,
-            text=status_text,
-            font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
-            text_color=status_color,
-        ).pack(side="right")
+        if was_flagged:
+            self._build_status_badge(
+                header_frame, "Flagged", get_color("warning")
+            ).pack(
+                side="left",
+                padx=(SPACE_8, 0),
+            )
+
+        self._build_status_badge(header_frame, status_text, status_color).pack(
+            side="right"
+        )
 
         # Question text
         ctk.CTkLabel(
             card,
             text=question_text,
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
-            wraplength=600,
+            wraplength=720,
             justify="left",
             anchor="nw",
-        ).pack(fill="x", padx=15, pady=(2, 5))
+            **get_text_style("body"),
+        ).pack(fill="x", padx=SPACE_16, pady=(0, SPACE_12))
 
         if question_type == QUESTION_TYPE_MC:
             # Show user's answer and correct answer
             answer_frame = ctk.CTkFrame(card, fg_color="transparent")
-            answer_frame.pack(fill="x", padx=15, pady=(0, 8))
+            answer_frame.pack(fill="x", padx=SPACE_16, pady=(0, SPACE_16))
 
             user_text = user_answer if user_answer else "(No answer)"
-            user_color = COLOR_CORRECT if is_correct else COLOR_INCORRECT
-
-            ctk.CTkLabel(
+            user_color = (
+                get_color("status_correct")
+                if is_correct
+                else get_color("status_incorrect")
+            )
+            self._add_answer_panel(
                 answer_frame,
-                text=f"Your answer: {user_text}",
-                font=(FONT_FAMILY, FONT_SIZE_SMALL),
-                text_color=user_color,
-                anchor="w",
-            ).pack(fill="x")
+                "Your answer",
+                user_text,
+                user_color,
+            )
 
-            if not is_correct:
-                ctk.CTkLabel(
-                    answer_frame,
-                    text=f"Correct answer: {correct_answer}",
-                    font=(FONT_FAMILY, FONT_SIZE_SMALL),
-                    text_color=COLOR_CORRECT,
-                    anchor="w",
-                ).pack(fill="x")
+            self._add_answer_panel(
+                answer_frame,
+                "Correct answer",
+                correct_answer,
+                get_color("status_correct"),
+            )
         else:
             # Essay: show side-by-side
             essay_frame = ctk.CTkFrame(card, fg_color="transparent")
-            essay_frame.pack(fill="x", padx=15, pady=(0, 8))
+            essay_frame.pack(fill="x", padx=SPACE_16, pady=(0, SPACE_16))
 
-            ctk.CTkLabel(
+            self._add_answer_panel(
                 essay_frame,
-                text="Your Answer:",
-                font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
-                anchor="w",
-            ).pack(fill="x")
-
-            ctk.CTkLabel(
-                essay_frame,
-                text=user_answer if user_answer else "(No answer)",
-                font=(FONT_FAMILY, FONT_SIZE_SMALL),
-                wraplength=600,
-                justify="left",
-                anchor="nw",
-            ).pack(fill="x", pady=(0, 5))
+                "Your answer",
+                user_answer if user_answer else "(No answer)",
+                get_color("status_neutral"),
+            )
 
             if correct_answer:
-                ctk.CTkLabel(
+                self._add_answer_panel(
                     essay_frame,
-                    text="Expected Answer:",
-                    font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
-                    anchor="w",
-                ).pack(fill="x")
-
-                ctk.CTkLabel(
-                    essay_frame,
-                    text=correct_answer,
-                    font=(FONT_FAMILY, FONT_SIZE_SMALL),
-                    wraplength=600,
-                    justify="left",
-                    anchor="nw",
-                ).pack(fill="x")
+                    "Expected answer",
+                    correct_answer,
+                    get_color("status_neutral"),
+                )
 
         if explanation:
             explanation_frame = ctk.CTkFrame(card, fg_color="transparent")
-            explanation_frame.pack(fill="x", padx=15, pady=(0, 10))
+            explanation_frame.pack(fill="x", padx=SPACE_16, pady=(0, SPACE_16))
 
-            ctk.CTkLabel(
+            self._add_answer_panel(
                 explanation_frame,
-                text="Explanation:",
-                font=(FONT_FAMILY, FONT_SIZE_SMALL, "bold"),
-                anchor="w",
-            ).pack(fill="x")
+                "Explanation",
+                explanation,
+                get_color("text_secondary"),
+            )
 
-            ctk.CTkLabel(
-                explanation_frame,
-                text=explanation,
-                font=(FONT_FAMILY, FONT_SIZE_SMALL),
-                wraplength=600,
-                justify="left",
-                anchor="nw",
-            ).pack(fill="x")
+    def _set_score_summary(self, score, total, percentage, metrics) -> None:
+        """Update score summary and metric chips."""
+        self.score_label.configure(text=f"{score}/{total}")
+        self.percentage_label.configure(text=f"{percentage}%")
+        for widget in self.metrics_frame.winfo_children():
+            widget.destroy()
+        for label, value in metrics:
+            self._add_metric(label, value)
+
+    def _add_metric(self, label: str, value: str) -> None:
+        """Add a compact metric to the score summary."""
+        metric = ctk.CTkFrame(
+            self.metrics_frame,
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_CONTROL,
+        )
+        metric.pack(side="left", padx=(0, SPACE_8), pady=(0, SPACE_4))
+
+        ctk.CTkLabel(
+            metric,
+            text=label,
+            **get_text_style("metadata"),
+        ).pack(side="left", padx=(SPACE_12, SPACE_4), pady=SPACE_8)
+
+        ctk.CTkLabel(
+            metric,
+            text=value,
+            font=FONT_BODY_BOLD,
+            text_color=get_color("text_primary"),
+        ).pack(side="left", padx=(0, SPACE_12), pady=SPACE_8)
+
+    def _add_review_section_title(self, text: str) -> None:
+        """Add a section title inside the review scroll area."""
+        ctk.CTkLabel(
+            self.review_frame,
+            text=text,
+            anchor="w",
+            **get_text_style("section_title"),
+        ).pack(fill="x", padx=SPACE_16, pady=(SPACE_16, SPACE_4))
+
+    def _build_status_badge(self, parent, text: str, color) -> ctk.CTkLabel:
+        """Build a compact status badge."""
+        return ctk.CTkLabel(
+            parent,
+            text=text,
+            fg_color=color,
+            corner_radius=RADIUS_CONTROL,
+            text_color=get_color("text_inverse"),
+            font=FONT_BODY_BOLD,
+        )
+
+    def _add_answer_panel(
+        self,
+        parent: ctk.CTkFrame,
+        label: str,
+        text: str,
+        label_color,
+    ) -> None:
+        """Add a labeled answer comparison panel."""
+        panel = ctk.CTkFrame(
+            parent,
+            fg_color=get_color("surface_subtle"),
+            border_color=get_color("divider"),
+            border_width=1,
+            corner_radius=RADIUS_CONTROL,
+        )
+        panel.pack(fill="x", pady=(0, SPACE_8))
+
+        ctk.CTkLabel(
+            panel,
+            text=label,
+            anchor="w",
+            font=FONT_CARD_TITLE,
+            text_color=label_color,
+        ).pack(fill="x", padx=SPACE_12, pady=(SPACE_8, SPACE_4))
+
+        ctk.CTkLabel(
+            panel,
+            text=text if text else "(No answer)",
+            wraplength=700,
+            justify="left",
+            anchor="nw",
+            **get_text_style("body"),
+        ).pack(fill="x", padx=SPACE_12, pady=(0, SPACE_8))
+
+    def _add_source_row(
+        self,
+        parent: ctk.CTkFrame,
+        test_name: str,
+        detail: str,
+        summary: str,
+        status_color,
+    ) -> None:
+        """Add one mixed-source breakdown row."""
+        row = ctk.CTkFrame(
+            parent,
+            fg_color=get_color("surface_subtle"),
+            border_color=get_color("divider"),
+            border_width=1,
+            corner_radius=RADIUS_CONTROL,
+        )
+        row.pack(fill="x", padx=SPACE_16, pady=(0, SPACE_8))
+        row.grid_columnconfigure(0, weight=1)
+
+        ctk.CTkLabel(
+            row,
+            text=test_name,
+            anchor="w",
+            **get_text_style("body"),
+        ).grid(row=0, column=0, sticky="ew", padx=SPACE_12, pady=SPACE_12)
+
+        ctk.CTkLabel(
+            row,
+            text=detail,
+            **get_text_style("metadata"),
+        ).grid(row=0, column=1, padx=SPACE_12, pady=SPACE_12)
+
+        self._build_status_badge(row, summary, status_color).grid(
+            row=0,
+            column=2,
+            padx=(0, SPACE_12),
+            pady=SPACE_12,
+        )
+
+    def _show_missing_results(self) -> None:
+        """Show a calm missing-results state."""
+        self.score_label.configure(text="Results unavailable")
+        self.percentage_label.configure(text="")
+        for widget in self.metrics_frame.winfo_children():
+            widget.destroy()
+        self._add_empty_review_message("This saved result could not be loaded.")
+
+    def _add_empty_review_message(self, message: str) -> None:
+        """Add an empty/error state inside the review area."""
+        frame = ctk.CTkFrame(self.review_frame, **get_card_style("default"))
+        frame.pack(fill="x", padx=SPACE_12, pady=SPACE_16)
+        ctk.CTkLabel(
+            frame,
+            text=message,
+            anchor="center",
+            **get_text_style("body"),
+        ).pack(fill="x", padx=SPACE_24, pady=SPACE_24)
+
+    def _reset_review_scroll(self) -> None:
+        """Reset CTkScrollableFrame after rebuilding result content."""
+        self.update_idletasks()
+        canvas = getattr(self.review_frame, "_parent_canvas", None)
+        if canvas is not None:
+            canvas.yview_moveto(0.0)
 
     def _on_retake(self) -> None:
         """Navigate to retake the same test (mix or regular)."""

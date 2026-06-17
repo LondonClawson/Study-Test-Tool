@@ -2,7 +2,7 @@
 
 import customtkinter as ctk
 
-from config.settings import FONT_FAMILY, FONT_SIZE_HEADING
+from gui.styles import FONT_SECTION_TITLE, get_color
 from utils.timer import Timer
 
 
@@ -10,10 +10,11 @@ class TimerWidget(ctk.CTkLabel):
     """Displays a live-updating timer."""
 
     def __init__(self, parent: ctk.CTkFrame, **kwargs) -> None:
+        kwargs.setdefault("text_color", get_color("text_primary"))
         super().__init__(
             parent,
             text="00:00",
-            font=(FONT_FAMILY, FONT_SIZE_HEADING),
+            font=FONT_SECTION_TITLE,
             **kwargs,
         )
         self._timer = Timer()

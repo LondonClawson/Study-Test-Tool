@@ -2,13 +2,19 @@
 
 ## Status
 
-Blocked.
+Submitted For Review.
 
 ## Readiness
 
-- Blocked by: CTX-FOUNDATION.
-- Unblocked by: `R-006_editor_context.md` and
-  `STORY-003_visual_foundation_spec.md`.
+- Blocked by: None.
+- Unblocked by: `R-006_editor_context.md`,
+  `STORY-003_visual_foundation_spec.md`, accepted shared style entry points,
+  and accepted button/card/page-header pilots.
+
+CTX-EDITOR and CTX-FOUNDATION are Ready. `STORY-004`, `STORY-005`,
+`STORY-006`, and `STORY-007` are Done, so the editor has accepted style,
+button, card/list, and page-header guidance available for implementation.
+Dev 2 implementation submitted for PM/reviewer acceptance.
 
 ## Sprint
 
@@ -76,10 +82,19 @@ Out:
 
 ## Verification
 
+- Screenshot evidence is required under
+  `visual_overhaul_project/01_context/screenshots/after/STORY-013/`.
+- Capture or document a blocker for light and dark states covering new test,
+  existing populated test with questions, saved empty test/no questions,
+  multiple-choice add form, essay add form, edit-question mode, validation
+  warning, group autocomplete dropdown, and minimum-window editor layout where
+  practical.
 - Smoke check create test, edit test metadata, add MC question, add essay
   question, edit question, delete question, save.
-- Run relevant tests if group or validation behavior is touched.
-- Visual check light/dark mode.
+- Run `pytest --rootdir=. study_test_tool/tests/test_group_sort.py` if group
+  behavior or autocomplete-adjacent metadata code changes.
+- Run relevant editor, validation, or service tests if behavior-bearing paths
+  are touched.
 
 ## Dev 2 Assignment Notes
 
@@ -90,4 +105,7 @@ Out:
 ## Handoff Requirements
 
 - List editor states checked.
+- List screenshot paths or exact capture blockers for every required state.
 - List any unresolved form-density issues.
+- Confirm validation rules, question CRUD behavior, group persistence, dirty
+  form protection, and save/cancel behavior stayed unchanged.

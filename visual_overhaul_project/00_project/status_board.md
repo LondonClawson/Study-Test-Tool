@@ -37,7 +37,7 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `test_taking_context.md` | Ready | `STORY-010`, `STORY-011` |
 | `results_context.md` | Ready | `STORY-012` |
 | `editor_context.md` | Ready | `STORY-013` |
-| `history_analytics_review_context.md` | Ready | `STORY-014`, `STORY-015A` |
+| `history_analytics_review_context.md` | Ready | `STORY-014A`, `STORY-014B`, `STORY-014C`, `STORY-015A` |
 | `dialog_context.md` | Ready | `STORY-015B`, `STORY-015C`, `STORY-015D`, `STORY-015E` |
 | `visual_foundation_decisions.md` | Ready | `STORY-004` through `STORY-017`; accepted for MVP implementation sequencing |
 
@@ -62,31 +62,43 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `STORY-002_baseline_visual_audit.md` | Done | None |
 | `STORY-003_visual_foundation_spec.md` | Done | None |
 | `STORY-004_shared_style_entrypoints.md` | Done | None |
-| `STORY-005_button_hierarchy.md` | Submitted For Review | Evidence added for card action and disabled states |
-| `STORY-006_card_and_list_patterns.md` | Submitted For Review | Expanded Home card evidence added for PM acceptance |
+| `STORY-005_button_hierarchy.md` | Done | None |
+| `STORY-006_card_and_list_patterns.md` | Done | None |
 | `STORY-007_page_header_pattern.md` | Done | None |
-| `STORY-008_home_screen_layout.md` | Blocked | `STORY-005` |
-| `STORY-009_home_test_cards_and_actions.md` | Blocked | `STORY-006`, `STORY-008` |
-| `STORY-010_test_taking_shell.md` | Blocked | `STORY-005` |
-| `STORY-011_answer_rows_and_practice_feedback.md` | Blocked | `STORY-010` |
-| `STORY-012_results_summary_and_review_cards.md` | Blocked | `STORY-006` or shared card/badge entry points |
-| `STORY-013_editor_layout.md` | Blocked | Foundation implementation stories |
-| `STORY-014_history_and_analytics_polish.md` | Blocked | Foundation implementation stories, story split |
+| `STORY-008_home_screen_layout.md` | Done | None |
+| `STORY-009_home_test_cards_and_actions.md` | Done | None |
+| `STORY-010_test_taking_shell.md` | Done | None |
+| `STORY-011_answer_rows_and_practice_feedback.md` | Done | None |
+| `STORY-012_results_summary_and_review_cards.md` | Submitted For Review | PM/reviewer acceptance |
+| `STORY-013_editor_layout.md` | Submitted For Review | PM/reviewer acceptance |
+| `STORY-014_history_and_analytics_polish.md` | Done | split into child stories |
+| `STORY-014A_history_list_and_filters.md` | In Progress | None |
+| `STORY-014B_analytics_chart_shell.md` | Ready | None |
+| `STORY-014C_analytics_weak_topics_and_no_data.md` | Ready | None |
 | `STORY-015_review_and_dialog_polish.md` | Done | split into child stories |
-| `STORY-015A_review_screen_polish.md` | Blocked | `STORY-005`, `STORY-006` |
-| `STORY-015B_mode_dialog_polish.md` | Blocked | `STORY-005` |
-| `STORY-015C_mix_dialog_polish.md` | Blocked | `STORY-005`, list/card pattern guidance |
-| `STORY-015D_import_preview_dialog_polish.md` | Blocked | `STORY-005`, list/card pattern guidance |
+| `STORY-015A_review_screen_polish.md` | Ready | None |
+| `STORY-015B_mode_dialog_polish.md` | Ready | None |
+| `STORY-015C_mix_dialog_polish.md` | Ready | None |
+| `STORY-015D_import_preview_dialog_polish.md` | Ready | None |
 | `STORY-015E_native_dialog_inventory_followup.md` | Blocked | PM post-MVP decision |
 | `STORY-016_light_dark_and_min_size_validation.md` | Blocked | Core MVP screen stories |
 | `STORY-017_mvp_visual_regression_pass.md` | Blocked | Sprint 4 validation |
 
 ## Next Recommended Work
 
-1. Review `STORY-005_button_hierarchy.md` evidence resubmission for acceptance.
-2. Review `STORY-006_card_and_list_patterns.md` expanded Home card evidence
-   resubmission for acceptance.
-3. Assign `STORY-007` follow-on header adoption only where it does not depend on
-   unresolved button or card/list evidence.
-4. Keep the remaining blocked `STORY-015` child stories blocked until their
-   named foundation dependencies land.
+1. Review the `STORY-012_results_summary_and_review_cards.md` resubmission for
+   PM/reviewer acceptance. The retake-state fix should be checked against the
+   requested sequence: load a mixed or practice result, load a history regular
+   attempt, then confirm Retake Test routes to the history attempt's test and
+   mode rather than stale mix state.
+2. Review `STORY-013_editor_layout.md` for PM/reviewer acceptance when
+   capacity allows. The submitted work should be checked against editor CRUD,
+   validation, group persistence, dirty-form protection, and save/cancel
+   behavior preservation.
+3. `STORY-014A_history_list_and_filters.md` is In Progress as the additional
+   implementation lane while PM/reviewer capacity handles `STORY-012` and
+   `STORY-013`. Keep `STORY-014B` and `STORY-014C` behind this lane unless
+   another implementation lane opens.
+4. Use the PM readiness pass handoff before assigning Sprint 2 or Sprint 3
+   Ready stories so developers follow the priority order instead of cherry
+   picking lower-priority work.

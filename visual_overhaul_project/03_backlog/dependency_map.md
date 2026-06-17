@@ -33,11 +33,12 @@ passes `00_project/definition_of_ready.md`.
 | `R-004_test_taking_context.md` | CTX-TEST-TAKING | `STORY-010`, `STORY-011` |
 | `R-005_results_context.md` | CTX-RESULTS | `STORY-012` |
 | `R-006_editor_context.md` | CTX-EDITOR | `STORY-013` |
-| `R-007_history_analytics_review_context.md` | CTX-DATA-VIEWS | `STORY-014`, `STORY-015` |
-| `R-008_dialog_context.md` | CTX-DIALOGS | `STORY-015` |
+| `R-007_history_analytics_review_context.md` | CTX-DATA-VIEWS | `STORY-014A`, `STORY-014B`, `STORY-014C`, `STORY-015A` |
+| `R-008_dialog_context.md` | CTX-DIALOGS | `STORY-015B`, `STORY-015C`, `STORY-015D`, `STORY-015E` |
 
-`R-007` and `R-008` should also recommend smaller story splits before
-`STORY-014` or `STORY-015` are assigned to junior implementation agents.
+`R-007` and `R-008` recommend smaller story splits before broad parent stories
+are assigned to junior implementation agents. `STORY-014` and `STORY-015` have
+been split; assign the child stories instead.
 
 ## Implementation Dependencies
 
@@ -49,8 +50,16 @@ passes `00_project/definition_of_ready.md`.
 | `STORY-011_answer_rows_and_practice_feedback.md` | CTX-TEST-TAKING, CTX-FOUNDATION | `STORY-010` |
 | `STORY-012_results_summary_and_review_cards.md` | CTX-RESULTS, CTX-FOUNDATION | `STORY-006` |
 | `STORY-013_editor_layout.md` | CTX-EDITOR, CTX-FOUNDATION | Foundation stories |
-| `STORY-014_history_and_analytics_polish.md` | CTX-DATA-VIEWS, CTX-FOUNDATION, split stories | Foundation stories |
-| `STORY-015_review_and_dialog_polish.md` | CTX-DATA-VIEWS, CTX-DIALOGS, CTX-FOUNDATION, split stories | Foundation stories |
+| `STORY-014_history_and_analytics_polish.md` | CTX-DATA-VIEWS, CTX-FOUNDATION, PM split | Parent split complete; do not assign |
+| `STORY-014A_history_list_and_filters.md` | CTX-DATA-VIEWS, CTX-FOUNDATION, accepted foundation handoffs | Foundation stories |
+| `STORY-014B_analytics_chart_shell.md` | CTX-DATA-VIEWS, CTX-FOUNDATION, accepted foundation handoffs | Foundation stories |
+| `STORY-014C_analytics_weak_topics_and_no_data.md` | CTX-DATA-VIEWS, CTX-FOUNDATION, accepted foundation handoffs | Foundation stories |
+| `STORY-015_review_and_dialog_polish.md` | CTX-DATA-VIEWS, CTX-DIALOGS, CTX-FOUNDATION, PM split | Parent split complete; do not assign |
+| `STORY-015A_review_screen_polish.md` | CTX-DATA-VIEWS, CTX-FOUNDATION, accepted foundation handoffs | Foundation stories |
+| `STORY-015B_mode_dialog_polish.md` | CTX-DIALOGS, CTX-FOUNDATION, accepted foundation handoffs | Foundation stories |
+| `STORY-015C_mix_dialog_polish.md` | CTX-DIALOGS, CTX-FOUNDATION, accepted foundation handoffs | Foundation stories |
+| `STORY-015D_import_preview_dialog_polish.md` | CTX-DIALOGS, CTX-FOUNDATION, accepted foundation handoffs | Foundation stories |
+| `STORY-015E_native_dialog_inventory_followup.md` | CTX-DIALOGS, PM post-MVP decision | Post-MVP PM decision |
 
 ## Closeout Dependencies
 

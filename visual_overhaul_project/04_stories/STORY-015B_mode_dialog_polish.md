@@ -2,12 +2,12 @@
 
 ## Status
 
-Blocked.
+Ready.
 
 ## Readiness
 
-- Blocked by: `STORY-005_button_hierarchy.md`.
-- Unblocked by: completion of the button hierarchy pilot.
+- Blocked by: None.
+- Unblocked by: accepted completion of the button hierarchy pilot.
 
 ## Sprint
 
@@ -62,10 +62,19 @@ Out:
 
 ## Verification
 
+- Screenshot evidence is required under
+  `visual_overhaul_project/01_context/screenshots/after/STORY-015B/`.
+- Capture or document a blocker for light and dark Mode Selection states
+  covering initial dialog display, Test Mode action, Practice Mode action, and
+  close/cancel path where practical.
 - Smoke check Test, Practice, and close/cancel paths.
 - Visual check light and dark mode.
 
 ## Handoff Requirements
 
 - List dialog states checked.
+- List screenshot evidence paths or exact capture blockers for every required
+  dialog state.
 - Confirm `get_mode()` return values stayed unchanged.
+- Confirm modal close/cancel behavior stayed unchanged.
+- List smoke checks run or explain why they were skipped.

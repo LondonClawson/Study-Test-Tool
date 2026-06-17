@@ -2,13 +2,17 @@
 
 ## Status
 
-Blocked.
+Done.
 
 ## Readiness
 
-- Blocked by: CTX-TEST-TAKING, CTX-FOUNDATION.
-- Unblocked by: `R-004_test_taking_context.md` and
-  `STORY-003_visual_foundation_spec.md`.
+- Blocked by: None.
+- Unblocked by: CTX-TEST-TAKING, CTX-FOUNDATION, and accepted completion of
+  `STORY-010_test_taking_shell.md`.
+
+CTX-TEST-TAKING and CTX-FOUNDATION are Ready. `STORY-010` is accepted, and this
+story was accepted by PM/reviewer on 2026-06-16 after implementation handoff,
+focused tests, and screenshot evidence review.
 
 ## Sprint
 
@@ -75,10 +79,19 @@ Out:
 
 ## Verification
 
+- Screenshot evidence is required under
+  `visual_overhaul_project/01_context/screenshots/after/STORY-011/`.
+- Capture or document a blocker for light and dark states covering
+  multiple-choice unselected, selected, checked-correct, checked-incorrect,
+  checked-disabled after navigating away/back, essay input, essay expected
+  answer feedback, unanswered, and flagged-with-answer states where practical.
+- Smoke check multiple-choice selection by radio, label, and any new row click
+  target; essay input; Check Answer; disabled checked state; and navigating
+  away/back.
 - Run `pytest --rootdir=. study_test_tool/tests/test_practice_mode.py`.
-- Smoke check multiple-choice selection, essay input, check answer, disabled
-  state, and navigating away/back.
-- Visual check in light and dark mode.
+- Run `pytest --rootdir=. study_test_tool/tests/test_test_session.py` if
+  response saving, navigation, progress-click, flag, or session state paths are
+  touched.
 
 ## Dev 2 Assignment Notes
 
@@ -90,5 +103,8 @@ Out:
 ## Handoff Requirements
 
 - List answer states checked.
+- List screenshot evidence paths or exact capture blockers.
 - List any behavior tests run.
+- Confirm first-check locking and final scoring preference for checked
+  responses stayed unchanged.
 - Call out any remaining CustomTkinter limitations.

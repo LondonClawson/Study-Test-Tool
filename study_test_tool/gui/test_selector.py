@@ -6,22 +6,22 @@ import tkinter.messagebox as messagebox
 
 import customtkinter as ctk
 
-from config.settings import (
-    FONT_FAMILY,
-    FONT_SIZE_BODY,
-    FONT_SIZE_SMALL,
-)
 from gui.components.collapsible_group import CollapsibleGroup
 from gui.components.import_preview_dialog import ImportPreviewDialog
 from gui.components.mix_test_dialog import MixTestDialog
 from gui.components.mode_dialog import ModeSelectionDialog
 from gui.mix_test_display import build_mix_test_display
 from gui.styles import (
+    FONT_METADATA,
+    RADIUS_CARD,
+    RADIUS_CONTROL,
+    SPACE_2,
     SPACE_4,
     SPACE_8,
     SPACE_12,
     SPACE_16,
     SPACE_24,
+    SPACE_32,
     get_button_style,
     get_card_style,
     get_color,
@@ -72,7 +72,7 @@ class TestSelectorFrame(ctk.CTkFrame):
             self,
             **get_header_style("page"),
         )
-        header_frame.pack(fill="x", padx=30, pady=(20, SPACE_16))
+        header_frame.pack(fill="x", padx=SPACE_24, pady=(SPACE_24, SPACE_16))
 
         title_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
         title_frame.pack(fill="x", padx=SPACE_24, pady=(SPACE_16, SPACE_8))
@@ -127,11 +127,11 @@ class TestSelectorFrame(ctk.CTkFrame):
 
         ctk.CTkButton(
             navigation_actions,
-            text="Analytics",
-            command=self._on_analytics,
+            text="Review Missed",
+            command=self._on_review_missed,
             width=120,
-            **get_button_style("secondary"),
-        ).pack(side="right", padx=(SPACE_8, 0))
+            **get_button_style("warning"),
+        ).pack(side="left", padx=(0, SPACE_8))
 
         ctk.CTkButton(
             navigation_actions,
@@ -139,25 +139,31 @@ class TestSelectorFrame(ctk.CTkFrame):
             command=self._on_view_history,
             width=120,
             **get_button_style("secondary"),
-        ).pack(side="right", padx=(SPACE_8, 0))
+        ).pack(side="left", padx=(0, SPACE_8))
 
         ctk.CTkButton(
             navigation_actions,
-            text="Review Missed",
-            command=self._on_review_missed,
+            text="Analytics",
+            command=self._on_analytics,
             width=120,
-            **get_button_style("warning"),
-        ).pack(side="right")
+            **get_button_style("secondary"),
+        ).pack(side="left")
 
         # Sort toolbar
-        sort_frame = ctk.CTkFrame(self, fg_color="transparent")
-        sort_frame.pack(fill="x", padx=30, pady=(0, SPACE_8))
+        sort_frame = ctk.CTkFrame(
+            self,
+            fg_color=get_color("surface"),
+            border_color=get_color("border"),
+            border_width=1,
+            corner_radius=RADIUS_CARD,
+        )
+        sort_frame.pack(fill="x", padx=SPACE_24, pady=(0, SPACE_12))
 
         ctk.CTkLabel(
             sort_frame,
             text="Sort by:",
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
-        ).pack(side="left", padx=(0, 5))
+            **get_text_style("metadata"),
+        ).pack(side="left", padx=(SPACE_16, SPACE_8), pady=SPACE_12)
 
         self._sort_menu = ctk.CTkOptionMenu(
             sort_frame,
@@ -167,32 +173,88 @@ class TestSelectorFrame(ctk.CTkFrame):
                 "Name (Z-A)",
                 "Date Created",
             ],
-            width=150,
+            width=160,
+            height=34,
+            font=FONT_METADATA,
+            fg_color=get_color("surface_subtle"),
+            button_color=get_color("surface_muted"),
+            button_hover_color=get_color("divider"),
+            text_color=get_color("text_primary"),
+            dropdown_fg_color=get_color("surface"),
+            dropdown_hover_color=get_color("surface_subtle"),
+            dropdown_text_color=get_color("text_primary"),
             command=self._on_sort_changed,
         )
         self._sort_menu.set(self._sort_by)
-        self._sort_menu.pack(side="left")
+        self._sort_menu.pack(side="left", pady=SPACE_12)
 
         self._collapse_all_btn = ctk.CTkButton(
             sort_frame,
             text="Collapse All",
             width=110,
+            height=34,
             command=self._on_collapse_all_toggle,
             **get_button_style("tertiary"),
         )
-        self._collapse_all_btn.pack(side="left", padx=(10, 0))
+        self._collapse_all_btn.pack(side="left", padx=(SPACE_12, 0), pady=SPACE_12)
 
         # Scrollable test list
-        self.test_list_frame = ctk.CTkScrollableFrame(self)
-        self.test_list_frame.pack(fill="both", expand=True, padx=30, pady=(0, 20))
-
-        # Empty state label (shown when no tests)
-        self.empty_label = ctk.CTkLabel(
-            self.test_list_frame,
-            text="No tests available. Import or create one!",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-            text_color="gray",
+        self.test_list_frame = ctk.CTkScrollableFrame(
+            self,
+            fg_color=get_color("surface_subtle"),
+            border_color=get_color("border"),
+            border_width=1,
+            corner_radius=RADIUS_CARD,
+            scrollbar_button_color=get_color("secondary"),
+            scrollbar_button_hover_color=get_color("secondary_hover"),
         )
+        self.test_list_frame.pack(
+            fill="both",
+            expand=True,
+            padx=SPACE_24,
+            pady=(0, SPACE_24),
+        )
+
+        self.empty_state_frame = self._build_empty_state()
+
+    def _build_empty_state(self) -> ctk.CTkFrame:
+        """Create the no-tests state surface."""
+        empty_frame = ctk.CTkFrame(self.test_list_frame, **get_card_style("default"))
+
+        ctk.CTkLabel(
+            empty_frame,
+            text="Start your study library",
+            anchor="center",
+            **get_text_style("section_title"),
+        ).pack(fill="x", padx=SPACE_24, pady=(SPACE_24, SPACE_8))
+
+        ctk.CTkLabel(
+            empty_frame,
+            text="Import an existing test or create a new one to begin.",
+            anchor="center",
+            **get_text_style("metadata"),
+        ).pack(fill="x", padx=SPACE_24)
+
+        action_frame = ctk.CTkFrame(empty_frame, fg_color="transparent")
+        action_frame.pack(pady=(SPACE_16, SPACE_24))
+
+        ctk.CTkButton(
+            action_frame,
+            text="Import",
+            width=120,
+            command=self._on_import,
+            **get_button_style("secondary"),
+        ).pack(side="left", padx=(0, SPACE_8))
+
+        ctk.CTkButton(
+            action_frame,
+            text="New Test",
+            width=120,
+            command=self._on_new_test,
+            **get_button_style("primary"),
+        ).pack(side="left")
+
+        return empty_frame
 
     def on_show(self, **kwargs) -> None:
         """Refresh the test list when this screen is shown."""
@@ -203,7 +265,9 @@ class TestSelectorFrame(ctk.CTkFrame):
         if active_count == 0 and archived_count == 0:
             summary = "No tests yet"
         else:
-            active_text = f"{active_count} active test{'s' if active_count != 1 else ''}"
+            active_text = (
+                f"{active_count} active test{'s' if active_count != 1 else ''}"
+            )
             if archived_count:
                 archived_text = (
                     f"{archived_count} archived test"
@@ -247,10 +311,12 @@ class TestSelectorFrame(ctk.CTkFrame):
     def _refresh_test_list(self) -> None:
         """Reload and display all tests."""
         # Preserve expanded/collapsed state before destroying widgets
-        old_group_states = {name: w.is_expanded for name, w in self._group_widgets.items()}
+        old_group_states = {
+            name: w.is_expanded for name, w in self._group_widgets.items()
+        }
 
         for widget in self.test_list_frame.winfo_children():
-            if widget != self.empty_label:
+            if widget != self.empty_state_frame:
                 widget.destroy()
         self._group_widgets = {}
 
@@ -259,10 +325,14 @@ class TestSelectorFrame(ctk.CTkFrame):
         self._update_header_summary(len(tests), len(archived_tests))
 
         if not tests and not archived_tests:
-            self.empty_label.pack(pady=40)
+            self.empty_state_frame.pack(
+                fill="x",
+                padx=SPACE_24,
+                pady=(SPACE_32, 0),
+            )
             return
 
-        self.empty_label.pack_forget()
+        self.empty_state_frame.pack_forget()
 
         tests = self._sort_tests(tests)
 
@@ -273,7 +343,9 @@ class TestSelectorFrame(ctk.CTkFrame):
             grouped.setdefault(group, []).append(test)
 
         named_groups = sorted(k for k in grouped if k != "Ungrouped")
-        ordered_groups = named_groups + (["Ungrouped"] if "Ungrouped" in grouped else [])
+        ordered_groups = named_groups + (
+            ["Ungrouped"] if "Ungrouped" in grouped else []
+        )
 
         for group in ordered_groups:
             group_tests = grouped[group]
@@ -290,7 +362,7 @@ class TestSelectorFrame(ctk.CTkFrame):
                 expanded=was_expanded,
                 archive_callback=archive_cb,
             )
-            group_widget.pack(fill="x")
+            group_widget.pack(fill="x", pady=(0, SPACE_8))
             self._group_widgets[group] = group_widget
             for test in group_tests:
                 self._create_test_card(test, parent=group_widget.content_frame)
@@ -302,7 +374,7 @@ class TestSelectorFrame(ctk.CTkFrame):
                 test_count=len(archived_tests),
                 expanded=old_group_states.get("__archived__", False),
             )
-            archived_widget.pack(fill="x", pady=(10, 0))
+            archived_widget.pack(fill="x", pady=(SPACE_8, 0))
             self._group_widgets["__archived__"] = archived_widget
             for test in archived_tests:
                 self._create_archived_test_card(
@@ -316,14 +388,19 @@ class TestSelectorFrame(ctk.CTkFrame):
         card = ctk.CTkFrame(parent, **get_card_style("default"))
         card.pack(fill="x", pady=SPACE_4, padx=SPACE_4)
 
+        q_count = self.test_service.get_question_count(test.id)
+
+        card_body = ctk.CTkFrame(card, fg_color="transparent")
+        card_body.pack(fill="x", padx=SPACE_16, pady=SPACE_16)
+        card_body.grid_columnconfigure(0, weight=1)
+
         # Info section
-        info_frame = ctk.CTkFrame(card, fg_color="transparent")
-        info_frame.pack(
-            side="left",
-            fill="both",
-            expand=True,
-            padx=SPACE_16,
-            pady=SPACE_12,
+        info_frame = ctk.CTkFrame(card_body, fg_color="transparent")
+        info_frame.grid(
+            row=0,
+            column=0,
+            sticky="nsew",
+            padx=(0, SPACE_16),
         )
 
         ctk.CTkLabel(
@@ -339,91 +416,102 @@ class TestSelectorFrame(ctk.CTkFrame):
             text=desc_text,
             anchor="w",
             **get_text_style("card_description"),
-        ).pack(fill="x")
+        ).pack(fill="x", pady=(SPACE_4, SPACE_8))
 
-        # Question count and group
-        q_count = self.test_service.get_question_count(test.id)
-        detail_parts = [f"{q_count} question{'s' if q_count != 1 else ''}"]
-        if test.group_name:
-            detail_parts.append(test.group_name)
-        ctk.CTkLabel(
-            info_frame,
-            text="  |  ".join(detail_parts),
-            anchor="w",
-            **get_text_style("card_metadata"),
-        ).pack(fill="x")
+        self._build_card_metadata(info_frame, test, q_count)
 
         # Action buttons
-        btn_frame = ctk.CTkFrame(card, fg_color="transparent")
-        btn_frame.pack(side="right", padx=SPACE_16, pady=SPACE_12)
+        btn_frame = ctk.CTkFrame(card_body, fg_color="transparent")
+        btn_frame.grid(row=0, column=1, sticky="ne")
+        btn_frame.grid_columnconfigure((0, 1), weight=1, uniform="card_actions")
 
         take_btn = ctk.CTkButton(
             btn_frame,
             text="Take Test",
-            width=90,
+            width=184,
+            height=34,
             command=lambda t=test: self._on_take_test(t),
             **get_button_style("primary"),
         )
-        take_btn.pack(side="left", padx=SPACE_4)
+        take_btn.grid(
+            row=0,
+            column=0,
+            columnspan=2,
+            sticky="ew",
+            padx=SPACE_2,
+            pady=(0, SPACE_8),
+        )
         if q_count == 0:
-            take_btn.configure(state="disabled")
+            self._configure_disabled_take_test(take_btn)
 
         ctk.CTkButton(
             btn_frame,
             text="Edit",
-            width=70,
+            width=88,
+            height=32,
             command=lambda t=test: self._on_edit_test(t),
             **get_button_style("tertiary"),
-        ).pack(side="left", padx=SPACE_4)
+        ).grid(row=1, column=0, sticky="ew", padx=SPACE_2, pady=(0, SPACE_4))
 
         ctk.CTkButton(
             btn_frame,
             text="Export",
-            width=70,
+            width=88,
+            height=32,
             command=lambda t=test: self._on_export_test(t),
             **get_button_style("tertiary"),
-        ).pack(side="left", padx=SPACE_4)
+        ).grid(row=1, column=1, sticky="ew", padx=SPACE_2, pady=(0, SPACE_4))
 
         ctk.CTkButton(
             btn_frame,
             text="Archive",
-            width=70,
+            width=88,
+            height=32,
             command=lambda t=test: self._on_archive_test(t),
             **get_button_style("secondary"),
-        ).pack(side="left", padx=SPACE_4)
+        ).grid(row=2, column=0, sticky="ew", padx=SPACE_2)
 
         ctk.CTkButton(
             btn_frame,
             text="Delete",
-            width=70,
+            width=88,
+            height=32,
             command=lambda t=test: self._on_delete_test(t),
             **get_button_style("danger"),
-        ).pack(side="left", padx=SPACE_4)
+        ).grid(row=2, column=1, sticky="ew", padx=SPACE_2)
 
-    def _create_archived_test_card(
-        self, test, parent: ctk.CTkFrame = None
-    ) -> None:
+    def _create_archived_test_card(self, test, parent: ctk.CTkFrame = None) -> None:
         """Create a dimmed card widget for an archived test."""
         if parent is None:
             parent = self.test_list_frame
         card = ctk.CTkFrame(parent, **get_card_style("muted"))
         card.pack(fill="x", pady=SPACE_4, padx=SPACE_4)
 
-        info_frame = ctk.CTkFrame(card, fg_color="transparent")
-        info_frame.pack(
-            side="left",
-            fill="both",
-            expand=True,
-            padx=SPACE_16,
-            pady=SPACE_12,
-        )
+        q_count = self.test_service.get_question_count(test.id)
+
+        card_body = ctk.CTkFrame(card, fg_color="transparent")
+        card_body.pack(fill="x", padx=SPACE_16, pady=SPACE_16)
+        card_body.grid_columnconfigure(0, weight=1)
+
+        info_frame = ctk.CTkFrame(card_body, fg_color="transparent")
+        info_frame.grid(row=0, column=0, sticky="nsew", padx=(0, SPACE_16))
+
+        title_row = ctk.CTkFrame(info_frame, fg_color="transparent")
+        title_row.pack(fill="x")
 
         ctk.CTkLabel(
-            info_frame,
+            title_row,
             text=test.name,
             anchor="w",
             **get_text_style("card_title_muted"),
-        ).pack(fill="x")
+        ).pack(side="left", fill="x", expand=True)
+
+        self._build_metadata_chip(
+            title_row,
+            "Archived",
+            muted=True,
+            compact=True,
+        ).pack(side="right", padx=(SPACE_8, 0))
 
         desc_text = test.description if test.description else "No description"
         ctk.CTkLabel(
@@ -431,37 +519,90 @@ class TestSelectorFrame(ctk.CTkFrame):
             text=desc_text,
             anchor="w",
             **get_text_style("card_metadata_muted"),
-        ).pack(fill="x")
+        ).pack(fill="x", pady=(SPACE_4, SPACE_8))
 
-        q_count = self.test_service.get_question_count(test.id)
-        detail_parts = [f"{q_count} question{'s' if q_count != 1 else ''}"]
-        if test.group_name:
-            detail_parts.append(test.group_name)
-        ctk.CTkLabel(
-            info_frame,
-            text="  |  ".join(detail_parts),
-            anchor="w",
-            **get_text_style("card_metadata_muted"),
-        ).pack(fill="x")
+        self._build_card_metadata(info_frame, test, q_count, muted=True)
 
-        btn_frame = ctk.CTkFrame(card, fg_color="transparent")
-        btn_frame.pack(side="right", padx=SPACE_16, pady=SPACE_12)
+        btn_frame = ctk.CTkFrame(card_body, fg_color="transparent")
+        btn_frame.grid(row=0, column=1, sticky="ne")
+        btn_frame.grid_columnconfigure(0, weight=1)
 
         ctk.CTkButton(
             btn_frame,
             text="Unarchive",
-            width=90,
+            width=128,
+            height=34,
             command=lambda t=test: self._on_unarchive_test(t),
             **get_button_style("secondary"),
-        ).pack(side="left", padx=SPACE_4)
+        ).grid(row=0, column=0, sticky="ew", padx=SPACE_2, pady=(0, SPACE_8))
 
         ctk.CTkButton(
             btn_frame,
             text="Delete",
-            width=70,
+            width=128,
+            height=32,
             command=lambda t=test: self._on_delete_test(t),
             **get_button_style("danger"),
-        ).pack(side="left", padx=SPACE_4)
+        ).grid(row=1, column=0, sticky="ew", padx=SPACE_2)
+
+    def _build_card_metadata(
+        self,
+        parent: ctk.CTkFrame,
+        test,
+        q_count: int,
+        muted: bool = False,
+    ) -> None:
+        """Build compact card metadata chips."""
+        row = ctk.CTkFrame(parent, fg_color="transparent")
+        row.pack(fill="x")
+
+        count_text = f"{q_count} question{'s' if q_count != 1 else ''}"
+        self._build_metadata_chip(
+            row,
+            count_text,
+            muted=muted or q_count == 0,
+        ).pack(side="left", padx=(0, SPACE_8))
+
+        if test.group_name:
+            self._build_metadata_chip(
+                row,
+                test.group_name,
+                muted=muted,
+            ).pack(side="left", padx=(0, SPACE_8))
+
+    def _build_metadata_chip(
+        self,
+        parent: ctk.CTkFrame,
+        text: str,
+        muted: bool = False,
+        compact: bool = False,
+    ) -> ctk.CTkLabel:
+        """Create a compact metadata chip for a Home card."""
+        style = get_text_style("metadata")
+        if muted:
+            style["text_color"] = get_color("text_muted")
+
+        return ctk.CTkLabel(
+            parent,
+            text=text,
+            height=22 if compact else 24,
+            fg_color=get_color("surface_subtle" if muted else "surface_muted"),
+            corner_radius=RADIUS_CONTROL,
+            anchor="center",
+            **style,
+        )
+
+    def _configure_disabled_take_test(self, button: ctk.CTkButton) -> None:
+        """Style disabled Take Test without changing the disabled behavior."""
+        button.configure(
+            state="disabled",
+            fg_color=get_color("surface_muted"),
+            hover_color=get_color("surface_muted"),
+            text_color=get_color("text_disabled"),
+            text_color_disabled=get_color("text_disabled"),
+            border_color=get_color("border"),
+            border_width=1,
+        )
 
     def _on_import(self) -> None:
         """Handle Import button click — auto-detects file type."""
@@ -638,9 +779,12 @@ class TestSelectorFrame(ctk.CTkFrame):
         succeeded = [r for r in results if r["status"] == "success"]
         skipped = [r for r in results if r["status"] == "skipped"]
 
-        lines = [f"Processed: {len(results)}",
-                 f"Succeeded: {len(succeeded)}",
-                 f"Skipped: {len(skipped)}", ""]
+        lines = [
+            f"Processed: {len(results)}",
+            f"Succeeded: {len(succeeded)}",
+            f"Skipped: {len(skipped)}",
+            "",
+        ]
         for r in succeeded:
             lines.append(f"[OK] {r['pair']} ({r['question_count']} questions)")
         for r in skipped:

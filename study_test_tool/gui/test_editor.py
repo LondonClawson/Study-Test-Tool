@@ -6,15 +6,24 @@ import customtkinter as ctk
 
 from gui.components.autocomplete_entry import AutocompleteEntry
 from config.settings import (
-    COLOR_DANGER,
-    COLOR_SUCCESS,
     FONT_FAMILY,
-    FONT_SIZE_BODY,
-    FONT_SIZE_HEADING,
-    FONT_SIZE_SMALL,
-    FONT_SIZE_TITLE,
     QUESTION_TYPE_ESSAY,
     QUESTION_TYPE_MC,
+)
+from gui.styles import (
+    FONT_CARD_TITLE,
+    RADIUS_CARD,
+    RADIUS_CONTROL,
+    SPACE_4,
+    SPACE_8,
+    SPACE_12,
+    SPACE_16,
+    SPACE_24,
+    get_button_style,
+    get_card_style,
+    get_color,
+    get_header_style,
+    get_text_style,
 )
 from models.question import Question, QuestionOption
 from models.test import Test
@@ -40,154 +49,261 @@ class TestEditorFrame(ctk.CTkFrame):
 
     def _build_ui(self) -> None:
         """Build the editor layout."""
-        # Top bar: Back + Title
-        top_frame = ctk.CTkFrame(self, fg_color="transparent")
-        top_frame.pack(fill="x", padx=20, pady=(15, 5))
+        self.configure(fg_color=get_color("app_bg"))
+
+        # Page header and metadata
+        header_frame = ctk.CTkFrame(self, **get_header_style("page"))
+        header_frame.pack(fill="x", padx=SPACE_24, pady=(SPACE_24, SPACE_12))
+        header_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkButton(
-            top_frame,
+            header_frame,
             text="< Back",
-            width=80,
-            fg_color="gray",
+            width=86,
             command=self._on_back,
-        ).pack(side="left")
+            **get_button_style("secondary"),
+        ).grid(row=0, column=0, padx=SPACE_16, pady=(SPACE_16, SPACE_8), sticky="w")
 
         self.title_label = ctk.CTkLabel(
-            top_frame,
+            header_frame,
             text="New Test",
-            font=(FONT_FAMILY, FONT_SIZE_TITLE, "bold"),
+            anchor="w",
+            **get_text_style("page_title"),
         )
-        self.title_label.pack(side="left", padx=20)
+        self.title_label.grid(
+            row=0,
+            column=1,
+            padx=(0, SPACE_16),
+            pady=(SPACE_16, SPACE_8),
+            sticky="ew",
+        )
 
-        # Test metadata
-        meta_frame = ctk.CTkFrame(self, fg_color="transparent")
-        meta_frame.pack(fill="x", padx=30, pady=10)
+        self.save_test_btn = ctk.CTkButton(
+            header_frame,
+            text="Save Test",
+            width=120,
+            command=self._on_save_test,
+            **get_button_style("primary"),
+        )
+        self.save_test_btn.grid(
+            row=0,
+            column=2,
+            padx=(0, SPACE_16),
+            pady=(SPACE_16, SPACE_8),
+            sticky="e",
+        )
+
+        meta_frame = ctk.CTkFrame(header_frame, fg_color="transparent")
+        meta_frame.grid(
+            row=1,
+            column=0,
+            columnspan=3,
+            sticky="ew",
+            padx=SPACE_16,
+            pady=(0, SPACE_16),
+        )
+        meta_frame.grid_columnconfigure(1, weight=1)
 
         ctk.CTkLabel(
             meta_frame,
-            text="Test Name:",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).grid(row=0, column=0, sticky="w", pady=3)
+            text="Test Name",
+            anchor="w",
+            **get_text_style("metadata"),
+        ).grid(row=0, column=0, sticky="w", pady=(0, SPACE_4))
 
-        self.name_entry = ctk.CTkEntry(meta_frame, width=400)
-        self.name_entry.grid(row=0, column=1, sticky="w", padx=10, pady=3)
+        self.name_entry = ctk.CTkEntry(
+            meta_frame,
+            border_color=get_color("border"),
+            fg_color=get_color("surface_subtle"),
+        )
+        self.name_entry.grid(
+            row=0,
+            column=1,
+            sticky="ew",
+            padx=(SPACE_12, 0),
+            pady=(0, SPACE_4),
+        )
 
         ctk.CTkLabel(
             meta_frame,
-            text="Description:",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).grid(row=1, column=0, sticky="w", pady=3)
+            text="Description",
+            anchor="w",
+            **get_text_style("metadata"),
+        ).grid(row=1, column=0, sticky="w", pady=(0, SPACE_4))
 
-        self.desc_entry = ctk.CTkEntry(meta_frame, width=400)
-        self.desc_entry.grid(row=1, column=1, sticky="w", padx=10, pady=3)
+        self.desc_entry = ctk.CTkEntry(
+            meta_frame,
+            border_color=get_color("border"),
+            fg_color=get_color("surface_subtle"),
+        )
+        self.desc_entry.grid(
+            row=1,
+            column=1,
+            sticky="ew",
+            padx=(SPACE_12, 0),
+            pady=(0, SPACE_4),
+        )
 
         ctk.CTkLabel(
             meta_frame,
-            text="Group (optional):",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).grid(row=2, column=0, sticky="w", pady=3)
+            text="Group (optional)",
+            anchor="w",
+            **get_text_style("metadata"),
+        ).grid(row=2, column=0, sticky="w")
 
         self.group_entry = AutocompleteEntry(
-            meta_frame, width=400, placeholder_text="e.g. Week 1, Cert Prep"
-        )
-        self.group_entry.grid(row=2, column=1, sticky="w", padx=10, pady=3)
-
-        ctk.CTkButton(
             meta_frame,
-            text="Save Test",
-            width=100,
-            fg_color=COLOR_SUCCESS,
-            command=self._on_save_test,
-        ).grid(row=0, column=2, rowspan=3, padx=20, pady=3)
-
-        # Divider
-        ctk.CTkFrame(self, height=2, fg_color="gray").pack(fill="x", padx=30, pady=5)
+            placeholder_text="e.g. Week 1, Cert Prep",
+        )
+        self.group_entry.grid(row=2, column=1, sticky="ew", padx=(SPACE_12, 0))
 
         # Main content: left = question list, right = question form
         content_frame = ctk.CTkFrame(self, fg_color="transparent")
-        content_frame.pack(fill="both", expand=True, padx=20, pady=5)
-        content_frame.grid_columnconfigure(0, weight=1)
-        content_frame.grid_columnconfigure(1, weight=1)
+        content_frame.pack(fill="both", expand=True, padx=SPACE_24, pady=(0, SPACE_24))
+        content_frame.grid_columnconfigure(0, weight=1, uniform="editor_columns")
+        content_frame.grid_columnconfigure(1, weight=1, uniform="editor_columns")
         content_frame.grid_rowconfigure(0, weight=1)
 
         # Left: existing questions
-        left_frame = ctk.CTkFrame(content_frame)
-        left_frame.grid(row=0, column=0, sticky="nsew", padx=5, pady=5)
+        left_frame = ctk.CTkFrame(content_frame, **get_card_style("default"))
+        left_frame.grid(row=0, column=0, sticky="nsew", padx=(0, SPACE_8))
+        left_frame.grid_rowconfigure(1, weight=1)
+        left_frame.grid_columnconfigure(0, weight=1)
+
+        left_header = ctk.CTkFrame(left_frame, fg_color="transparent")
+        left_header.grid(row=0, column=0, sticky="ew", padx=SPACE_16, pady=SPACE_16)
+        left_header.grid_columnconfigure(0, weight=1)
 
         ctk.CTkLabel(
-            left_frame,
+            left_header,
             text="Questions",
-            font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
-        ).pack(pady=5)
+            anchor="w",
+            **get_text_style("section_title"),
+        ).grid(row=0, column=0, sticky="ew")
 
-        self.question_list = ctk.CTkScrollableFrame(left_frame)
-        self.question_list.pack(fill="both", expand=True, padx=5, pady=5)
+        self.question_count_label = ctk.CTkLabel(
+            left_header,
+            text="",
+            anchor="e",
+            **get_text_style("metadata"),
+        )
+        self.question_count_label.grid(row=0, column=1, sticky="e")
+
+        self.question_list = ctk.CTkScrollableFrame(
+            left_frame,
+            fg_color=get_color("surface_subtle"),
+            border_color=get_color("divider"),
+            border_width=1,
+            corner_radius=RADIUS_CONTROL,
+            scrollbar_button_color=get_color("secondary"),
+            scrollbar_button_hover_color=get_color("secondary_hover"),
+        )
+        self.question_list.grid(
+            row=1,
+            column=0,
+            sticky="nsew",
+            padx=SPACE_16,
+            pady=(0, SPACE_16),
+        )
 
         self.no_questions_label = ctk.CTkLabel(
             self.question_list,
             text="No questions yet.",
-            text_color="gray",
+            **get_text_style("metadata"),
         )
 
         # Right: add/edit question form
-        right_frame = ctk.CTkFrame(content_frame)
-        right_frame.grid(row=0, column=1, sticky="nsew", padx=5, pady=5)
+        right_frame = ctk.CTkFrame(content_frame, **get_card_style("default"))
+        right_frame.grid(row=0, column=1, sticky="nsew", padx=(SPACE_8, 0))
+        right_frame.grid_rowconfigure(1, weight=1)
+        right_frame.grid_columnconfigure(0, weight=1)
+
+        form_header = ctk.CTkFrame(right_frame, fg_color="transparent")
+        form_header.grid(row=0, column=0, sticky="ew", padx=SPACE_16, pady=SPACE_16)
+        form_header.grid_columnconfigure(0, weight=1)
 
         self.form_title = ctk.CTkLabel(
-            right_frame,
+            form_header,
             text="Add Question",
-            font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
+            anchor="w",
+            **get_text_style("section_title"),
         )
-        self.form_title.pack(pady=5)
+        self.form_title.grid(row=0, column=0, sticky="ew")
 
-        form_scroll = ctk.CTkScrollableFrame(right_frame)
-        form_scroll.pack(fill="both", expand=True, padx=5, pady=5)
+        self.form_mode_badge = ctk.CTkLabel(
+            form_header,
+            text="New",
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_CONTROL,
+            **get_text_style("metadata"),
+        )
+        self.form_mode_badge.grid(row=0, column=1, sticky="e", ipadx=SPACE_8)
 
-        # Question text
-        ctk.CTkLabel(
-            form_scroll,
-            text="Question Text:",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).pack(anchor="w", pady=(5, 2))
+        self.form_scroll = ctk.CTkScrollableFrame(
+            right_frame,
+            fg_color=get_color("surface_subtle"),
+            border_color=get_color("divider"),
+            border_width=1,
+            corner_radius=RADIUS_CONTROL,
+            scrollbar_button_color=get_color("secondary"),
+            scrollbar_button_hover_color=get_color("secondary_hover"),
+        )
+        self.form_scroll.grid(
+            row=1,
+            column=0,
+            sticky="nsew",
+            padx=SPACE_16,
+            pady=(0, SPACE_16),
+        )
 
-        self.question_text = ctk.CTkTextbox(form_scroll, height=80)
-        self.question_text.pack(fill="x", pady=(0, 5))
+        prompt_section = self._create_form_section(self.form_scroll, "Prompt")
+        self._add_field_label(prompt_section, "Question Text")
 
-        # Type selector
-        ctk.CTkLabel(
-            form_scroll,
-            text="Type:",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).pack(anchor="w", pady=(5, 2))
+        self.question_text = ctk.CTkTextbox(
+            prompt_section,
+            height=92,
+            border_color=get_color("border"),
+            border_width=1,
+            fg_color=get_color("surface"),
+        )
+        self.question_text.pack(fill="x", pady=(0, SPACE_8))
+
+        details_section = self._create_form_section(
+            self.form_scroll, "Question Details"
+        )
+        self._add_field_label(details_section, "Type")
 
         self.type_var = ctk.StringVar(value=QUESTION_TYPE_MC)
         self.type_selector = ctk.CTkSegmentedButton(
-            form_scroll,
+            details_section,
             values=["Multiple Choice", "Essay"],
             command=self._on_type_change,
+            selected_color=get_color("surface_muted"),
+            selected_hover_color=get_color("divider"),
+            unselected_color=get_color("surface"),
+            unselected_hover_color=get_color("surface_muted"),
+            fg_color=get_color("border"),
+            text_color=get_color("text_primary"),
         )
         self.type_selector.set("Multiple Choice")
-        self.type_selector.pack(fill="x", pady=(0, 5))
+        self.type_selector.pack(fill="x", pady=(0, SPACE_8))
 
-        # Category
-        ctk.CTkLabel(
-            form_scroll,
-            text="Category (optional):",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).pack(anchor="w", pady=(5, 2))
+        self._add_field_label(details_section, "Category (optional)")
 
-        self.category_entry = ctk.CTkEntry(form_scroll, width=300)
-        self.category_entry.pack(anchor="w", pady=(0, 10))
+        self.category_entry = ctk.CTkEntry(
+            details_section,
+            border_color=get_color("border"),
+            fg_color=get_color("surface"),
+        )
+        self.category_entry.pack(fill="x", pady=(0, SPACE_4))
+
+        answer_section = self._create_form_section(self.form_scroll, "Answer Data")
 
         # MC Options frame
-        self.options_frame = ctk.CTkFrame(form_scroll, fg_color="transparent")
-        self.options_frame.pack(fill="x", pady=5)
+        self.options_frame = ctk.CTkFrame(answer_section, fg_color="transparent")
+        self.options_frame.pack(fill="x")
 
-        ctk.CTkLabel(
-            self.options_frame,
-            text="Options (select the correct one):",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).pack(anchor="w")
+        self._add_field_label(self.options_frame, "Options (select the correct one)")
 
         self.correct_var = ctk.IntVar(value=0)
         self.option_entries: list = []
@@ -198,56 +314,87 @@ class TestEditorFrame(ctk.CTkFrame):
         self.options_container = ctk.CTkFrame(
             self.options_frame, fg_color="transparent"
         )
-        self.options_container.pack(fill="x")
+        self.options_container.pack(fill="x", pady=(0, SPACE_4))
 
         self.add_option_btn = ctk.CTkButton(
             self.options_frame,
             text="+ Add Option",
             width=120,
             height=26,
-            fg_color="gray",
             command=self._on_add_option,
+            **get_button_style("tertiary"),
         )
-        self.add_option_btn.pack(anchor="w", pady=(4, 0))
+        self.add_option_btn.pack(anchor="w")
 
         self._rebuild_option_rows(["", "", "", ""], correct_idx=0)
 
         # Essay answer frame
-        self.essay_frame = ctk.CTkFrame(form_scroll, fg_color="transparent")
+        self.essay_frame = ctk.CTkFrame(answer_section, fg_color="transparent")
 
-        ctk.CTkLabel(
+        self._add_field_label(self.essay_frame, "Expected Answer")
+
+        self.essay_answer = ctk.CTkTextbox(
             self.essay_frame,
-            text="Expected Answer:",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).pack(anchor="w")
+            height=92,
+            border_color=get_color("border"),
+            border_width=1,
+            fg_color=get_color("surface"),
+        )
+        self.essay_answer.pack(fill="x")
 
-        self.essay_answer = ctk.CTkTextbox(self.essay_frame, height=80)
-        self.essay_answer.pack(fill="x", pady=(2, 5))
+        explanation_section = self._create_form_section(self.form_scroll, "Explanation")
+        self._add_field_label(explanation_section, "Explanation (optional)")
 
-        # Explanation
-        ctk.CTkLabel(
-            form_scroll,
-            text="Explanation (optional):",
-            font=(FONT_FAMILY, FONT_SIZE_BODY),
-        ).pack(anchor="w", pady=(5, 2))
+        self.explanation_text = ctk.CTkTextbox(
+            explanation_section,
+            height=84,
+            border_color=get_color("border"),
+            border_width=1,
+            fg_color=get_color("surface"),
+        )
+        self.explanation_text.pack(fill="x")
 
-        self.explanation_text = ctk.CTkTextbox(form_scroll, height=80)
-        self.explanation_text.pack(fill="x", pady=(0, 5))
-
-        # Add/Update button
+        # Add/Update actions
+        self.action_frame = ctk.CTkFrame(self.form_scroll, fg_color="transparent")
+        self.action_frame.pack(fill="x", padx=SPACE_12, pady=(0, SPACE_16))
         self.add_btn = ctk.CTkButton(
-            form_scroll,
+            self.action_frame,
             text="Add Question",
             command=self._on_add_question,
+            **get_button_style("primary"),
         )
-        self.add_btn.pack(pady=10)
+        self.add_btn.pack(side="left")
 
         self.cancel_edit_btn = ctk.CTkButton(
-            form_scroll,
+            self.action_frame,
             text="Cancel Edit",
-            fg_color="gray",
             command=self._cancel_edit,
+            **get_button_style("secondary"),
         )
+
+    def _create_form_section(self, parent, title: str) -> ctk.CTkFrame:
+        """Create a compact form section with a local title."""
+        section = ctk.CTkFrame(
+            parent, fg_color=get_color("surface"), corner_radius=RADIUS_CARD
+        )
+        section.pack(fill="x", padx=SPACE_12, pady=(SPACE_12, 0))
+        ctk.CTkLabel(
+            section,
+            text=title,
+            anchor="w",
+            font=FONT_CARD_TITLE,
+            text_color=get_color("text_primary"),
+        ).pack(fill="x", padx=SPACE_12, pady=(SPACE_12, SPACE_8))
+        return section
+
+    def _add_field_label(self, parent, text: str) -> None:
+        """Add a metadata-styled label above an input."""
+        ctk.CTkLabel(
+            parent,
+            text=text,
+            anchor="w",
+            **get_text_style("metadata"),
+        ).pack(fill="x", padx=SPACE_12, pady=(0, SPACE_4))
 
     def on_show(self, test_id=None, **kwargs) -> None:
         """Initialize the editor for creating or editing a test."""
@@ -282,13 +429,18 @@ class TestEditorFrame(ctk.CTkFrame):
                 widget.destroy()
 
         if self._test_id is None:
-            self.no_questions_label.pack(pady=20)
+            self.question_count_label.configure(text="Not saved")
+            self.no_questions_label.pack(pady=SPACE_24)
             return
 
         questions = self.question_service.get_questions_for_test(self._test_id)
+        question_count = len(questions)
+        self.question_count_label.configure(
+            text=f"{question_count} question{'s' if question_count != 1 else ''}"
+        )
 
         if not questions:
-            self.no_questions_label.pack(pady=20)
+            self.no_questions_label.pack(pady=SPACE_24)
             return
 
         self.no_questions_label.pack_forget()
@@ -298,75 +450,98 @@ class TestEditorFrame(ctk.CTkFrame):
 
     def _create_question_card(self, num: int, question: Question) -> None:
         """Create a card for a question in the list."""
-        card = ctk.CTkFrame(self.question_list, corner_radius=6)
-        card.pack(fill="x", pady=3)
+        card = ctk.CTkFrame(self.question_list, **get_card_style("default"))
+        card.pack(fill="x", pady=(0, SPACE_8))
+        card.grid_columnconfigure(1, weight=1)
+
+        q_badge = ctk.CTkLabel(
+            card,
+            text=f"Q{num}",
+            fg_color=get_color("surface_subtle"),
+            corner_radius=RADIUS_CONTROL,
+            **get_text_style("metadata"),
+        )
+        q_badge.grid(row=0, column=0, sticky="nw", padx=SPACE_12, pady=SPACE_12)
 
         info = ctk.CTkFrame(card, fg_color="transparent")
-        info.pack(side="left", fill="both", expand=True, padx=10, pady=5)
-
-        # Truncate long text
-        text = question.text
-        if len(text) > 80:
-            text = text[:77] + "..."
+        info.grid(row=0, column=1, sticky="nsew", pady=SPACE_12)
 
         ctk.CTkLabel(
             info,
-            text=f"Q{num}. {text}",
-            font=(FONT_FAMILY, FONT_SIZE_SMALL),
+            text=question.text,
             anchor="w",
-            wraplength=300,
+            wraplength=165,
+            justify="left",
+            **get_text_style("body"),
         ).pack(fill="x")
 
         type_label = "MC" if question.type == QUESTION_TYPE_MC else "Essay"
-        ctk.CTkLabel(
-            info,
-            text=f"Type: {type_label}",
-            font=(FONT_FAMILY, 11),
-            text_color="gray",
-            anchor="w",
-        ).pack(fill="x")
+        metadata_row = ctk.CTkFrame(info, fg_color="transparent")
+        metadata_row.pack(fill="x", pady=(SPACE_4, 0))
+
+        self._build_badge(
+            metadata_row,
+            type_label,
+            get_color("status_neutral"),
+        ).pack(side="left")
+
+        if question.category:
+            ctk.CTkLabel(
+                metadata_row,
+                text=question.category,
+                anchor="w",
+                **get_text_style("metadata"),
+            ).pack(side="left", padx=(SPACE_8, 0))
 
         if not question.correct_answer:
-            ctk.CTkLabel(
-                info,
-                text="\u26a0 No answer set",
-                font=(FONT_FAMILY, 11),
-                text_color="#f0ad4e",
-                anchor="w",
-            ).pack(fill="x")
+            self._build_badge(
+                metadata_row,
+                "No answer set",
+                get_color("status_warning"),
+            ).pack(side="left", padx=(SPACE_8, 0))
 
         btns = ctk.CTkFrame(card, fg_color="transparent")
-        btns.pack(side="right", padx=5, pady=5)
+        btns.grid(row=0, column=2, sticky="ne", padx=SPACE_12, pady=SPACE_12)
 
         ctk.CTkButton(
             btns,
             text="Edit",
-            width=50,
+            width=54,
             height=26,
-            fg_color="gray",
             command=lambda q=question: self._on_edit_question(q),
-        ).pack(side="left", padx=2)
+            **get_button_style("tertiary"),
+        ).pack(fill="x", pady=(0, SPACE_4))
 
         ctk.CTkButton(
             btns,
             text="Del",
-            width=50,
+            width=54,
             height=26,
-            fg_color=COLOR_DANGER,
-            hover_color="#c9302c",
             command=lambda q=question: self._on_delete_question(q),
-        ).pack(side="left", padx=2)
+            **get_button_style("danger"),
+        ).pack(fill="x")
+
+    def _build_badge(self, parent, text: str, color) -> ctk.CTkLabel:
+        """Build a compact badge for question metadata."""
+        return ctk.CTkLabel(
+            parent,
+            text=text,
+            fg_color=color,
+            corner_radius=RADIUS_CONTROL,
+            text_color=get_color("text_inverse"),
+            font=(FONT_FAMILY, 11, "bold"),
+        )
 
     def _on_type_change(self, value: str) -> None:
         """Toggle between MC options and essay answer field."""
         if value == "Multiple Choice":
             self.type_var.set(QUESTION_TYPE_MC)
             self.essay_frame.pack_forget()
-            self.options_frame.pack(fill="x", pady=5)
+            self.options_frame.pack(fill="x")
         else:
             self.type_var.set(QUESTION_TYPE_ESSAY)
             self.options_frame.pack_forget()
-            self.essay_frame.pack(fill="x", pady=5)
+            self.essay_frame.pack(fill="x")
 
     def _rebuild_option_rows(self, option_texts: list, correct_idx: int = 0) -> None:
         """Destroy current option rows and build one row per ``option_texts``.
@@ -382,8 +557,14 @@ class TestEditorFrame(ctk.CTkFrame):
         self._option_remove_btns = []
 
         for i, text in enumerate(option_texts):
-            row = ctk.CTkFrame(self.options_container, fg_color="transparent")
-            row.pack(fill="x", pady=2)
+            row = ctk.CTkFrame(
+                self.options_container,
+                fg_color=get_color("surface_subtle"),
+                border_color=get_color("divider"),
+                border_width=1,
+                corner_radius=RADIUS_CONTROL,
+            )
+            row.pack(fill="x", pady=(0, SPACE_4))
 
             rb = ctk.CTkRadioButton(
                 row,
@@ -391,11 +572,19 @@ class TestEditorFrame(ctk.CTkFrame):
                 variable=self.correct_var,
                 value=i,
                 width=20,
+                fg_color=get_color("primary"),
+                hover_color=get_color("primary_hover"),
+                border_color=get_color("border"),
             )
-            rb.pack(side="left", padx=(0, 5))
+            rb.pack(side="left", padx=(SPACE_8, SPACE_4), pady=SPACE_8)
 
-            entry = ctk.CTkEntry(row, placeholder_text=f"Option {chr(65 + i)}")
-            entry.pack(side="left", fill="x", expand=True)
+            entry = ctk.CTkEntry(
+                row,
+                placeholder_text=f"Option {chr(65 + i)}",
+                border_color=get_color("border"),
+                fg_color=get_color("surface"),
+            )
+            entry.pack(side="left", fill="x", expand=True, pady=SPACE_8)
             if text:
                 entry.insert(0, text)
 
@@ -404,12 +593,10 @@ class TestEditorFrame(ctk.CTkFrame):
                 text="×",
                 width=26,
                 height=26,
-                fg_color="transparent",
-                hover_color=("gray80", "gray30"),
-                text_color=("gray20", "gray80"),
                 command=lambda r=row: self._on_remove_option(r),
+                **get_button_style("tertiary"),
             )
-            remove_btn.pack(side="left", padx=(5, 0))
+            remove_btn.pack(side="left", padx=SPACE_8, pady=SPACE_8)
 
             self.option_entries.append(entry)
             self._option_rows.append(row)
@@ -430,7 +617,14 @@ class TestEditorFrame(ctk.CTkFrame):
         """Disable per-row remove buttons when only 2 options remain."""
         can_remove = len(self.option_entries) > 2
         for btn in self._option_remove_btns:
-            btn.configure(state="normal" if can_remove else "disabled")
+            btn.configure(
+                state="normal" if can_remove else "disabled",
+                text_color=(
+                    get_color("text_secondary")
+                    if can_remove
+                    else get_color("text_disabled")
+                ),
+            )
 
     def _current_option_texts(self) -> list:
         """Return the current text of every option entry, in row order."""
@@ -599,8 +793,13 @@ class TestEditorFrame(ctk.CTkFrame):
                 return
         self._editing_question_id = question.id
         self.form_title.configure(text="Edit Question")
+        self.form_mode_badge.configure(
+            text="Editing",
+            fg_color=get_color("status_warning"),
+            text_color=get_color("text_inverse"),
+        )
         self.add_btn.configure(text="Update Question")
-        self.cancel_edit_btn.pack(pady=5)
+        self.cancel_edit_btn.pack(side="left", padx=(SPACE_8, 0))
 
         # Fill in text
         self.question_text.delete("1.0", "end")
@@ -648,6 +847,11 @@ class TestEditorFrame(ctk.CTkFrame):
     def _reset_form(self) -> None:
         """Clear the question form fields."""
         self.form_title.configure(text="Add Question")
+        self.form_mode_badge.configure(
+            text="New",
+            fg_color=get_color("surface_subtle"),
+            text_color=get_color("text_muted"),
+        )
         self.add_btn.configure(text="Add Question")
         self.cancel_edit_btn.pack_forget()
 

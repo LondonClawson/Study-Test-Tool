@@ -10,7 +10,8 @@ handoffs. Status changes are project-management decisions, not incidental edits.
   handoff.
 - Implementation Agent updates the story handoff and proposes status changes in
   the handoff.
-- Reviewer or PM marks summaries, research tasks, and stories Ready or Done.
+- Reviewer or PM marks summaries, research tasks, and stories Ready, Done, or
+  Changes Requested.
 
 ## Research Task Transitions
 
@@ -40,8 +41,19 @@ handoffs. Status changes are project-management decisions, not incidental edits.
 - Blocked to Ready: all required summaries are Ready and the story passes the
   Implementation Story Ready gate.
 - Ready to In Progress: PM assigns the story to Dev 2.
-- In Progress to Done: reviewer accepts the implementation, required screenshot
-  evidence or documented capture blocker, verification notes, and handoff.
+- In Progress to Submitted For Review: Dev 2 completes the implementation,
+  required screenshot evidence or documented capture blocker, verification
+  notes, and handoff.
+- Submitted For Review to Done: reviewer accepts the implementation, required
+  screenshot evidence or documented capture blocker, verification notes, and
+  handoff.
+- Submitted For Review to Changes Requested: reviewer or PM finds required
+  fixes, missing verification, missing screenshot evidence, or acceptance gaps
+  and documents the requested changes in the handoff.
+- Changes Requested to In Progress: PM returns the story to Dev 2 for the named
+  fixes or evidence.
+- Changes Requested to Done: reviewer accepts the resubmitted fixes, evidence,
+  verification notes, and handoff.
 - In Progress to Blocked: Dev 2 finds missing/stale context, unclear scope, or a
   required product decision.
 

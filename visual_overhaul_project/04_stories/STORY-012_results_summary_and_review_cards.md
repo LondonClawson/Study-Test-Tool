@@ -2,13 +2,17 @@
 
 ## Status
 
-Blocked.
+Submitted For Review.
 
 ## Readiness
 
-- Blocked by: CTX-FOUNDATION.
+- Blocked by: None.
 - Completed context: `R-005_results_context.md`.
-- Remaining unblocker: `STORY-003_visual_foundation_spec.md`.
+- Unblocked by: accepted CTX-FOUNDATION and accepted Home card/list pattern
+  pilot from `STORY-006_card_and_list_patterns.md`.
+- Dev 2 implementation submitted for PM/reviewer acceptance, then returned with
+  Changes Requested on 2026-06-16 for a retake-state reset issue.
+- Retake-state reset fix completed and resubmitted for PM/reviewer acceptance.
 
 ## Sprint
 
@@ -75,6 +79,11 @@ Out:
 
 ## Verification
 
+- Screenshot evidence is required under
+  `visual_overhaul_project/01_context/screenshots/after/STORY-012/`.
+- Capture or document a blocker for light and dark states covering all-correct,
+  partial score with essay/flagged content, incorrect/missing-answer review,
+  mix-test source breakdown, and history-loaded results where practical.
 - Run relevant scoring/mix tests if result data handling is touched:
   `pytest --rootdir=. study_test_tool/tests/test_scoring_service.py`
   `study_test_tool/tests/test_mix_service.py`.
@@ -91,5 +100,9 @@ Out:
 ## Handoff Requirements
 
 - List result states checked.
+- List screenshot evidence paths or exact capture blockers for every required
+  result state.
 - List tests run or skipped.
+- Confirm scoring, attempt persistence, retake behavior, history-loaded results,
+  and mix source calculations stayed unchanged.
 - Include any follow-up for history-loaded result edge cases.

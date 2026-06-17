@@ -24,8 +24,12 @@ Files changed:
 
 Definition of Ready checked:
 Yes for split quality. The child stories each name required context, scope,
-likely files, constraints, verification, and handoff evidence. They remain
-Blocked until their named foundation dependencies are complete.
+likely files, constraints, verification, and handoff evidence.
+
+Follow-up PM readiness update on 2026-06-16: after `STORY-005`,
+`STORY-006`, and `STORY-007` were accepted, `STORY-015A`, `STORY-015B`,
+`STORY-015C`, and `STORY-015D` were cleared to Ready. `STORY-015E` remains
+Blocked pending a PM post-MVP decision.
 
 Context summaries read:
 - `visual_overhaul_project/01_context/summaries/history_analytics_review_context.md`
@@ -52,9 +56,8 @@ mode dialog, mix dialog, import preview dialog, and native dialog follow-up work
 now have separate scoped story files.
 
 Risks:
-The child stories are intentionally not Ready yet. `STORY-005`, card/list
-guidance, and page header work should land before assigning review or dialog
-polish.
+Ready status does not imply immediate assignment. Keep `STORY-015A-D` behind
+active `STORY-013` unless additional capacity opens.
 
 Follow-up backlog items:
 Keep `STORY-015E_native_dialog_inventory_followup.md` blocked until PM makes a

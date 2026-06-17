@@ -153,31 +153,47 @@ class ScreenshotHarness:
     def capture(self, name: str) -> None:
         """Capture the current app window."""
         self._settle()
-        target = self.output_dir / self.mode / f"{self.mode}_{name}.png"
-        target.parent.mkdir(parents=True, exist_ok=True)
-        bounds = self._find_app_bounds()
-        if bounds is None:
-            raise RuntimeError("Could not find the Study Testing Tool window.")
-        rect = self._screencapture_rect(bounds)
-        subprocess.run(
-            [
-                "screencapture",
-                "-x",
-                "-R",
-                f"{rect[0]},{rect[1]},{rect[2]},{rect[3]}",
-                str(target),
-            ],
-            check=True,
-        )
+        self._bring_app_to_front()
         try:
-            display_target = target.relative_to(REPO_ROOT)
-        except ValueError:
-            display_target = target
-        print(f"captured {display_target}")
+            target = self.output_dir / self.mode / f"{self.mode}_{name}.png"
+            target.parent.mkdir(parents=True, exist_ok=True)
+            bounds = self._find_app_bounds()
+            if bounds is None:
+                raise RuntimeError("Could not find the Study Testing Tool window.")
+            rect = self._screencapture_rect(bounds)
+            subprocess.run(
+                [
+                    "screencapture",
+                    "-x",
+                    "-R",
+                    f"{rect[0]},{rect[1]},{rect[2]},{rect[3]}",
+                    str(target),
+                ],
+                check=True,
+            )
+            try:
+                display_target = target.relative_to(REPO_ROOT)
+            except ValueError:
+                display_target = target
+            print(f"captured {display_target}")
+        finally:
+            self._release_app_front()
 
     def show_frame(self, screen_name: str, **kwargs) -> None:
         """Raise an app frame and wait for Tk to render it."""
         self.app.show_frame(screen_name, **kwargs)
+        self._settle()
+
+    def use_default_geometry(self) -> None:
+        """Reset the app to the default capture geometry."""
+        self.app.geometry(f"{settings.WINDOW_WIDTH}x{settings.WINDOW_HEIGHT}+80+80")
+        self._settle()
+
+    def use_minimum_geometry(self) -> None:
+        """Resize the app to the documented minimum supported geometry."""
+        self.app.geometry(
+            f"{settings.MIN_WINDOW_WIDTH}x{settings.MIN_WINDOW_HEIGHT}+80+80"
+        )
         self._settle()
 
     def show_history_sync(self) -> None:
@@ -199,6 +215,27 @@ class ScreenshotHarness:
         time.sleep(0.25)
         self.app.update_idletasks()
         self.app.update()
+
+    def _bring_app_to_front(self) -> None:
+        """Keep the app unobscured while screencapture reads its screen region."""
+        try:
+            self.app.lift()
+            self.app.focus_force()
+            self.app.attributes("-topmost", True)
+            self.app.update_idletasks()
+            self.app.update()
+            time.sleep(0.1)
+        except Exception:
+            pass
+
+    def _release_app_front(self) -> None:
+        """Return the app to normal stacking after capture."""
+        try:
+            self.app.attributes("-topmost", False)
+            self.app.update_idletasks()
+            self.app.update()
+        except Exception:
+            pass
 
     def _find_app_bounds(self) -> Optional[Dict[str, int]]:
         """Return CoreGraphics bounds for the main app window."""
@@ -575,6 +612,57 @@ def create_results_session(seed: SeedData) -> tuple[TestSession, dict]:
     return session, score_data
 
 
+def create_all_correct_results_session(seed: SeedData) -> tuple[TestSession, dict]:
+    """Create an unsaved all-correct multiple-choice results session."""
+    questions = seed.questions_by_test[seed.second_test_id]
+    session = TestSession(seed.second_test_id, questions, mode=MODE_TEST)
+    session.start()
+    for question in questions:
+        session.save_response(question.id, question.correct_answer)
+    score_data = ScoringService(str(seed.db_path)).score_test(session)
+    score_data["time_taken"] = 126
+    return session, score_data
+
+
+def create_missing_answer_results_session(seed: SeedData) -> tuple[TestSession, dict]:
+    """Create an unsaved results session with a missing multiple-choice answer."""
+    questions = seed.questions_by_test[seed.active_test_id]
+    session = TestSession(seed.active_test_id, questions, mode=MODE_TEST)
+    session.start()
+    session.save_response(questions[1].id, questions[1].correct_answer)
+    session.save_response(questions[2].id, "Loop diuretics increase distal sodium.")
+    score_data = ScoringService(str(seed.db_path)).score_test(session)
+    score_data["time_taken"] = 390
+    return session, score_data
+
+
+def create_mix_results_session(seed: SeedData) -> tuple[TestSession, dict]:
+    """Create an unsaved mixed-test results session with source breakdown."""
+    questions = create_mix_questions(seed)
+    session = TestSession(
+        None,
+        questions,
+        mode=MODE_TEST,
+        mix_name="Mixed Clinical Drill",
+        mix_subtitle="4 questions from 2 tests",
+    )
+    session.start()
+    for index, question in enumerate(questions):
+        if index == 1 and question.options:
+            wrong = next(
+                option.text
+                for option in question.options
+                if option.text != question.correct_answer
+            )
+            session.save_response(question.id, wrong)
+        else:
+            session.save_response(question.id, question.correct_answer)
+    session.flag_question(questions[1].id)
+    score_data = ScoringService(str(seed.db_path)).score_test(session)
+    score_data["time_taken"] = 480
+    return session, score_data
+
+
 def create_mix_questions(seed: SeedData) -> List[Question]:
     """Return questions from one group for mix-test screenshots."""
     return (
@@ -695,11 +783,108 @@ def show_editor_existing(
     harness.show_frame(SCREEN_EDITOR, test_id=seed.active_test_id)
 
 
+def get_or_create_empty_editor_test_id(seed: SeedData) -> int:
+    """Return a saved test with no questions for editor empty-state capture."""
+    db = DatabaseManager(str(seed.db_path))
+    for test in db.get_all_tests():
+        if test.name == "Saved Empty Editor Test":
+            return test.id
+    return db.create_test(
+        settings_test(
+            "Saved Empty Editor Test",
+            "Saved metadata with no questions yet.",
+            "Clinical Medicine",
+        )
+    )
+
+
+def show_editor_saved_empty(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show a saved editor test with no questions."""
+    test_id = get_or_create_empty_editor_test_id(seed)
+    harness.show_frame(SCREEN_EDITOR, test_id=test_id)
+
+
+def show_editor_mc_add_form(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show the editor multiple-choice add form."""
+    harness.show_frame(SCREEN_EDITOR, test_id=seed.active_test_id)
+    frame = app.frames[SCREEN_EDITOR]
+    frame.form_scroll._parent_canvas.yview_moveto(0.45)
+    harness._settle()
+
+
+def show_editor_essay_add_form(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show the editor essay add form."""
+    harness.show_frame(SCREEN_EDITOR, test_id=seed.active_test_id)
+    frame = app.frames[SCREEN_EDITOR]
+    frame.type_selector.set("Essay")
+    frame._on_type_change("Essay")
+    frame.form_scroll._parent_canvas.yview_moveto(0.55)
+    harness._settle()
+
+
+def show_editor_edit_question(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show editor edit-question mode."""
+    harness.show_frame(SCREEN_EDITOR, test_id=seed.active_test_id)
+    frame = app.frames[SCREEN_EDITOR]
+    question = seed.questions_by_test[seed.active_test_id][0]
+    frame._on_edit_question(question)
+    frame.form_scroll._parent_canvas.yview_moveto(1.0)
+    harness._settle()
+
+
+def show_editor_group_autocomplete(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show the editor group autocomplete dropdown."""
+    harness.show_frame(SCREEN_EDITOR, test_id=seed.active_test_id)
+    frame = app.frames[SCREEN_EDITOR]
+    frame.group_entry.delete(0, "end")
+    frame.group_entry._entry.focus_force()
+    frame.group_entry._show_dropdown()
+    harness._settle()
+
+
+def show_editor_minimum_existing(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show the editor at the documented minimum window size."""
+    harness.use_minimum_geometry()
+    harness.show_frame(SCREEN_EDITOR, test_id=seed.active_test_id)
+
+
 def show_test_unanswered(
     app: App, seed: Optional[SeedData], harness: ScreenshotHarness
 ) -> None:
     """Show an unanswered test-taking question."""
     harness.show_frame(SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_TEST)
+
+
+def go_to_first_question_type(frame, question_type: str) -> Question:
+    """Move the active session to the first question of the requested type."""
+    for index, question in enumerate(frame._session.questions):
+        if question.type == question_type:
+            frame._session.go_to_question(index)
+            frame._display_question()
+            return question
+    raise RuntimeError(f"No {question_type} question available in seeded test.")
+
+
+def option_answer(question: Question, correct: bool) -> str:
+    """Return a correct or incorrect option text for a multiple-choice question."""
+    if correct:
+        return question.correct_answer
+    for option in question.options:
+        if option.text != question.correct_answer:
+            return option.text
+    return ""
 
 
 def show_test_answered_flagged(
@@ -708,11 +893,64 @@ def show_test_answered_flagged(
     """Show an answered and flagged test-taking question."""
     harness.show_frame(SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_TEST)
     frame = app.frames[SCREEN_TEST_TAKING]
-    question = frame._session.get_current_question()
-    frame._question_widget.set_answer(question.correct_answer)
+    question = go_to_first_question_type(frame, settings.QUESTION_TYPE_MC)
+    frame._question_widget.set_answer(option_answer(question, correct=True))
     frame._save_current_answer()
     frame._session.flag_question(question.id)
     frame._display_question()
+
+
+def show_test_selected_answer(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show a selected but unchecked multiple-choice answer row."""
+    harness.show_frame(SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_TEST)
+    frame = app.frames[SCREEN_TEST_TAKING]
+    question = go_to_first_question_type(frame, settings.QUESTION_TYPE_MC)
+    frame._question_widget.set_answer(option_answer(question, correct=True))
+
+
+def show_test_middle_question(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show a middle test-taking question with both nav buttons enabled."""
+    harness.show_frame(SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_TEST)
+    frame = app.frames[SCREEN_TEST_TAKING]
+    frame._session.go_to_question(1)
+    frame._display_question()
+
+
+def show_test_last_question(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show the final test-taking question with Next disabled."""
+    harness.show_frame(SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_TEST)
+    frame = app.frames[SCREEN_TEST_TAKING]
+    frame._session.go_to_question(frame._session.total_questions - 1)
+    frame._display_question()
+
+
+def show_test_review_session(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show the test-taking shell for a review session."""
+    question_ids = [
+        question.id for question in seed.questions_by_test[seed.active_test_id][:2]
+    ]
+    harness.show_frame(
+        SCREEN_TEST_TAKING,
+        test_id=seed.active_test_id,
+        mode=MODE_TEST,
+        review_question_ids=question_ids,
+    )
+
+
+def show_test_minimum_unanswered(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show the normal test-taking shell at minimum window size."""
+    harness.use_minimum_geometry()
+    harness.show_frame(SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_TEST)
 
 
 def show_practice_feedback(
@@ -723,8 +961,39 @@ def show_practice_feedback(
         SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_PRACTICE
     )
     frame = app.frames[SCREEN_TEST_TAKING]
-    frame._question_widget.set_answer("Normal jugular venous pressure")
+    question = go_to_first_question_type(frame, settings.QUESTION_TYPE_MC)
+    frame._question_widget.set_answer(option_answer(question, correct=False))
     frame._on_check_answer()
+
+
+def show_practice_correct_feedback(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show practice-mode correct feedback."""
+    harness.show_frame(
+        SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_PRACTICE
+    )
+    frame = app.frames[SCREEN_TEST_TAKING]
+    question = go_to_first_question_type(frame, settings.QUESTION_TYPE_MC)
+    frame._question_widget.set_answer(option_answer(question, correct=True))
+    frame._on_check_answer()
+
+
+def show_practice_checked_return(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show a checked answer after navigating away and back."""
+    harness.show_frame(
+        SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_PRACTICE
+    )
+    frame = app.frames[SCREEN_TEST_TAKING]
+    question = go_to_first_question_type(frame, settings.QUESTION_TYPE_MC)
+    frame._question_widget.set_answer(option_answer(question, correct=False))
+    frame._on_check_answer()
+    frame._on_next()
+    frame._on_previous()
+    frame.question_area._parent_canvas.yview_moveto(0.0)
+    harness._settle()
 
 
 def show_essay_question(
@@ -740,6 +1009,33 @@ def show_essay_question(
     )
     frame._session.go_to_question(essay_index)
     frame._display_question()
+
+
+def show_essay_input(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show a typed essay answer in the test-taking screen."""
+    harness.show_frame(SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_TEST)
+    frame = app.frames[SCREEN_TEST_TAKING]
+    go_to_first_question_type(frame, settings.QUESTION_TYPE_ESSAY)
+    frame._question_widget.set_answer(
+        "Loop diuretics increase distal sodium delivery and potassium secretion."
+    )
+
+
+def show_essay_feedback(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show practice-mode expected-answer feedback for an essay question."""
+    harness.show_frame(
+        SCREEN_TEST_TAKING, test_id=seed.essay_test_id, mode=MODE_PRACTICE
+    )
+    frame = app.frames[SCREEN_TEST_TAKING]
+    go_to_first_question_type(frame, settings.QUESTION_TYPE_ESSAY)
+    frame._question_widget.set_answer(
+        "Preload is ventricular filling and afterload is resistance to ejection."
+    )
+    frame._on_check_answer()
 
 
 def show_mix_session(
@@ -822,6 +1118,44 @@ def show_results_session(
     harness.show_frame(SCREEN_RESULTS, session=session, score_data=score_data)
 
 
+def show_results_all_correct(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show all-correct multiple-choice results."""
+    session, score_data = create_all_correct_results_session(seed)
+    harness.show_frame(SCREEN_RESULTS, session=session, score_data=score_data)
+
+
+def show_results_essay_review(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show the essay review card in a partial results session."""
+    session, score_data = create_results_session(seed)
+    harness.show_frame(SCREEN_RESULTS, session=session, score_data=score_data)
+    frame = app.frames[SCREEN_RESULTS]
+    frame.review_frame._parent_canvas.yview_moveto(1.0)
+    harness._settle()
+
+
+def show_results_missing_answer(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show results with an unanswered multiple-choice question."""
+    session, score_data = create_missing_answer_results_session(seed)
+    harness.show_frame(SCREEN_RESULTS, session=session, score_data=score_data)
+
+
+def show_results_mix_breakdown(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show live mixed-test results with source breakdown."""
+    session, score_data = create_mix_results_session(seed)
+    harness.show_frame(SCREEN_RESULTS, session=session, score_data=score_data)
+    frame = app.frames[SCREEN_RESULTS]
+    frame.review_frame._parent_canvas.yview_moveto(1.0)
+    harness._settle()
+
+
 def show_results_history(
     app: App, seed: Optional[SeedData], harness: ScreenshotHarness
 ) -> None:
@@ -855,6 +1189,25 @@ def show_empty_home(
     harness.show_frame(SCREEN_HOME)
 
 
+def show_home_minimum_populated(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show populated Home at the documented minimum window size."""
+    harness.use_minimum_geometry()
+    harness.show_frame(SCREEN_HOME)
+    frame = app.frames[SCREEN_HOME]
+    frame.test_list_frame._parent_canvas.yview_moveto(0.0)
+    harness._settle()
+
+
+def show_home_minimum_empty(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show empty Home at the documented minimum window size."""
+    harness.use_minimum_geometry()
+    harness.show_frame(SCREEN_HOME)
+
+
 def show_empty_history(
     app: App, seed: Optional[SeedData], harness: ScreenshotHarness
 ) -> None:
@@ -885,6 +1238,12 @@ CAPTURE_STATES = [
         "seeded",
         show_home_expanded_archived_cards,
     ),
+    CaptureState(
+        "home_minimum_populated",
+        "home",
+        "seeded",
+        show_home_minimum_populated,
+    ),
     CaptureState("mode_selection_dialog", "dialogs", "seeded", show_mode_dialog),
     CaptureState("mix_test_dialog", "dialogs", "seeded", show_mix_dialog),
     CaptureState("editor_new_test", "editor", "seeded", show_editor_new),
@@ -893,6 +1252,42 @@ CAPTURE_STATES = [
         "editor",
         "seeded",
         show_editor_existing,
+    ),
+    CaptureState(
+        "editor_saved_empty_test",
+        "editor",
+        "seeded",
+        show_editor_saved_empty,
+    ),
+    CaptureState(
+        "editor_mc_add_form",
+        "editor",
+        "seeded",
+        show_editor_mc_add_form,
+    ),
+    CaptureState(
+        "editor_essay_add_form",
+        "editor",
+        "seeded",
+        show_editor_essay_add_form,
+    ),
+    CaptureState(
+        "editor_edit_question",
+        "editor",
+        "seeded",
+        show_editor_edit_question,
+    ),
+    CaptureState(
+        "editor_group_autocomplete",
+        "editor",
+        "seeded",
+        show_editor_group_autocomplete,
+    ),
+    CaptureState(
+        "editor_minimum_existing",
+        "editor",
+        "seeded",
+        show_editor_minimum_existing,
     ),
     CaptureState(
         "test_taking_unanswered", "test-taking", "seeded", show_test_unanswered
@@ -904,13 +1299,62 @@ CAPTURE_STATES = [
         show_test_answered_flagged,
     ),
     CaptureState(
+        "test_taking_selected_answer",
+        "test-taking",
+        "seeded",
+        show_test_selected_answer,
+    ),
+    CaptureState(
+        "test_taking_middle_question",
+        "test-taking",
+        "seeded",
+        show_test_middle_question,
+    ),
+    CaptureState(
+        "test_taking_last_question",
+        "test-taking",
+        "seeded",
+        show_test_last_question,
+    ),
+    CaptureState(
+        "test_taking_review_session",
+        "test-taking",
+        "seeded",
+        show_test_review_session,
+    ),
+    CaptureState(
+        "test_taking_minimum_unanswered",
+        "test-taking",
+        "seeded",
+        show_test_minimum_unanswered,
+    ),
+    CaptureState(
         "test_taking_practice_incorrect_feedback",
         "test-taking",
         "seeded",
         show_practice_feedback,
     ),
     CaptureState(
+        "test_taking_practice_correct_feedback",
+        "test-taking",
+        "seeded",
+        show_practice_correct_feedback,
+    ),
+    CaptureState(
+        "test_taking_practice_checked_return",
+        "test-taking",
+        "seeded",
+        show_practice_checked_return,
+    ),
+    CaptureState(
         "test_taking_essay_question", "test-taking", "seeded", show_essay_question
+    ),
+    CaptureState("test_taking_essay_input", "test-taking", "seeded", show_essay_input),
+    CaptureState(
+        "test_taking_essay_feedback",
+        "test-taking",
+        "seeded",
+        show_essay_feedback,
     ),
     CaptureState("test_taking_mix_test", "test-taking", "seeded", show_mix_test),
     CaptureState(
@@ -932,12 +1376,42 @@ CAPTURE_STATES = [
         show_results_session,
     ),
     CaptureState(
+        "results_all_correct",
+        "results",
+        "seeded",
+        show_results_all_correct,
+    ),
+    CaptureState(
+        "results_essay_review",
+        "results",
+        "seeded",
+        show_results_essay_review,
+    ),
+    CaptureState(
+        "results_missing_answer",
+        "results",
+        "seeded",
+        show_results_missing_answer,
+    ),
+    CaptureState(
+        "results_mix_breakdown",
+        "results",
+        "seeded",
+        show_results_mix_breakdown,
+    ),
+    CaptureState(
         "results_loaded_from_history", "results", "seeded", show_results_history
     ),
     CaptureState("history_populated", "data", "seeded", show_history),
     CaptureState("analytics_populated", "data", "seeded", show_analytics),
     CaptureState("review_missed_questions", "data", "seeded", show_review),
     CaptureState("home_empty_state", "empty", "empty", show_empty_home),
+    CaptureState(
+        "home_minimum_empty",
+        "empty",
+        "empty",
+        show_home_minimum_empty,
+    ),
     CaptureState("history_empty_state", "empty", "empty", show_empty_history),
     CaptureState("analytics_no_data", "empty", "empty", show_empty_analytics),
     CaptureState("review_empty_state", "empty", "empty", show_empty_review),
@@ -965,6 +1439,7 @@ def capture_state_group(
 ) -> None:
     """Capture states for one database source."""
     for state in states:
+        harness.use_default_geometry()
         cleanup = state.action(app, seed, harness)
         try:
             harness.capture(state.name)
@@ -979,7 +1454,7 @@ def create_app(mode: str) -> App:
         raise RuntimeError("customtkinter is required for capture.")
     app = App()
     ctk.set_appearance_mode(mode)
-    app.geometry("1000x700+80+80")
+    app.geometry(f"{settings.WINDOW_WIDTH}x{settings.WINDOW_HEIGHT}+80+80")
     app.update_idletasks()
     app.update()
     return app
@@ -1012,7 +1487,7 @@ def validate_screenshot(path: Path) -> ValidationResult:
         with Image.open(path) as image:
             image = image.convert("RGB")
             width, height = image.size
-            if width < 900 or height < 600:
+            if width < 760 or height < 560:
                 return ValidationResult(path, False, f"too small: {width}x{height}")
 
             stat = ImageStat.Stat(image)

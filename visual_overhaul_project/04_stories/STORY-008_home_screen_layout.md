@@ -2,16 +2,18 @@
 
 ## Status
 
-Blocked.
+Done.
 
 ## Readiness
 
-- Blocked by: `STORY-005_button_hierarchy.md`.
+- Blocked by: None.
 - CTX-HOME is Ready from `R-003_home_screen_context.md`.
-- Unblocked by: completion of the Home/Test Selector button hierarchy pilot.
+- Unblocked by: accepted completion of the Home/Test Selector button hierarchy
+  pilot.
 
-CTX-FOUNDATION and `STORY-004_shared_style_entrypoints.md` are Done. Keep this
-blocked until `STORY-005` settles the Home button roles.
+CTX-FOUNDATION and `STORY-004_shared_style_entrypoints.md` are Done.
+`STORY-005` has accepted Home button role evidence. This story is Ready for Dev
+2 assignment.
 
 ## Sprint
 
@@ -78,7 +80,11 @@ Out:
 
 ## Verification
 
-- Visual check in light and dark mode.
+- Screenshot evidence is required under
+  `visual_overhaul_project/01_context/screenshots/after/STORY-008/`.
+- Capture or document a blocker for light and dark Home states covering
+  populated expanded groups, archived content, empty state, and minimum-window
+  layout.
 - Navigation smoke check for home toolbar actions.
 - Run relevant tests if behavior-bearing changes are made.
 

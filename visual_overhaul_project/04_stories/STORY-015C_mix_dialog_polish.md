@@ -2,13 +2,13 @@
 
 ## Status
 
-Blocked.
+Ready.
 
 ## Readiness
 
-- Blocked by: `STORY-005_button_hierarchy.md` and list/card pattern guidance.
-- Unblocked by: completion of the button hierarchy pilot and either
-  `STORY-006_card_and_list_patterns.md` or an approved PM exception.
+- Blocked by: None.
+- Unblocked by: accepted completion of the button hierarchy and card/list
+  pattern pilots.
 
 ## Sprint
 
@@ -65,11 +65,22 @@ Out:
 
 ## Verification
 
+- Screenshot evidence is required under
+  `visual_overhaul_project/01_context/screenshots/after/STORY-015C/`.
+- Capture or document a blocker for light and dark Mix Test Dialog states
+  covering grouped selection, Select All, Deselect All, empty selection,
+  question count setup, valid start-ready state, and cancel path where
+  practical.
 - Smoke check selection and cancel/start paths.
 - Visual check light and dark mode.
 
 ## Handoff Requirements
 
 - List selection states checked.
+- List screenshot evidence paths or exact capture blockers for every required
+  dialog state.
 - Confirm `get_result()` behavior stayed unchanged.
+- Confirm selection sync, question count parsing, and modal cancel/start paths
+  stayed unchanged.
+- List smoke checks run or explain why they were skipped.
 - List any deferred validation or copy questions.

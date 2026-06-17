@@ -2,14 +2,12 @@
 
 ## Status
 
-Blocked.
+Ready.
 
 ## Readiness
 
-- Blocked by: `STORY-005_button_hierarchy.md`,
-  `STORY-006_card_and_list_patterns.md`, and
-  `STORY-007_page_header_pattern.md`.
-- Unblocked by: completion of the button, card/list, and header pilots.
+- Blocked by: None.
+- Unblocked by: accepted completion of the button, card/list, and header pilots.
 
 ## Sprint
 
@@ -69,6 +67,11 @@ Out:
 
 ## Verification
 
+- Screenshot evidence is required under
+  `visual_overhaul_project/01_context/screenshots/after/STORY-015A/`.
+- Capture or document a blocker for light and dark states covering active tests,
+  no active tests, no missed questions, grouped tests, selected tests, no
+  selected questions, and ready-to-start review where practical.
 - Smoke check review session start paths.
 - Run review service tests if behavior-bearing code changes.
 - Visual check light and dark mode.
@@ -76,5 +79,8 @@ Out:
 ## Handoff Requirements
 
 - List review states checked.
+- List screenshot evidence paths or exact capture blockers for every required
+  review state.
 - List changed visual roles.
 - Confirm selection and launch behavior stayed unchanged.
+- List tests run or explain why they were skipped.

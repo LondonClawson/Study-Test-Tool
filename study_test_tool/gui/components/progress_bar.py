@@ -4,7 +4,7 @@ from typing import Callable, Set
 
 import customtkinter as ctk
 
-from gui.styles import FONT_COMPACT, PROGRESS_STATUS_COLORS, RADIUS_ROW
+from gui.styles import FONT_COMPACT, PROGRESS_STATUS_COLORS, RADIUS_ROW, get_color
 
 
 class ProgressBar(ctk.CTkFrame):
@@ -17,6 +17,7 @@ class ProgressBar(ctk.CTkFrame):
         on_click: Callable[[int], None],
         **kwargs,
     ) -> None:
+        kwargs.setdefault("fg_color", "transparent")
         super().__init__(parent, **kwargs)
         self._total = total
         self._on_click = on_click
@@ -33,6 +34,8 @@ class ProgressBar(ctk.CTkFrame):
                 height=28,
                 corner_radius=RADIUS_ROW,
                 fg_color=PROGRESS_STATUS_COLORS["unanswered"],
+                hover_color=get_color("secondary_hover"),
+                text_color=get_color("text_inverse"),
                 font=FONT_COMPACT,
                 command=lambda idx=i: self._on_click(idx),
             )

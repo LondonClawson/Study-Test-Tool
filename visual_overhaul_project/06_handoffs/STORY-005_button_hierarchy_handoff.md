@@ -4,8 +4,8 @@ Story/Task:
 `STORY-005_button_hierarchy.md`
 
 Status:
-Submitted For Review. Evidence pass is complete from the implementation side
-and waiting for PM/reviewer acceptance.
+Done. Accepted by PM/reviewer on 2026-06-16 after the expanded Home evidence
+resubmission.
 
 Summary:
 Applied the MVP button hierarchy to the Home/Test Selector target area by using
@@ -83,6 +83,9 @@ PM review notes:
   pending visual evidence for the full touched button set. The subsequent
   STORY-007 Home screenshots cover the main header and toolbar button roles, but
   they do not show expanded cards, card action buttons, or disabled Take Test.
+- Accepted on 2026-06-16 after reviewing the resubmitted expanded light/dark
+  Home screenshots. The evidence shows the requested active card actions,
+  archived card actions, and zero-question disabled Take Test state.
 
 PM requested changes:
 - Capture or add reviewable visual evidence for expanded Home cards in light and

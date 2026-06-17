@@ -4,6 +4,13 @@ from typing import List, Optional
 
 import customtkinter as ctk
 
+from gui.styles import (
+    RADIUS_CONTROL,
+    get_button_style,
+    get_card_style,
+    get_color,
+)
+
 
 class AutocompleteEntry(ctk.CTkFrame):
     """Entry with a dropdown that filters suggestions as the user types.
@@ -26,7 +33,11 @@ class AutocompleteEntry(ctk.CTkFrame):
         self._dropdown_visible = False
 
         self._entry = ctk.CTkEntry(
-            self, width=width, placeholder_text=placeholder_text
+            self,
+            width=width,
+            placeholder_text=placeholder_text,
+            border_color=get_color("border"),
+            fg_color=get_color("surface_subtle"),
         )
         self._entry.pack(fill="x")
 
@@ -83,9 +94,7 @@ class AutocompleteEntry(ctk.CTkFrame):
         text = self._entry.get().strip().lower()
         if not text:
             return self._values[: self._max_items]
-        return [
-            v for v in self._values if text in v.lower()
-        ][: self._max_items]
+        return [v for v in self._values if text in v.lower()][: self._max_items]
 
     def _show_dropdown(self) -> None:
         """Display or refresh the dropdown below the entry."""
@@ -110,30 +119,31 @@ class AutocompleteEntry(ctk.CTkFrame):
         entry_w = self._entry.winfo_width()
 
         item_height = 30
-        dropdown_height = min(len(matches) * item_height + 10, self._max_items * item_height + 10)
+        dropdown_height = min(
+            len(matches) * item_height + 10,
+            self._max_items * item_height + 10,
+        )
 
         self._dropdown_frame = ctk.CTkFrame(
             toplevel,
             width=entry_w,
             height=dropdown_height,
-            corner_radius=4,
+            **get_card_style("default"),
         )
-        self._dropdown_frame.place(
-            x=entry_x, y=entry_y + entry_h + 2
-        )
+        self._dropdown_frame.place(x=entry_x, y=entry_y + entry_h + 2)
         # Raise above other widgets
         self._dropdown_frame.lift()
 
         for value in matches:
+            btn_style = get_button_style("tertiary")
             btn = ctk.CTkButton(
                 self._dropdown_frame,
                 text=value,
                 anchor="w",
                 height=item_height,
-                fg_color="transparent",
-                text_color=("gray10", "gray90"),
-                hover_color=("gray80", "gray30"),
+                corner_radius=RADIUS_CONTROL,
                 command=lambda v=value: self._select(v),
+                **btn_style,
             )
             btn.pack(fill="x", padx=2, pady=1)
 

@@ -129,31 +129,37 @@ BUTTON_ROLES: Dict[str, WidgetStyle] = {
         "fg_color": COLOR_PRIMARY,
         "hover_color": COLOR_PRIMARY_HOVER,
         "text_color": COLOR_TEXT_INVERSE,
+        "border_width": 0,
     },
     "secondary": {
         "fg_color": COLOR_SECONDARY,
         "hover_color": COLOR_SECONDARY_HOVER,
         "text_color": COLOR_TEXT_INVERSE,
+        "border_width": 0,
     },
     "danger": {
         "fg_color": COLOR_DANGER,
         "hover_color": COLOR_DANGER_HOVER,
         "text_color": COLOR_TEXT_INVERSE,
+        "border_width": 0,
     },
     "warning": {
         "fg_color": COLOR_WARNING,
         "hover_color": COLOR_WARNING_HOVER,
         "text_color": COLOR_TEXT_INVERSE,
+        "border_width": 0,
     },
     "success": {
         "fg_color": COLOR_SUCCESS,
         "hover_color": COLOR_SUCCESS_HOVER,
         "text_color": COLOR_TEXT_INVERSE,
+        "border_width": 0,
     },
     "special": {
         "fg_color": COLOR_SPECIAL,
         "hover_color": COLOR_SPECIAL_HOVER,
         "text_color": COLOR_TEXT_INVERSE,
+        "border_width": 0,
     },
     "tertiary": {
         "fg_color": "transparent",
@@ -196,6 +202,18 @@ TEXT_ROLES: Dict[str, WidgetStyle] = {
     "page_subtitle": {
         "font": FONT_BODY,
         "text_color": COLOR_TEXT_SECONDARY,
+    },
+    "section_title": {
+        "font": FONT_SECTION_TITLE,
+        "text_color": COLOR_TEXT_PRIMARY,
+    },
+    "body": {
+        "font": FONT_BODY,
+        "text_color": COLOR_TEXT_PRIMARY,
+    },
+    "metadata": {
+        "font": FONT_METADATA,
+        "text_color": COLOR_TEXT_MUTED,
     },
     "card_title": {
         "font": FONT_CARD_TITLE,

@@ -4,7 +4,7 @@ Story/Task:
 `STORY-007_page_header_pattern.md`
 
 Status:
-Submitted For Review.
+Done. Accepted by PM/reviewer.
 
 Summary:
 Piloted a page header pattern on Home/Test Selector. The header now uses a
@@ -56,6 +56,9 @@ Tests not run and why:
 None.
 
 Acceptance criteria notes:
+- Accepted on 2026-06-16. Light/dark Home populated and empty-state screenshots
+  were present, readable, and visually confirmed the header hierarchy without
+  changing Home/Test Selector workflow behavior.
 - Header hierarchy is improved without changing Home/Test Selector workflow
   behavior.
 - The pilot preserves existing navigation callbacks.

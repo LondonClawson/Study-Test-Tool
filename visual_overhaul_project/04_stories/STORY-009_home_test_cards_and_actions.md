@@ -2,13 +2,18 @@
 
 ## Status
 
-Blocked.
+Done.
 
 ## Readiness
 
-- Blocked by: CTX-FOUNDATION.
+- Blocked by: None.
 - CTX-HOME is Ready from `R-003_home_screen_context.md`.
-- Unblocked by: `STORY-003_visual_foundation_spec.md`.
+- CTX-FOUNDATION is Ready from `STORY-003_visual_foundation_spec.md`.
+- Unblocked by accepted `STORY-006_card_and_list_patterns.md` and
+  `STORY-008_home_screen_layout.md`.
+- Ready after PM review of the `STORY-008` resubmission on 2026-06-16.
+- Accepted by PM/reviewer on 2026-06-16 after Dev 2 Home card/action
+  implementation, focused verification, and screenshot evidence review.
 
 ## Sprint
 
@@ -71,17 +76,25 @@ Out:
 
 ## Verification
 
-- Visual check for grouped, ungrouped, archived, and empty states.
-- Smoke check card actions still call the same workflows.
+- Screenshot evidence is required under
+  `visual_overhaul_project/01_context/screenshots/after/STORY-009/`.
+- Capture or document a blocker for light and dark Home states covering
+  populated expanded cards, grouped/collapsed cards, archived cards,
+  zero-question disabled Take Test treatment, and minimum-window populated
+  layout.
+- Smoke check card actions still call the same workflows: Take Test, Edit,
+  Export, Archive, Delete, Unarchive, and Archive Group.
 - Run relevant tests if behavior-bearing code is touched.
 
 ## Dev 2 Assignment Notes
 
 - Do not change card data, sorting, group behavior, or action callbacks.
 - Do not redesign the overall home shell; that belongs to STORY-008.
-- If card/list patterns are not defined yet, return this story to Blocked.
+- If implementation discovers missing card/action roles, keep any shared-style
+  additions scoped to Home card needs and document the follow-up.
 
 ## Handoff Requirements
 
 - List card states checked.
+- Include screenshot evidence paths or exact capture blockers.
 - List any action-role decisions added to foundation docs.

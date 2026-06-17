@@ -2,13 +2,19 @@
 
 ## Status
 
-Blocked.
+Done.
 
 ## Readiness
 
-- Blocked by: CTX-DATA-VIEWS, CTX-FOUNDATION.
-- Unblocked by: `R-007_history_analytics_review_context.md` and
-  `STORY-003_visual_foundation_spec.md`.
+- Blocked by: None.
+- Superseded by: child stories below.
+
+PM split completed on 2026-06-16. Do not assign this parent story for
+implementation. Use the child stories instead:
+
+- `STORY-014A_history_list_and_filters.md`.
+- `STORY-014B_analytics_chart_shell.md`.
+- `STORY-014C_analytics_weak_topics_and_no_data.md`.
 
 ## Sprint
 
@@ -26,10 +32,9 @@ layout, and weak-topic cards.
 
 ## PM Refinement Note
 
-Do not assign this as a single junior implementation story. After
-`R-007_history_analytics_review_context.md` is complete, split this into narrow
-stories based on the research summary. Expected splits are history list/filter
-polish, analytics chart/theme polish, and analytics weak-topic/no-data states.
+Do not assign this as a single junior implementation story. This parent is now
+a completed PM refinement placeholder. Use the child story files for actual
+implementation assignment.
 
 ## Required Context
 
@@ -63,10 +68,11 @@ Out:
 
 ## Implementation Steps
 
-1. Do not start as a junior implementation assignment until this story is split.
+1. Do not start as a junior implementation assignment; this parent has been
+   split.
 2. Read CTX-DATA-VIEWS, CTX-FOUNDATION, and the research-recommended split.
-3. Create or assign one narrow child story for history rows/filters, analytics
-   charts, or weak-topic/no-data states.
+3. Assign one narrow child story for history rows/filters, analytics charts, or
+   weak-topic/no-data states.
 4. Implement only the selected child story scope.
 5. Verify the exact populated, empty/no-data, loading, light, dark, and
    navigation states named by the child story.
@@ -74,30 +80,24 @@ Out:
 
 ## Acceptance Criteria
 
-- History rows are aligned, readable, and visibly clickable.
-- Filters remain easy to find and use.
-- Charts match the visual foundation in light and dark mode.
-- Weak-topic cards are easy to scan.
-- Empty/no-data/loading states are intentional.
-- The story has been split before junior implementation assignment, or the PM
-  handoff explains why one senior-owned story is being used instead.
+- The parent story has been split before junior implementation assignment.
+- Each child story has narrow scope, named context, behavior constraints,
+  verification expectations, and screenshot evidence requirements.
 
 ## Verification
 
-- Run analytics tests if chart data flow is touched:
-  `pytest --rootdir=. study_test_tool/tests/test_analytics_service.py`.
-- Smoke check history row opens results.
-- Visual check populated and no-data states if possible.
+- PM split handoff documents the child stories and readiness notes.
+- Child stories carry their own runtime screenshot and smoke-test requirements.
 
 ## Dev 2 Assignment Notes
 
 - Treat this file as a PM refinement placeholder until split stories exist.
 - Do not change analytics calculations, history persistence, chart data flow, or
   result loading behavior.
-- If CTX-DATA-VIEWS is missing or does not recommend splits, stop and assign or
-  revise R-007.
+- If CTX-DATA-VIEWS becomes stale or contradicted by live code, stop and assign
+  a context refresh before implementation.
 
 ## Handoff Requirements
 
-- List history and analytics states checked.
-- List chart theme decisions added or updated.
+- Child story handoffs must list the history or analytics states checked.
+- Child story handoffs must list screenshot evidence or capture blockers.

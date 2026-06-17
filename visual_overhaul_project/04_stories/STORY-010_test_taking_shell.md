@@ -2,16 +2,16 @@
 
 ## Status
 
-Blocked.
+Done.
 
 ## Readiness
 
-- Blocked by: `STORY-005_button_hierarchy.md`.
-- Unblocked by: completion of the button hierarchy pilot.
+- Blocked by: None.
+- Unblocked by: accepted completion of the button hierarchy pilot.
 
 CTX-TEST-TAKING, CTX-FOUNDATION, and `STORY-004_shared_style_entrypoints.md` are
-Ready or Done. Keep this blocked until `STORY-005` proves the button role model
-in a full screen.
+Ready or Done. `STORY-005` has accepted visual evidence for the button role
+model in a full screen. This story is Ready for Dev 2 assignment.
 
 ## Sprint
 
@@ -80,6 +80,11 @@ Out:
 
 ## Verification
 
+- Screenshot evidence is required under
+  `visual_overhaul_project/01_context/screenshots/after/STORY-010/`.
+- Capture or document a blocker for light and dark states covering normal,
+  practice, review, mix-test, flagged, first-question, middle-question, and
+  last-question shell states where practical.
 - Visual check in normal and practice mode.
 - Smoke check previous/next/progress/flag/finish interactions.
 - Run `pytest --rootdir=. study_test_tool/tests/test_test_session.py` if session

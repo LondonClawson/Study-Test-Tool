@@ -4,8 +4,8 @@ Story/Task:
 `STORY-006_card_and_list_patterns.md`
 
 Status:
-Submitted For Review. Returned to Dev 2 for the PM-requested expanded Home card
-visual evidence pass; evidence has been captured and validated.
+Done. Accepted by PM/reviewer on 2026-06-16 after the expanded Home card visual
+evidence resubmission.
 
 Summary:
 Implemented the Home test-card pilot for shared card/list patterns. Active and
@@ -83,6 +83,9 @@ Changes requested on 2026-06-16. The implementation may be scoped correctly, but
 the submitted evidence does not prove the card/list acceptance criteria because
 the available Home screenshots show groups collapsed. The pilot area is Home
 test-card outer surfaces, so review needs visible active and archived cards.
+- Accepted on 2026-06-16 after reviewing the resubmitted expanded light/dark
+  Home screenshots. The evidence shows active card surfaces, text hierarchy,
+  action rows, grouped rendering, and archived muted card treatment.
 
 PM requested changes:
 - Capture or add reviewable visual evidence for expanded Home cards in light and

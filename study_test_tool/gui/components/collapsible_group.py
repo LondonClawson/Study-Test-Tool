@@ -4,13 +4,17 @@ from typing import Callable, Optional
 
 import customtkinter as ctk
 
-from config.settings import (
-    COLOR_PRIMARY,
-    FONT_FAMILY,
-    FONT_SIZE_HEADING,
-    FONT_SIZE_SMALL,
+from gui.styles import (
+    FONT_METADATA,
+    FONT_SECTION_TITLE,
+    SPACE_4,
+    SPACE_8,
+    SPACE_12,
+    SPACE_16,
+    get_button_style,
+    get_card_style,
+    get_color,
 )
-from gui.styles import get_button_style
 
 
 class CollapsibleGroup(ctk.CTkFrame):
@@ -34,12 +38,12 @@ class CollapsibleGroup(ctk.CTkFrame):
         self._build_header()
         self._content_frame = ctk.CTkFrame(self, fg_color="transparent")
         if self._is_expanded:
-            self._content_frame.pack(fill="x", padx=0, pady=(0, 4))
+            self._content_frame.pack(fill="x", padx=SPACE_12, pady=(0, SPACE_8))
 
     def _build_header(self) -> None:
         """Build the header row with toggle button, name, and count badge."""
-        header = ctk.CTkFrame(self, fg_color="transparent")
-        header.pack(fill="x", padx=5, pady=(8, 2))
+        header = ctk.CTkFrame(self, **get_card_style("default"))
+        header.pack(fill="x", padx=SPACE_4, pady=(SPACE_8, SPACE_4))
 
         arrow = "▼" if self._is_expanded else "▶"
         label = self._make_label(arrow)
@@ -48,23 +52,30 @@ class CollapsibleGroup(ctk.CTkFrame):
             text=label,
             anchor="w",
             fg_color="transparent",
-            hover_color=("#e0e0e0", "#3a3a3a"),
-            text_color=COLOR_PRIMARY,
-            font=(FONT_FAMILY, FONT_SIZE_HEADING, "bold"),
+            hover_color=get_color("surface_subtle"),
+            text_color=get_color("primary"),
+            font=FONT_SECTION_TITLE,
             command=self.toggle,
-            width=400,
+            height=42,
         )
-        self._toggle_btn.pack(side="left", fill="x", expand=True)
+        self._toggle_btn.pack(
+            side="left",
+            fill="x",
+            expand=True,
+            padx=(SPACE_8, SPACE_4),
+            pady=SPACE_8,
+        )
 
         if self._archive_callback is not None:
             ctk.CTkButton(
                 header,
                 text="Archive Group",
-                width=120,
-                font=(FONT_FAMILY, FONT_SIZE_SMALL),
+                width=112,
+                height=32,
+                font=FONT_METADATA,
                 command=self._archive_callback,
                 **get_button_style("secondary"),
-            ).pack(side="right", padx=5)
+            ).pack(side="right", padx=(SPACE_4, SPACE_12))
 
     def _make_label(self, arrow: str) -> str:
         """Return the formatted button label string."""
@@ -78,7 +89,7 @@ class CollapsibleGroup(ctk.CTkFrame):
         arrow = "▼" if self._is_expanded else "▶"
         self._toggle_btn.configure(text=self._make_label(arrow))
         if self._is_expanded:
-            self._content_frame.pack(fill="x", padx=0, pady=(0, 4))
+            self._content_frame.pack(fill="x", padx=SPACE_12, pady=(0, SPACE_8))
         else:
             self._content_frame.pack_forget()
 

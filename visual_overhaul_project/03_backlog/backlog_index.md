@@ -17,7 +17,7 @@ research summaries are Ready under `00_project/definition_of_ready.md`.
 | E1 Visual Foundation | Define app-wide tokens and reusable patterns | `STORY-003_visual_foundation_spec.md`, `STORY-004_shared_style_entrypoints.md`, `STORY-005_button_hierarchy.md`, `STORY-006_card_and_list_patterns.md`, `STORY-007_page_header_pattern.md` |
 | E2 Home Screen | Polish first impression and test-card workflows | `STORY-008_home_screen_layout.md`, `STORY-009_home_test_cards_and_actions.md` |
 | E3 Core Study Flow | Polish test-taking and results | `STORY-010_test_taking_shell.md`, `STORY-011_answer_rows_and_practice_feedback.md`, `STORY-012_results_summary_and_review_cards.md` |
-| E4 Secondary Screens | Polish editor, history, analytics, review, and dialogs | `STORY-013_editor_layout.md`, `STORY-014_history_and_analytics_polish.md`, `STORY-015_review_and_dialog_polish.md` pending split after research |
+| E4 Secondary Screens | Polish editor, history, analytics, review, and dialogs | `STORY-013_editor_layout.md`, `STORY-014_history_and_analytics_polish.md` split into `STORY-014A_history_list_and_filters.md`, `STORY-014B_analytics_chart_shell.md`, `STORY-014C_analytics_weak_topics_and_no_data.md`; `STORY-015_review_and_dialog_polish.md` split into child stories |
 | E5 Stabilization | Validate light/dark mode, minimum size, and MVP closure | `STORY-016_light_dark_and_min_size_validation.md`, `STORY-017_mvp_visual_regression_pass.md` |
 
 ## Priority Queue
@@ -30,7 +30,8 @@ research summaries are Ready under `00_project/definition_of_ready.md`.
 6. Polish test-taking.
 7. Polish results.
 8. Polish editor.
-9. Split and polish history, analytics, review, and dialogs after research.
+9. Polish history, analytics, review, and dialogs through their split child
+   stories.
 10. Complete validation and closeout.
 
 ## Backlog Status
