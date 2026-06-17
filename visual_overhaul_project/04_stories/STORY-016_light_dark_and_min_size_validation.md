@@ -2,12 +2,15 @@
 
 ## Status
 
-Blocked.
+Submitted For Review.
 
 ## Readiness
 
-- Blocked by: completion of core MVP screen stories.
+- Blocked by: None.
 - Unblocked by: `STORY-008` through `STORY-015`.
+
+PM review accepted the final core MVP dialog story, `STORY-015D`, on
+2026-06-17. PM assigned `STORY-016` as a validation-only pass on 2026-06-17.
 
 ## Sprint
 

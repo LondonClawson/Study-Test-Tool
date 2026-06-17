@@ -2,7 +2,11 @@
 
 ## Status
 
-Submitted For Review.
+Done.
+
+PM review accepted this implementation on 2026-06-17 after source review,
+light/dark screenshot evidence review, screenshot validation, compile/format
+checks, and focused return-path smoke coverage.
 
 ## Readiness
 

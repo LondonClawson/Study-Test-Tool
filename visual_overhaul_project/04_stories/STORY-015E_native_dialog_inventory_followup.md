@@ -2,13 +2,37 @@
 
 ## Status
 
-Blocked.
+Done.
 
 ## Readiness
 
-- Blocked by: PM post-MVP decision.
-- Unblocked by: explicit PM approval to replace or redesign a specific native
-  messagebox or file-dialog flow.
+- Blocked by: None.
+- PM decision made on 2026-06-17: no native messagebox or file-dialog
+  replacement is approved for MVP. Native dialogs are deliberate MVP
+  exceptions, and any future replacement must be assigned as a separate
+  post-MVP story.
+
+## PM Decision
+
+All native message boxes and file dialogs remain native for MVP. This protects
+OS-standard file picking, confirmation return contracts, import/export status
+flows, and behavior-critical choices such as batch PDF import.
+
+Native dialogs intentionally left native for MVP:
+
+- File open/save dialogs for JSON, text, PDF, DOCX import, missing PDF partner
+  selection, and JSON export path selection.
+- Import/export status, validation, warning, error, and success message boxes.
+- Batch PDF import `askyesnocancel()` where Yes imports all pairs, No imports
+  only the selected pair, and Cancel aborts.
+- Delete/archive confirmations, editor validation and unsaved-change
+  confirmations, finish-test and quit-while-testing confirmations, and history
+  load errors.
+
+No native dialog replacement candidate is approved for MVP. Post-MVP candidates
+may be considered later for long-content/report flows such as PDF import
+reports, export warnings, and missing-answer confirmations, but only through a
+new narrow implementation story.
 
 ## Sprint
 

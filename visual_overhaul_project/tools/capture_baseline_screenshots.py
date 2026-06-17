@@ -1373,6 +1373,14 @@ def show_results_session(
     harness.show_frame(SCREEN_RESULTS, session=session, score_data=score_data)
 
 
+def show_results_minimum_session(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show just-completed results at the documented minimum window size."""
+    harness.use_minimum_geometry()
+    show_results_session(app, seed, harness)
+
+
 def show_results_all_correct(
     app: App, seed: Optional[SeedData], harness: ScreenshotHarness
 ) -> None:
@@ -1870,6 +1878,12 @@ CAPTURE_STATES = [
         "results",
         "seeded",
         show_results_session,
+    ),
+    CaptureState(
+        "results_minimum_partial_score",
+        "results",
+        "seeded",
+        show_results_minimum_session,
     ),
     CaptureState(
         "results_all_correct",

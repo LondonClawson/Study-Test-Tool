@@ -2,7 +2,7 @@ Story/Task:
 STORY-015D: Import Preview Dialog Polish
 
 Status:
-Submitted For Review.
+Done. PM review accepted this story on 2026-06-17.
 
 Summary:
 Polished `ImportPreviewDialog` with semantic dialog surfaces, compact import
@@ -66,6 +66,9 @@ Tests not run and why:
   persistence, and scoring code were not changed.
 
 Acceptance criteria notes:
+- PM review accepted the submitted implementation after source inspection,
+  screenshot evidence review, compile/format checks, screenshot validation, and
+  focused return-path smoke coverage.
 - Importable, warning, and skipped rows now use distinct status labels and
   status colors while preserving parser output and commit behavior.
 - Disabled Import is visually muted and remains disabled when no previews can
