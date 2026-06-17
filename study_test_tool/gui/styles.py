@@ -227,6 +227,10 @@ TEXT_ROLES: Dict[str, WidgetStyle] = {
         "font": FONT_BODY,
         "text_color": COLOR_TEXT_PRIMARY,
     },
+    "body_bold": {
+        "font": FONT_BODY_BOLD,
+        "text_color": COLOR_TEXT_PRIMARY,
+    },
     "metadata": {
         "font": FONT_METADATA,
         "text_color": COLOR_TEXT_MUTED,

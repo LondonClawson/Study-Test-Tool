@@ -94,3 +94,15 @@ Risks:
 Follow-up backlog items:
 - Include long History test names and unusually small window validation in
   `STORY-016_light_dark_and_min_size_validation.md`.
+- Consider a future non-visual bugfix for the pre-existing History load-error
+  callback, which still closes over the exception variable before the scheduled
+  main-thread callback runs. This was outside `STORY-014A` because the submitted
+  work did not change the exception-capture contract.
+
+PM review decision:
+Accepted on 2026-06-16. The review checked current History code, the submitted
+light/dark populated, filtered, loading, empty, and minimum-window screenshots,
+and direct row-to-results routing. Compile, Black, screenshot validation, and a
+focused row-click smoke all passed. Full pytest remains skipped because no
+service, database, scoring, import/export, analytics, review, or session logic
+changed.

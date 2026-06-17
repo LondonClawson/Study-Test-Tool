@@ -723,6 +723,32 @@ def ensure_zero_question_home_test(seed: Optional[SeedData]) -> None:
     )
 
 
+def ensure_no_missed_review_test(seed: Optional[SeedData]) -> Optional[int]:
+    """Add a review fixture with active questions and no missed responses."""
+    if seed is None:
+        return None
+    db = DatabaseManager(str(seed.db_path))
+    for test in db.get_all_tests():
+        if test.name == "Clean Review Check":
+            return test.id
+    test_id = db.create_test(
+        settings_test(
+            "Clean Review Check",
+            "Active test with questions but no missed attempts.",
+            "Clinical Medicine",
+        )
+    )
+    add_question(
+        db,
+        test_id,
+        "Which review scope should stay empty when no attempts are missed?",
+        "Clean review scope",
+        "Review",
+        ["Clean review scope", "Archived review scope", "Mixed review scope"],
+    )
+    return test_id
+
+
 def show_home_expanded_cards(
     app: App, seed: Optional[SeedData], harness: ScreenshotHarness
 ) -> None:
@@ -1260,6 +1286,75 @@ def show_review(app: App, seed: Optional[SeedData], harness: ScreenshotHarness) 
     harness.show_frame(SCREEN_REVIEW)
 
 
+def set_review_scope(frame, selected_test_ids: Sequence[int]) -> None:
+    """Select a specific test scope in the Review screen."""
+    selected = set(selected_test_ids)
+    for test_id, var in frame._test_scope_vars.items():
+        var.set(test_id in selected)
+    for group_name, test_ids in frame._group_to_test_ids.items():
+        frame._group_scope_vars[group_name].set(
+            bool(test_ids) and all(test_id in selected for test_id in test_ids)
+        )
+    frame._load_questions()
+
+
+def show_review_selected_scope(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Review scoped to one selected test."""
+    harness.show_frame(SCREEN_REVIEW)
+    frame = app.frames[SCREEN_REVIEW]
+    selected_id = (
+        seed.active_test_id if seed else next(iter(frame._test_scope_vars), None)
+    )
+    if selected_id is not None:
+        set_review_scope(frame, [selected_id])
+    harness._settle()
+
+
+def show_review_selected_questions(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Review with one missed question selected."""
+    harness.show_frame(SCREEN_REVIEW)
+    frame = app.frames[SCREEN_REVIEW]
+    if frame._checkboxes:
+        first_var = next(iter(frame._checkboxes.values()))
+        first_var.set(True)
+        frame._update_selected_count()
+    harness._settle()
+
+
+def show_review_no_selected_tests(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Review with every scope checkbox cleared."""
+    harness.show_frame(SCREEN_REVIEW)
+    frame = app.frames[SCREEN_REVIEW]
+    frame._deselect_all_scope()
+    harness._settle()
+
+
+def show_review_no_missed_questions(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Review scoped to an active test with no missed questions."""
+    clean_test_id = ensure_no_missed_review_test(seed)
+    harness.show_frame(SCREEN_REVIEW)
+    frame = app.frames[SCREEN_REVIEW]
+    if clean_test_id is not None:
+        set_review_scope(frame, [clean_test_id])
+    harness._settle()
+
+
+def show_review_minimum_missed_questions(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show Review missed questions at the documented minimum window size."""
+    harness.use_minimum_geometry()
+    harness.show_frame(SCREEN_REVIEW)
+
+
 def show_empty_home(
     app: App, seed: Optional[SeedData], harness: ScreenshotHarness
 ) -> None:
@@ -1509,6 +1604,36 @@ CAPTURE_STATES = [
         show_analytics_minimum_score_trends,
     ),
     CaptureState("review_missed_questions", "data", "seeded", show_review),
+    CaptureState(
+        "review_selected_scope",
+        "data",
+        "seeded",
+        show_review_selected_scope,
+    ),
+    CaptureState(
+        "review_selected_questions",
+        "data",
+        "seeded",
+        show_review_selected_questions,
+    ),
+    CaptureState(
+        "review_no_selected_tests",
+        "data",
+        "seeded",
+        show_review_no_selected_tests,
+    ),
+    CaptureState(
+        "review_no_missed_questions",
+        "data",
+        "seeded",
+        show_review_no_missed_questions,
+    ),
+    CaptureState(
+        "review_minimum_missed_questions",
+        "data",
+        "seeded",
+        show_review_minimum_missed_questions,
+    ),
     CaptureState("home_empty_state", "empty", "empty", show_empty_home),
     CaptureState(
         "home_minimum_empty",

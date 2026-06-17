@@ -87,3 +87,17 @@ Risks:
 Follow-up backlog items:
 - Use `STORY-014C_analytics_weak_topics_and_no_data.md` for Weak Topics cards,
   grouping states, and non-chart no-data polish.
+- Keep the single-day Study Activity bar in `STORY-016_light_dark_and_min_size_validation.md`
+  or a later chart-readability follow-up. It is service-consistent, but the
+  current evidence only proves one populated day and renders as a very wide bar.
+- After another screen repeats the same local option-menu, segmented-control,
+  page-header, or empty-state builders, consider extracting small shared GUI
+  helpers. Do not start a broad design-system refactor from this story alone.
+
+PM review decision:
+Accepted on 2026-06-16. The review checked current Analytics and GraphWidget
+code, the submitted light/dark Score Trends, Test Comparison, Study Activity,
+chart no-data, and minimum-window screenshots, and focused analytics service
+tests. The implementation keeps Analytics calculations, filter values, chart
+titles, axis meanings, and Weak Topics grouping semantics unchanged while moving
+matplotlib theme roles into `GraphWidget`.
