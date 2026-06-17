@@ -81,57 +81,62 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `STORY-015C_mix_dialog_polish.md`                 | Done                 | None                     |
 | `STORY-015D_import_preview_dialog_polish.md`      | Done                 | None                     |
 | `STORY-015E_native_dialog_inventory_followup.md`  | Done                 | None                     |
-| `STORY-016_light_dark_and_min_size_validation.md` | Submitted For Review | PM/reviewer acceptance   |
-| `STORY-017_mvp_visual_regression_pass.md`         | Blocked              | Sprint 4 validation      |
+| `STORY-016_light_dark_and_min_size_validation.md` | Done                 | None                     |
+| `STORY-017_mvp_visual_regression_pass.md`         | Submitted For Review | None                     |
 
 ## Next Recommended Work
 
-1. Review `STORY-016_light_dark_and_min_size_validation.md` after the
-   validation-only pass was submitted with a 138-screenshot light/dark and
-   minimum-size evidence set plus a screen-family validation matrix.
-2. `STORY-015D_import_preview_dialog_polish.md` is accepted after PM review of
+1. Review `STORY-017_mvp_visual_regression_pass.md` final closeout package.
+   Dev 2 submitted the acceptance-matrix review notes, evidence validation,
+   full pytest summary, final classifications, and handoff on 2026-06-17.
+2. `STORY-016_light_dark_and_min_size_validation.md` is accepted after PM
+   review of the 138-screenshot light/dark and minimum-size evidence set plus
+   the screen-family validation matrix. Long-content stress coverage gaps and
+   the single-day Analytics Study Activity chart presentation should be
+   classified during `STORY-017`, not treated as blockers to starting closeout.
+3. `STORY-015D_import_preview_dialog_polish.md` is accepted after PM review of
    light/dark all-ready, mixed-warning, no-importable, and group-override
    screenshot evidence plus focused Import Preview return-path verification. No
    follow-up Import Preview work should be assigned unless validation finds a
    concrete issue.
-3. `STORY-015E_native_dialog_inventory_followup.md` is closed by PM decision:
+4. `STORY-015E_native_dialog_inventory_followup.md` is closed by PM decision:
    no native messagebox or file-dialog replacement is approved for MVP, and
    all native dialogs remain documented MVP exceptions unless a future
    post-MVP story explicitly replaces one.
-4. `STORY-015C_mix_dialog_polish.md` is accepted after PM review of light/dark
+5. `STORY-015C_mix_dialog_polish.md` is accepted after PM review of light/dark
    Mix Test dialog empty, Select All, one-group-selected, and deselected
    evidence plus selection sync, invalid-start, valid-start, and cancel
    behavior. No follow-up Mix dialog polish work should be assigned unless a
    validation story or new bug names it.
-5. `STORY-015B_mode_dialog_polish.md` is accepted after PM review of
+6. `STORY-015B_mode_dialog_polish.md` is accepted after PM review of
    light/dark Mode Selection dialog evidence plus Test, Practice, close/cancel,
    modal grab, and centering preservation. No follow-up Mode dialog polish work
    should be assigned unless a validation story or new bug names it.
-6. `STORY-014C_analytics_weak_topics_and_no_data.md` is accepted after PM
+7. `STORY-014C_analytics_weak_topics_and_no_data.md` is accepted after PM
    review of light/dark Weak Topics grouped by Test, Group, and Category,
    no-category, no-data, and minimum-window evidence plus focused analytics
    verification. No follow-up Weak Topics polish work should be assigned unless
    a validation story or new bug names it.
-7. `STORY-015A_review_screen_polish.md` is accepted after PM review of
+8. `STORY-015A_review_screen_polish.md` is accepted after PM review of
    light/dark missed questions, selected scope, selected question, no selected
    tests, no missed questions, no active tests, and minimum-window evidence
    plus Start Review smoke coverage. No follow-up Review screen polish work
    should be assigned unless a validation story or new bug names it.
-8. `STORY-014B_analytics_chart_shell.md` is accepted after PM review of
+9. `STORY-014B_analytics_chart_shell.md` is accepted after PM review of
    light/dark Score Trends, Test Comparison, Study Activity, chart no-data,
    and minimum-window evidence plus analytics service test coverage. No
    follow-up chart-shell work should be assigned unless a validation story or
    new bug names it.
-9. `STORY-014A_history_list_and_filters.md` is accepted after PM review of
+10. `STORY-014A_history_list_and_filters.md` is accepted after PM review of
    light/dark populated, filtered, loading, empty, and minimum-window History
    evidence plus row-to-results smoke coverage. No follow-up History list work
    should be assigned unless a new bug or validation story names it.
-10. `STORY-013_editor_layout.md` is accepted after the clean minimum-window
+11. `STORY-013_editor_layout.md` is accepted after the clean minimum-window
    evidence resubmission. No follow-up editor work should be assigned unless a
    new bug or validation story names it.
-11. `STORY-012_results_summary_and_review_cards.md` is accepted after the
+12. `STORY-012_results_summary_and_review_cards.md` is accepted after the
    retake-state resubmission. No follow-up results work should be assigned
    unless a new bug or validation story names it.
-12. Use the PM readiness pass handoff before assigning Sprint 2 or Sprint 3
+13. Use the PM readiness pass handoff before assigning Sprint 2 or Sprint 3
    Ready stories so developers follow the priority order instead of cherry
    picking lower-priority work.

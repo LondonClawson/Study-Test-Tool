@@ -2,12 +2,21 @@
 
 ## Status
 
-Blocked.
+Submitted For Review.
 
 ## Readiness
 
-- Blocked by: Sprint 4 validation and completed MVP handoffs.
+- Blocked by: None.
 - Unblocked by: `STORY-016_light_dark_and_min_size_validation.md`.
+
+PM accepted `STORY-016` on 2026-06-17. The final regression pass should use
+the accepted `STORY-016` evidence set and explicitly classify remaining
+long-content stress coverage gaps, the single-day Analytics Study Activity
+chart presentation, and native dialog exceptions as MVP blocker, post-MVP
+follow-up, or accepted limitation.
+
+PM assigned `STORY-017` to Dev 2 on 2026-06-17.
+Dev 2 submitted the final MVP closeout package for PM review on 2026-06-17.
 
 ## Sprint
 

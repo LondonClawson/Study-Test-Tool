@@ -2,7 +2,7 @@ Story/Task:
 STORY-016: Light/Dark And Minimum-Size Validation
 
 Status:
-Submitted For Review.
+Done.
 
 Summary:
 Completed the validation-only pass across the MVP visual overhaul evidence set.
@@ -10,6 +10,13 @@ No application runtime code was changed. The screenshot harness now includes a
 Results minimum-window state, and the `STORY-016` evidence folder contains 138
 validated screenshots covering every harness-supported MVP screen, custom
 dialog, empty state, and minimum-size state.
+
+PM acceptance:
+Accepted on 2026-06-17. The validation package is sufficient to close
+`STORY-016` and unblock `STORY-017_mvp_visual_regression_pass.md`. Remaining
+long-content stress coverage and the single-day Analytics Study Activity chart
+presentation should be classified during final MVP closeout, not held as
+blockers to starting closeout.
 
 Files changed:
 - `visual_overhaul_project/tools/capture_baseline_screenshots.py`

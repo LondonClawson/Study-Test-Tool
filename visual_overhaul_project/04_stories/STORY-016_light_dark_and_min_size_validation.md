@@ -2,7 +2,7 @@
 
 ## Status
 
-Submitted For Review.
+Done.
 
 ## Readiness
 
@@ -11,6 +11,8 @@ Submitted For Review.
 
 PM review accepted the final core MVP dialog story, `STORY-015D`, on
 2026-06-17. PM assigned `STORY-016` as a validation-only pass on 2026-06-17.
+PM accepted the submitted validation evidence on 2026-06-17 and unblocked
+`STORY-017_mvp_visual_regression_pass.md`.
 
 ## Sprint
 
