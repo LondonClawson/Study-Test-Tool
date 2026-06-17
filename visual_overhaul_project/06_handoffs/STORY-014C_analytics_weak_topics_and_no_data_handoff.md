@@ -2,7 +2,7 @@ Story/Task:
 `STORY-014C_analytics_weak_topics_and_no_data.md`
 
 Status:
-Submitted For Review. PM/reviewer acceptance is still required.
+Done. Accepted by PM/reviewer on 2026-06-16.
 
 Summary:
 Polished the Analytics Weak Topics tab without changing analytics service
@@ -101,3 +101,14 @@ Risks:
 Follow-up backlog items:
 - Use `STORY-016_light_dark_and_min_size_validation.md` to validate long topic
   names, dense Weak Topics lists, and minimum-size wrapping across data views.
+
+PM/reviewer acceptance:
+- Accepted on 2026-06-16 after inspection of the submitted Analytics Weak
+  Topics implementation, light/dark screenshot evidence, and focused
+  verification.
+- The implementation stays within the Weak Topics and non-chart empty-state
+  scope. Analytics service calls, grouping values, thresholds, database
+  queries, and chart-shell behavior remain unchanged.
+- No required changes were found. Long topic names and dense Weak Topics lists
+  remain validation coverage for
+  `STORY-016_light_dark_and_min_size_validation.md`.

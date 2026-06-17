@@ -2,7 +2,7 @@ Story/Task:
 `STORY-015A_review_screen_polish.md`
 
 Status:
-Submitted For Review. PM/reviewer acceptance is still required.
+Done. Accepted by PM/reviewer on June 16, 2026.
 
 Summary:
 Polished the Review screen shell, scope selector, action bar, missed-question
@@ -99,3 +99,12 @@ Risks:
 Follow-up backlog items:
 - Use `STORY-016_light_dark_and_min_size_validation.md` to validate Review with
   longer names/questions and deeper missed-question lists.
+
+PM/reviewer acceptance:
+- Accepted on June 16, 2026 after inspection of the submitted Review screen
+  implementation, light/dark screenshot evidence, and focused verification.
+- The implementation stays within the GUI polish scope and preserves Review
+  service calls, scope selection semantics, selected-count behavior, and the
+  Start Review fallback path.
+- No required changes were found. Remaining long-content coverage belongs in
+  `STORY-016_light_dark_and_min_size_validation.md`.

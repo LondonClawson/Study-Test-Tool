@@ -2,7 +2,7 @@ Story/Task:
 `STORY-015C_mix_dialog_polish.md`
 
 Status:
-Submitted For Review. PM/reviewer acceptance is still required.
+Done. Accepted by PM/reviewer on 2026-06-16.
 
 Summary:
 Polished `MixTestDialog` with the accepted visual foundation while preserving
@@ -96,3 +96,16 @@ Follow-up backlog items:
   status treatment.
 - Keep native message boxes and file dialogs as MVP documented exceptions unless
   PM opens a focused post-MVP replacement story.
+
+PM/reviewer acceptance:
+- Accepted on 2026-06-16 after inspection of the submitted implementation,
+  light/dark screenshot evidence, source-level behavior preservation, and
+  focused verification.
+- PM verification covered Select All, Deselect All, group toggle, child toggle
+  group sync, selected test ID order, valid start, empty selection, non-numeric
+  count, non-positive count, and `get_result()` return behavior.
+- Full CTk modal smoke could not be independently rerun in this shell because
+  bare `ctk.CTk()` creation aborted at Tk initialization. That appears
+  environment-level rather than dialog-specific; submitted GUI smoke notes,
+  screenshot evidence, source inspection, and non-GUI behavior checks were used
+  for acceptance.

@@ -2,7 +2,7 @@ Story/Task:
 `STORY-015B_mode_dialog_polish.md`
 
 Status:
-Submitted For Review. PM/reviewer acceptance is still required.
+Done. Accepted by PM/reviewer on 2026-06-16.
 
 Summary:
 Polished `ModeSelectionDialog` with the accepted visual foundation while
@@ -78,3 +78,15 @@ Follow-up backlog items:
   readability.
 - Use `STORY-015D_import_preview_dialog_polish.md` for Import Preview row and
   status treatment.
+
+PM/reviewer acceptance:
+- Accepted on 2026-06-16 after inspection of the submitted implementation,
+  light/dark screenshot evidence, source-level modal behavior preservation, and
+  focused verification.
+- The implementation keeps `get_mode()` return values, `_select_test()`,
+  `_select_practice()`, close/cancel default `None`, `transient(parent)`,
+  `grab_set()`, parent-centering calculation, and `wait_window()`.
+- PM could not independently rerun a full CTk modal smoke in this shell because
+  bare `ctk.CTk()` creation aborted at Tk initialization. That appears
+  environment-level rather than dialog-specific; submitted screenshot evidence
+  and source inspection were used for modal behavior acceptance.

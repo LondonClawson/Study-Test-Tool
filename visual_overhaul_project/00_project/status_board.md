@@ -56,55 +56,57 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 
 ## Story Status
 
-| Story | Status | Blocked By |
-| --- | --- | --- |
-| `STORY-001_context_batch_one.md` | Done | None |
-| `STORY-002_baseline_visual_audit.md` | Done | None |
-| `STORY-003_visual_foundation_spec.md` | Done | None |
-| `STORY-004_shared_style_entrypoints.md` | Done | None |
-| `STORY-005_button_hierarchy.md` | Done | None |
-| `STORY-006_card_and_list_patterns.md` | Done | None |
-| `STORY-007_page_header_pattern.md` | Done | None |
-| `STORY-008_home_screen_layout.md` | Done | None |
-| `STORY-009_home_test_cards_and_actions.md` | Done | None |
-| `STORY-010_test_taking_shell.md` | Done | None |
-| `STORY-011_answer_rows_and_practice_feedback.md` | Done | None |
-| `STORY-012_results_summary_and_review_cards.md` | Done | None |
-| `STORY-013_editor_layout.md` | Done | None |
-| `STORY-014_history_and_analytics_polish.md` | Done | split into child stories |
-| `STORY-014A_history_list_and_filters.md` | Done | None |
-| `STORY-014B_analytics_chart_shell.md` | Done | None |
-| `STORY-014C_analytics_weak_topics_and_no_data.md` | Submitted For Review | PM/reviewer acceptance |
-| `STORY-015_review_and_dialog_polish.md` | Done | split into child stories |
-| `STORY-015A_review_screen_polish.md` | Submitted For Review | PM/reviewer acceptance |
-| `STORY-015B_mode_dialog_polish.md` | Submitted For Review | PM/reviewer acceptance |
-| `STORY-015C_mix_dialog_polish.md` | Submitted For Review | PM/reviewer acceptance |
-| `STORY-015D_import_preview_dialog_polish.md` | Ready | None |
-| `STORY-015E_native_dialog_inventory_followup.md` | Blocked | PM post-MVP decision |
-| `STORY-016_light_dark_and_min_size_validation.md` | Blocked | Core MVP screen stories |
-| `STORY-017_mvp_visual_regression_pass.md` | Blocked | Sprint 4 validation |
+| Story                                             | Status               | Blocked By               |
+| ------------------------------------------------- | -------------------- | ------------------------ |
+| `STORY-001_context_batch_one.md`                  | Done                 | None                     |
+| `STORY-002_baseline_visual_audit.md`              | Done                 | None                     |
+| `STORY-003_visual_foundation_spec.md`             | Done                 | None                     |
+| `STORY-004_shared_style_entrypoints.md`           | Done                 | None                     |
+| `STORY-005_button_hierarchy.md`                   | Done                 | None                     |
+| `STORY-006_card_and_list_patterns.md`             | Done                 | None                     |
+| `STORY-007_page_header_pattern.md`                | Done                 | None                     |
+| `STORY-008_home_screen_layout.md`                 | Done                 | None                     |
+| `STORY-009_home_test_cards_and_actions.md`        | Done                 | None                     |
+| `STORY-010_test_taking_shell.md`                  | Done                 | None                     |
+| `STORY-011_answer_rows_and_practice_feedback.md`  | Done                 | None                     |
+| `STORY-012_results_summary_and_review_cards.md`   | Done                 | None                     |
+| `STORY-013_editor_layout.md`                      | Done                 | None                     |
+| `STORY-014_history_and_analytics_polish.md`       | Done                 | split into child stories |
+| `STORY-014A_history_list_and_filters.md`          | Done                 | None                     |
+| `STORY-014B_analytics_chart_shell.md`             | Done                 | None                     |
+| `STORY-014C_analytics_weak_topics_and_no_data.md` | Done                 | None                     |
+| `STORY-015_review_and_dialog_polish.md`           | Done                 | split into child stories |
+| `STORY-015A_review_screen_polish.md`              | Done                 | None                     |
+| `STORY-015B_mode_dialog_polish.md`                | Done                 | None                     |
+| `STORY-015C_mix_dialog_polish.md`                 | Done                 | None                     |
+| `STORY-015D_import_preview_dialog_polish.md`      | Ready                | None                     |
+| `STORY-015E_native_dialog_inventory_followup.md`  | Blocked              | PM post-MVP decision     |
+| `STORY-016_light_dark_and_min_size_validation.md` | Blocked              | Core MVP screen stories  |
+| `STORY-017_mvp_visual_regression_pass.md`         | Blocked              | Sprint 4 validation      |
 
 ## Next Recommended Work
 
-1. Review `STORY-015C_mix_dialog_polish.md` for PM/reviewer acceptance. The
-   submitted work should be checked against light/dark Mix Test dialog empty,
-   Select All, one-group-selected, and deselected evidence plus selection sync,
-   invalid-start, valid-start, and cancel smoke coverage.
-2. `STORY-015D_import_preview_dialog_polish.md` is Ready as the next dialog
+1. `STORY-015D_import_preview_dialog_polish.md` is Ready as the next dialog
    lane once developer capacity is available.
-3. Review `STORY-014C_analytics_weak_topics_and_no_data.md` for PM/reviewer
-   acceptance. The submitted work should be checked against light/dark Weak
-   Topics grouped by Test, Group, and Category, no-category, no-data, and
-   minimum-window evidence plus focused analytics verification.
-4. Review `STORY-015B_mode_dialog_polish.md` for PM/reviewer acceptance. The
-   submitted work should be checked against light/dark Mode Selection dialog
-   evidence plus Test, Practice, close/cancel, modal grab, and centering smoke
-   coverage.
-5. Review `STORY-015A_review_screen_polish.md` for PM/reviewer acceptance. The
-   submitted work should be checked against light/dark missed questions,
-   selected scope, selected question, no selected tests, no missed questions,
-   no active tests, and minimum-window evidence plus Start Review smoke
-   coverage.
+2. `STORY-015C_mix_dialog_polish.md` is accepted after PM review of light/dark
+   Mix Test dialog empty, Select All, one-group-selected, and deselected
+   evidence plus selection sync, invalid-start, valid-start, and cancel
+   behavior. No follow-up Mix dialog polish work should be assigned unless a
+   validation story or new bug names it.
+3. `STORY-015B_mode_dialog_polish.md` is accepted after PM review of
+   light/dark Mode Selection dialog evidence plus Test, Practice, close/cancel,
+   modal grab, and centering preservation. No follow-up Mode dialog polish work
+   should be assigned unless a validation story or new bug names it.
+4. `STORY-014C_analytics_weak_topics_and_no_data.md` is accepted after PM
+   review of light/dark Weak Topics grouped by Test, Group, and Category,
+   no-category, no-data, and minimum-window evidence plus focused analytics
+   verification. No follow-up Weak Topics polish work should be assigned unless
+   a validation story or new bug names it.
+5. `STORY-015A_review_screen_polish.md` is accepted after PM review of
+   light/dark missed questions, selected scope, selected question, no selected
+   tests, no missed questions, no active tests, and minimum-window evidence
+   plus Start Review smoke coverage. No follow-up Review screen polish work
+   should be assigned unless a validation story or new bug names it.
 6. `STORY-014B_analytics_chart_shell.md` is accepted after PM review of
    light/dark Score Trends, Test Comparison, Study Activity, chart no-data,
    and minimum-window evidence plus analytics service test coverage. No
