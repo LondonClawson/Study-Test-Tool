@@ -1,15 +1,23 @@
 """Main application window with frame-based navigation."""
 
+import tkinter as tk
 import tkinter.messagebox as messagebox
 
 import customtkinter as ctk
 
 from config.settings import (
     APP_NAME,
+    APP_ICON_PATH,
     MIN_WINDOW_HEIGHT,
     MIN_WINDOW_WIDTH,
     WINDOW_HEIGHT,
     WINDOW_WIDTH,
+)
+from config.user_preferences import (
+    get_text_size_scale,
+    load_preferences,
+    save_preferences,
+    validate_text_size,
 )
 from gui.analytics_view import AnalyticsViewFrame
 from gui.history_view import HistoryViewFrame
@@ -37,10 +45,13 @@ class App(ctk.CTk):
 
         ctk.set_appearance_mode("system")
         ctk.set_default_color_theme("blue")
+        self._preferences = load_preferences()
+        self._apply_text_size(self._preferences["text_size"])
 
         self.title(APP_NAME)
         self.geometry(f"{WINDOW_WIDTH}x{WINDOW_HEIGHT}")
         self.minsize(MIN_WINDOW_WIDTH, MIN_WINDOW_HEIGHT)
+        self._set_window_icon()
 
         # Container for all screens
         self.container = ctk.CTkFrame(self)
@@ -71,6 +82,44 @@ class App(ctk.CTk):
 
         # Show home screen
         self.show_frame(SCREEN_HOME)
+
+    def get_text_size(self) -> str:
+        """Return the current text-size preference label."""
+        return self._preferences["text_size"]
+
+    def set_text_size(self, text_size: str) -> None:
+        """Apply and persist a new text-size preference."""
+        selected = validate_text_size(text_size)
+        if selected == self._preferences["text_size"]:
+            return
+
+        self._preferences["text_size"] = selected
+        self._apply_text_size(selected)
+        try:
+            save_preferences(self._preferences)
+        except OSError:
+            messagebox.showwarning(
+                "Preference Not Saved",
+                "The text size was changed, but it could not be saved for next time.",
+            )
+
+    def _apply_text_size(self, text_size: str) -> None:
+        """Apply text-size scaling to CustomTkinter widgets."""
+        scale = get_text_size_scale(text_size)
+        ctk.set_widget_scaling(scale)
+        ctk.set_window_scaling(scale)
+
+    def _set_window_icon(self) -> None:
+        """Set the window icon when the bundled PNG asset is available."""
+        if not APP_ICON_PATH.exists():
+            return
+
+        try:
+            self._icon_image = tk.PhotoImage(file=str(APP_ICON_PATH))
+            self.iconphoto(True, self._icon_image)
+        except tk.TclError:
+            # Some Tk builds/platforms may reject PNG window icons.
+            return
 
     def show_frame(self, name: str, **kwargs) -> None:
         """Raise a screen to the front and call its on_show method.

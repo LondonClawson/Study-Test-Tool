@@ -13,7 +13,9 @@ DB_DIR = DATA_DIR / "database"
 DB_PATH = DB_DIR / "study_tool.db"
 TESTS_DIR = DATA_DIR / "tests"
 BACKUPS_DIR = DATA_DIR / "backups"
+PREFERENCES_PATH = DATA_DIR / "preferences.json"
 ASSETS_DIR = PROJECT_ROOT / "assets"
+APP_ICON_PATH = ASSETS_DIR / "logo.png"
 SCHEMA_PATH = PROJECT_ROOT / "database" / "schema.sql"
 
 # Window

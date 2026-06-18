@@ -473,6 +473,70 @@ class DatabaseManager:
         finally:
             conn.close()
 
+    def count_attempts(
+        self, test_id: Optional[int] = None, mode: Optional[str] = None
+    ) -> int:
+        """Count test attempts, optionally filtered by test and mode."""
+        clauses = []
+        params = []
+        if test_id is not None:
+            clauses.append("test_id = ?")
+            params.append(test_id)
+        if mode is not None:
+            clauses.append("mode = ?")
+            params.append(mode)
+
+        where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        conn = self._conn()
+        try:
+            row = conn.execute(
+                f"SELECT COUNT(*) as total FROM test_attempts {where_clause}",
+                params,
+            ).fetchone()
+            return row["total"] if row else 0
+        finally:
+            conn.close()
+
+    def get_attempts_page(
+        self,
+        limit: int,
+        offset: int = 0,
+        test_id: Optional[int] = None,
+        mode: Optional[str] = None,
+    ) -> List[TestAttempt]:
+        """Get a page of attempts, optionally filtered by test and mode."""
+        if limit <= 0:
+            return []
+
+        offset = max(offset, 0)
+        clauses = []
+        params = []
+        if test_id is not None:
+            clauses.append("a.test_id = ?")
+            params.append(test_id)
+        if mode is not None:
+            clauses.append("a.mode = ?")
+            params.append(mode)
+
+        where_clause = f"WHERE {' AND '.join(clauses)}" if clauses else ""
+        params.extend([limit, offset])
+
+        conn = self._conn()
+        try:
+            rows = conn.execute(
+                "SELECT a.id, a.test_id, a.score, a.total_questions, "
+                "a.percentage, a.time_taken, a.mode, a.completed_at, "
+                "t.name as test_name "
+                "FROM test_attempts a JOIN tests t ON a.test_id = t.id "
+                f"{where_clause} "
+                "ORDER BY a.completed_at DESC, a.id DESC "
+                "LIMIT ? OFFSET ?",
+                params,
+            ).fetchall()
+            return [self._row_to_attempt(row) for row in rows]
+        finally:
+            conn.close()
+
     def get_attempt_details(self, attempt_id: int) -> Optional[TestAttempt]:
         """Get a test attempt with all its question responses."""
         conn = self._conn()

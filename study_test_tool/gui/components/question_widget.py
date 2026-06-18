@@ -8,6 +8,7 @@ from config.settings import (
     QUESTION_TYPE_ESSAY,
     QUESTION_TYPE_MC,
 )
+from gui.components.formatted_text import FormattedText
 from gui.styles import (
     RADIUS_CONTROL,
     SPACE_4,
@@ -42,13 +43,11 @@ class QuestionWidget(ctk.CTkFrame):
 
     def _build_ui(self) -> None:
         """Build the question display."""
-        text_label = ctk.CTkLabel(
+        text_label = FormattedText(
             self,
             text=self.question.text,
-            wraplength=650,
-            justify="left",
-            anchor="nw",
-            **get_text_style("body"),
+            text_role="body",
+            background_color=self.cget("fg_color"),
         )
         text_label.pack(fill="x", padx=SPACE_16, pady=(SPACE_16, SPACE_12))
 
@@ -94,14 +93,12 @@ class QuestionWidget(ctk.CTkFrame):
             )
             self._radio_buttons.append(rb)
 
-            label = ctk.CTkLabel(
+            label = FormattedText(
                 row,
                 text=option.text,
-                wraplength=560,
-                justify="left",
-                anchor="nw",
+                text_role="body",
+                background_color=get_color("surface_subtle"),
                 cursor="hand2",
-                **get_text_style("body"),
             )
             label.grid(
                 row=0,
@@ -149,6 +146,9 @@ class QuestionWidget(ctk.CTkFrame):
     def _bind_option_click(self, widget, option_text: str) -> None:
         """Bind a CustomTkinter widget and its drawn children to select a row."""
         callback = lambda _event, val=option_text: self._select_option(val)
+        if hasattr(widget, "bind_click"):
+            widget.bind_click(callback)
+            return
         widget.bind("<Button-1>", callback)
         for child_name in ("_canvas", "_label", "_text_label"):
             child = getattr(widget, child_name, None)
@@ -157,6 +157,9 @@ class QuestionWidget(ctk.CTkFrame):
 
     def _unbind_option_click(self, widget) -> None:
         """Remove option click bindings from a CustomTkinter widget."""
+        if hasattr(widget, "unbind_click"):
+            widget.unbind_click()
+            return
         widget.unbind("<Button-1>")
         for child_name in ("_canvas", "_label", "_text_label"):
             child = getattr(widget, child_name, None)
@@ -218,7 +221,13 @@ class QuestionWidget(ctk.CTkFrame):
                 border_color=border_color,
                 border_width=border_width,
             )
-            label.configure(text_color=text_color)
+            if hasattr(label, "configure_colors"):
+                label.configure_colors(
+                    text_color=text_color,
+                    background_color=fg_color,
+                )
+            else:
+                label.configure(text_color=text_color)
 
     def show_checked_state(
         self,
@@ -274,7 +283,10 @@ class QuestionWidget(ctk.CTkFrame):
                 rb.configure(state="disabled")
             for label in self._option_labels:
                 self._unbind_option_click(label)
-                label.configure(cursor="")
+                if hasattr(label, "configure_cursor"):
+                    label.configure_cursor("arrow")
+                else:
+                    label.configure(cursor="")
             for row_info in self._option_rows:
                 self._unbind_option_click(row_info["row"])
             self._update_option_rows()

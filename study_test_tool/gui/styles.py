@@ -82,6 +82,7 @@ SPACE_32 = 32
 
 # Typography roles
 FONT_PAGE_TITLE: FontValue = (FONT_FAMILY, FONT_SIZE_TITLE, "bold")
+FONT_PAGE_SCORE: FontValue = (FONT_FAMILY, FONT_SIZE_TITLE + 4, "bold")
 FONT_SECTION_TITLE: FontValue = (FONT_FAMILY, FONT_SIZE_HEADING, "bold")
 FONT_CARD_TITLE: FontValue = (FONT_FAMILY, 16, "bold")
 FONT_BODY: FontValue = (FONT_FAMILY, FONT_SIZE_BODY)
@@ -213,6 +214,10 @@ HEADER_ROLES: Dict[str, WidgetStyle] = {
 TEXT_ROLES: Dict[str, WidgetStyle] = {
     "page_title": {
         "font": FONT_PAGE_TITLE,
+        "text_color": COLOR_TEXT_PRIMARY,
+    },
+    "page_score": {
+        "font": FONT_PAGE_SCORE,
         "text_color": COLOR_TEXT_PRIMARY,
     },
     "page_subtitle": {

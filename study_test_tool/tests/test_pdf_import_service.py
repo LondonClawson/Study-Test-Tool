@@ -26,23 +26,25 @@ from services.pdf_import_service import (
     strip_role_suffix,
 )
 
-
 # ── Name normalization / pairing ───────────────────────────────────────────
 
 
 class TestPairingKey:
     def test_collapses_multiple_choice_variants(self):
-        assert pairing_key_from_stem("Week 1B Multiple Choice") == pairing_key_from_stem(
-            "Week 1B Multiple-Choice"
-        )
+        assert pairing_key_from_stem(
+            "Week 1B Multiple Choice"
+        ) == pairing_key_from_stem("Week 1B Multiple-Choice")
 
     def test_normalizes_whitespace(self):
-        assert pairing_key_from_stem("  Week   3   Multiple-Choice ") == pairing_key_from_stem(
-            "Week 3 Multiple Choice"
-        )
+        assert pairing_key_from_stem(
+            "  Week   3   Multiple-Choice "
+        ) == pairing_key_from_stem("Week 3 Multiple Choice")
 
     def test_display_stem_uses_hyphenated_form(self):
-        assert normalize_display_stem("Week 1B Multiple Choice") == "Week 1B Multiple-Choice"
+        assert (
+            normalize_display_stem("Week 1B Multiple Choice")
+            == "Week 1B Multiple-Choice"
+        )
 
     def test_strip_role_suffix_questions(self):
         base, role = strip_role_suffix("Week 1B Multiple-Choice Questions")
@@ -105,6 +107,26 @@ D. Fourth
         questions = parse_questions(text)
         assert questions[0]["options"][0]["text"] == "First line continuing here"
 
+    def test_paragraph_breaks_are_preserved(self):
+        text = """1. First prompt paragraph.
+
+Second prompt paragraph.
+A. First option paragraph.
+
+Second option paragraph.
+B. Other option
+"""
+        questions = parse_questions(text)
+
+        assert (
+            questions[0]["text"]
+            == "First prompt paragraph.\n\nSecond prompt paragraph."
+        )
+        assert (
+            questions[0]["options"][0]["text"]
+            == "First option paragraph.\n\nSecond option paragraph."
+        )
+
     def test_rejects_question_with_one_option(self):
         text = "1. Only one answer?\nA. Yes\n"
         with pytest.raises(ConversionError, match="answer choices"):
@@ -163,7 +185,14 @@ class TestParseAnswers:
         """Week 2B-style answer key: bare letters → Q1, Q2, Q3, ..."""
         text = "C\nB\nC\nC\nA\nD\nA\nC\n"
         assert parse_answers(text) == {
-            1: "C", 2: "B", 3: "C", 4: "C", 5: "A", 6: "D", 7: "A", 8: "C",
+            1: "C",
+            2: "B",
+            3: "C",
+            4: "C",
+            5: "A",
+            6: "D",
+            7: "A",
+            8: "C",
         }
 
     def test_na_skips_the_slot(self):
@@ -192,9 +221,18 @@ class TestParseAnswers:
         text = "1. C\n2. A\n3. C\n5. D\nA\nA\nD\n A\n10. B\n14. B\n15.\tD\n16. B\n"
         answers = parse_answers(text)
         assert answers == {
-            1: "C", 2: "A", 3: "C", 5: "D",
-            6: "A", 7: "A", 8: "D", 9: "A",
-            10: "B", 14: "B", 15: "D", 16: "B",
+            1: "C",
+            2: "A",
+            3: "C",
+            5: "D",
+            6: "A",
+            7: "A",
+            8: "D",
+            9: "A",
+            10: "B",
+            14: "B",
+            15: "D",
+            16: "B",
         }
 
     def test_ignores_heading_and_separator_lines(self):
@@ -273,9 +311,7 @@ class TestBuildPayload:
         An answer key with extras for Q3 (when only Q1, Q2 are listed) should
         not fail the import — just ignore the extras.
         """
-        payload = build_payload(
-            "Week 1", _simple_questions(), {1: "A", 2: "B", 3: "C"}
-        )
+        payload = build_payload("Week 1", _simple_questions(), {1: "A", 2: "B", 3: "C"})
         assert len(payload["questions"]) == 2
 
 
@@ -293,6 +329,28 @@ class TestCleanText:
         raw = "1. Q?\u2028A. Yes\u2029B. No\x85"
         cleaned = clean_text(raw)
         assert "1. Q?\nA. Yes\nB. No" in cleaned
+
+    def test_docx_extraction_preserves_simple_run_formatting(self, tmp_path):
+        docx = pytest.importorskip("docx")
+        document = docx.Document()
+        paragraph = document.add_paragraph()
+        paragraph.add_run("Plain ")
+        bold_run = paragraph.add_run("bold")
+        bold_run.bold = True
+        paragraph.add_run(" ")
+        italic_run = paragraph.add_run("italic")
+        italic_run.italic = True
+        paragraph.add_run(" ")
+        underline_run = paragraph.add_run("under")
+        underline_run.underline = True
+        path = tmp_path / "formatted.docx"
+        document.save(path)
+
+        extracted = pdf_import_service.extract_text_from_docx(str(path))
+
+        assert "**bold**" in extracted
+        assert "*italic*" in extracted
+        assert "<u>under</u>" in extracted
 
 
 # ── Bug regression: parse_answers accepts E–H ─────────────────────────────
@@ -363,9 +421,7 @@ class TestScannedPdfDetection:
 
     def test_empty_questions_pdf_names_the_file(self, tmp_path, monkeypatch):
         pair = self._make_pair(tmp_path)
-        monkeypatch.setattr(
-            pdf_import_service, "_extract_file_text", lambda source: ""
-        )
+        monkeypatch.setattr(pdf_import_service, "_extract_file_text", lambda source: "")
         with pytest.raises(ConversionError) as exc:
             convert_pair_to_dict(pair)
         assert "Week 9 Questions.pdf" in str(exc.value)

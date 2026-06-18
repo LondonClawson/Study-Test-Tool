@@ -143,6 +143,13 @@ osacompile -o "$DESKTOP_APP" <<EOF
 do shell script "/bin/bash \"$LAUNCH_SCRIPT\""
 EOF
 
+ICON_SOURCE="$CODE_DIR/assets/logo.png"
+if [ -f "$ICON_SOURCE" ] && python3 "$CODE_DIR/scripts/app_icon.py" "$ICON_SOURCE" "$DESKTOP_APP"; then
+    ok "Applied custom app icon"
+else
+    info "Skipping custom app icon"
+fi
+
 ok "Created \"$APP_NAME\" on Desktop"
 
 # ── Done ──────────────────────────────────────────────────────

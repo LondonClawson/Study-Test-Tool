@@ -185,6 +185,29 @@ class TestJsonImport:
         question = db.get_questions_for_test(test_id)[0]
         assert question.explanation == "Because A matches the rule."
 
+    def test_import_from_dict_preserves_newlines_and_markdown(self, import_svc):
+        data = {
+            "name": "Formatted Test",
+            "questions": [
+                {
+                    "text": "First paragraph.\n\nSecond **bold** paragraph.",
+                    "type": "multiple_choice",
+                    "explanation": "Use <u>this rule</u>.\n\nThen apply it.",
+                    "options": [
+                        {"text": "Answer *one*", "correct": True},
+                        {"text": "Answer two", "correct": False},
+                    ],
+                }
+            ],
+        }
+
+        test_id = import_svc.import_from_dict(data)
+        question = import_svc._db.get_questions_for_test(test_id)[0]
+
+        assert question.text == "First paragraph.\n\nSecond **bold** paragraph."
+        assert question.explanation == "Use <u>this rule</u>.\n\nThen apply it."
+        assert question.options[0].text == "Answer *one*"
+
     def test_transactional_insert_rolls_back_on_option_failure(self, import_svc):
         from models.test import Test as TestModel
 
@@ -340,6 +363,34 @@ d. Standard D -- correct
         try:
             test_id = import_svc.import_from_text(path)
             assert test_id > 0
+        finally:
+            os.unlink(path)
+
+    def test_import_text_preserves_prompt_and_option_paragraphs(self, import_svc):
+        content = """1. First prompt paragraph.
+
+Second prompt paragraph with **bold** text.
+
+a. First option paragraph.
+
+Second option paragraph. -- correct
+b. Other option
+"""
+        with tempfile.NamedTemporaryFile(mode="w", suffix=".txt", delete=False) as f:
+            f.write(content)
+            path = f.name
+
+        try:
+            test_id = import_svc.import_from_text(path, test_name="Paragraph Test")
+            question = import_svc._db.get_questions_for_test(test_id)[0]
+            assert (
+                question.text == "First prompt paragraph.\n\n"
+                "Second prompt paragraph with **bold** text."
+            )
+            assert (
+                question.options[0].text
+                == "First option paragraph.\n\nSecond option paragraph."
+            )
         finally:
             os.unlink(path)
 

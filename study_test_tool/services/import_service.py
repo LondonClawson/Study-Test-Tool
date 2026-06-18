@@ -34,7 +34,9 @@ class ImportService:
         with open(path, "r", encoding="utf-8") as f:
             data = json.load(f)
 
-        return self.preview_from_dict(data, fallback_name=path.stem, source_name=path.name)
+        return self.preview_from_dict(
+            data, fallback_name=path.stem, source_name=path.name
+        )
 
     def preview_from_dict(
         self,
@@ -72,7 +74,9 @@ class ImportService:
                 for question in questions
             ],
         }
-        return self.preview_from_dict(payload, fallback_name=name, source_name=path.name)
+        return self.preview_from_dict(
+            payload, fallback_name=name, source_name=path.name
+        )
 
     def preview_from_pdf_pair(
         self, questions_pdf: str, answers_pdf: str
@@ -141,7 +145,9 @@ class ImportService:
         if group_name_override is not None:
             payload["group_name"] = group_name_override.strip()
 
-        test, questions = self._payload_to_models(payload, fallback_name=preview.test_name)
+        test, questions = self._payload_to_models(
+            payload, fallback_name=preview.test_name
+        )
         return self._db.create_test_with_questions(test, questions)
 
     def commit_previews(
@@ -419,8 +425,7 @@ class ImportService:
             )
             raw_text = match.group(2) + block[start:end]
 
-            # Clean up: join lines, collapse whitespace
-            raw_text = " ".join(raw_text.split())
+            raw_text = self._normalize_imported_text_block(raw_text)
 
             # Check for correct-answer marker
             is_correct, clean_text = self._extract_correct_marker(raw_text)
@@ -481,3 +486,24 @@ class ImportService:
             return True, clean
 
         return False, text.strip()
+
+    @staticmethod
+    def _normalize_imported_text_block(text: str) -> str:
+        """Fold soft-wrapped lines while preserving paragraph breaks."""
+        text = text.replace("\r\n", "\n").replace("\r", "\n")
+        paragraphs = []
+        current_lines = []
+
+        for line in text.split("\n"):
+            cleaned = re.sub(r"[ \t]+", " ", line).strip()
+            if cleaned:
+                current_lines.append(cleaned)
+                continue
+            if current_lines:
+                paragraphs.append(" ".join(current_lines))
+                current_lines = []
+
+        if current_lines:
+            paragraphs.append(" ".join(current_lines))
+
+        return "\n\n".join(paragraphs).strip()

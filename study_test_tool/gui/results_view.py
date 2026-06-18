@@ -4,14 +4,10 @@ from collections import defaultdict
 
 import customtkinter as ctk
 
-from config.settings import (
-    FONT_FAMILY,
-    FONT_SIZE_TITLE,
-    QUESTION_TYPE_MC,
-)
+from config.settings import QUESTION_TYPE_MC
+from gui.components.formatted_text import FormattedText
 from gui.styles import (
     FONT_BODY_BOLD,
-    FONT_CARD_TITLE,
     RADIUS_CARD,
     RADIUS_CONTROL,
     SPACE_4,
@@ -77,9 +73,8 @@ class ResultsViewFrame(ctk.CTkFrame):
         self.score_label = ctk.CTkLabel(
             score_row,
             text="",
-            font=(FONT_FAMILY, FONT_SIZE_TITLE + 4, "bold"),
-            text_color=get_color("text_primary"),
             anchor="w",
+            **get_text_style("page_score"),
         )
         self.score_label.pack(side="left")
 
@@ -378,13 +373,11 @@ class ResultsViewFrame(ctk.CTkFrame):
         )
 
         # Question text
-        ctk.CTkLabel(
+        FormattedText(
             card,
             text=question_text,
-            wraplength=720,
-            justify="left",
-            anchor="nw",
-            **get_text_style("body"),
+            text_role="body",
+            background_color=get_color("surface"),
         ).pack(fill="x", padx=SPACE_16, pady=(0, SPACE_12))
 
         if question_type == QUESTION_TYPE_MC:
@@ -514,17 +507,14 @@ class ResultsViewFrame(ctk.CTkFrame):
             panel,
             text=label,
             anchor="w",
-            font=FONT_CARD_TITLE,
-            text_color=label_color,
+            **self._answer_panel_label_style(label_color),
         ).pack(fill="x", padx=SPACE_12, pady=(SPACE_8, SPACE_4))
 
-        ctk.CTkLabel(
+        FormattedText(
             panel,
             text=text if text else "(No answer)",
-            wraplength=700,
-            justify="left",
-            anchor="nw",
-            **get_text_style("body"),
+            text_role="body",
+            background_color=get_color("surface_subtle"),
         ).pack(fill="x", padx=SPACE_12, pady=(0, SPACE_8))
 
     def _add_source_row(
@@ -565,6 +555,12 @@ class ResultsViewFrame(ctk.CTkFrame):
             padx=(0, SPACE_12),
             pady=SPACE_12,
         )
+
+    def _answer_panel_label_style(self, text_color) -> dict:
+        """Return a card-title style with a custom semantic color."""
+        style = get_text_style("card_title")
+        style["text_color"] = text_color
+        return style
 
     def _show_missing_results(self) -> None:
         """Show a calm missing-results state."""

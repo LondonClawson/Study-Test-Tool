@@ -19,7 +19,6 @@ from datetime import datetime, timezone
 from pathlib import Path
 from typing import Any, Dict, List, Tuple
 
-
 DESCRIPTION = "Imported from Questions/Answers PDFs"
 REPORT_NAME = "conversion_report.json"
 OPTION_PREFIX_RE = r"^\s*\(?([A-H])\)?[.)]\s*"
@@ -45,7 +44,9 @@ class PairSpec:
 
 def normalize_display_stem(stem: str) -> str:
     stem = stem.strip()
-    stem = re.sub(r"\bMultiple\s+Choice\b", "Multiple-Choice", stem, flags=re.IGNORECASE)
+    stem = re.sub(
+        r"\bMultiple\s+Choice\b", "Multiple-Choice", stem, flags=re.IGNORECASE
+    )
     stem = re.sub(r"\s+", " ", stem)
     return stem
 
@@ -61,7 +62,9 @@ def pairing_key_from_stem(stem: str) -> str:
 def strip_role_suffix(stem: str) -> Tuple[str, str]:
     match = re.match(r"^(.*?)(?:\s+(Questions|Answers))$", stem, flags=re.IGNORECASE)
     if not match:
-        raise ConversionError(f"Could not determine Questions/Answers role from '{stem}'.")
+        raise ConversionError(
+            f"Could not determine Questions/Answers role from '{stem}'."
+        )
     return match.group(1).strip(), match.group(2).lower()
 
 
@@ -74,9 +77,13 @@ def build_pair_from_paths(questions_pdf: Path, answers_pdf: Path) -> PairSpec:
     q_base, q_role = strip_role_suffix(questions_pdf.stem)
     a_base, a_role = strip_role_suffix(answers_pdf.stem)
     if q_role != "questions":
-        raise ConversionError(f"Questions file does not end with 'Questions': {questions_pdf.name}")
+        raise ConversionError(
+            f"Questions file does not end with 'Questions': {questions_pdf.name}"
+        )
     if a_role != "answers":
-        raise ConversionError(f"Answers file does not end with 'Answers': {answers_pdf.name}")
+        raise ConversionError(
+            f"Answers file does not end with 'Answers': {answers_pdf.name}"
+        )
 
     q_key = pairing_key_from_stem(q_base)
     a_key = pairing_key_from_stem(a_base)
@@ -106,7 +113,9 @@ def discover_pairs(root: Path) -> List[PairSpec]:
         except ConversionError:
             continue
         key = pairing_key_from_stem(base)
-        bucket = grouped.setdefault(key, {"questions": None, "answers": None, "bases": []})
+        bucket = grouped.setdefault(
+            key, {"questions": None, "answers": None, "bases": []}
+        )
         bucket[role] = pdf_path
         bucket["bases"].append(base)
 
@@ -136,7 +145,9 @@ def find_partner_pdf(pdf_path: Path) -> Path:
     base, role = strip_role_suffix(pdf_path.stem)
     target_key = pairing_key_from_stem(base)
     want_role = "answers" if role == "questions" else "questions"
-    all_candidates = sorted(list(pdf_path.parent.glob("*.pdf")) + list(pdf_path.parent.glob("*.docx")))
+    all_candidates = sorted(
+        list(pdf_path.parent.glob("*.pdf")) + list(pdf_path.parent.glob("*.docx"))
+    )
     for candidate in all_candidates:
         if candidate == pdf_path:
             continue
@@ -162,11 +173,30 @@ def extract_text_from_pdf(pdf_path: Path) -> str:
 
 
 def extract_text_from_docx(path: str) -> str:
-    """Extract plain text from a .docx file."""
+    """Extract text from a .docx file, preserving simple run formatting."""
     from docx import Document  # noqa: PLC0415
 
     doc = Document(path)
-    return "\n".join(paragraph.text for paragraph in doc.paragraphs)
+    paragraphs = []
+    for paragraph in doc.paragraphs:
+        if paragraph.runs:
+            paragraphs.append("".join(_format_docx_run(run) for run in paragraph.runs))
+        else:
+            paragraphs.append(paragraph.text)
+    return "\n".join(paragraphs)
+
+
+def _format_docx_run(run) -> str:
+    text = run.text
+    if not text:
+        return ""
+    if run.underline:
+        text = f"<u>{text}</u>"
+    if run.italic:
+        text = f"*{text}*"
+    if run.bold:
+        text = f"**{text}**"
+    return text
 
 
 def _extract_file_text(source: Path) -> str:
@@ -198,6 +228,27 @@ def clean_text(text: str) -> str:
     text = re.sub(r"(?m)^\s*(\d)\s*\n\s*(\d\.)", r"\1\2", text)
     text = re.sub(r"\n{3,}", "\n\n", text)
     return text.strip()
+
+
+def normalize_text_block(text: str) -> str:
+    """Fold soft-wrapped lines while preserving paragraph breaks."""
+    text = text.replace("\r\n", "\n").replace("\r", "\n")
+    paragraphs: List[str] = []
+    current_lines: List[str] = []
+
+    for line in text.split("\n"):
+        cleaned = re.sub(r"[ \t]+", " ", line).strip()
+        if cleaned:
+            current_lines.append(cleaned)
+            continue
+        if current_lines:
+            paragraphs.append(" ".join(current_lines))
+            current_lines = []
+
+    if current_lines:
+        paragraphs.append(" ".join(current_lines))
+
+    return "\n\n".join(paragraphs).strip()
 
 
 _FACTS_HEADER_RE = re.compile(
@@ -240,7 +291,7 @@ def _extract_scenarios(text: str) -> Tuple[str, Dict[int, str]]:
     for m in _FACTS_HEADER_RE.finditer(text):
         parts.append(text[last : m.start()])
         nums = _parse_question_number_list(m.group(1))
-        scenario = " ".join(m.group(2).split())
+        scenario = normalize_text_block(m.group(2))
         for n in nums:
             scenarios[n] = scenario
         last = m.end()
@@ -251,9 +302,7 @@ def _extract_scenarios(text: str) -> Tuple[str, Dict[int, str]]:
 def parse_questions(text: str) -> List[Dict[str, Any]]:
     text, scenarios = _extract_scenarios(text)
     questions: List[Dict[str, Any]] = []
-    question_marker = (
-        r"(?:Question\s+(\d+)\s*[.):]?\s+|(\d+)\s*[.):]\s+)"
-    )
+    question_marker = r"(?:Question\s+(\d+)\s*[.):]?\s+|(\d+)\s*[.):]\s+)"
     matches = re.finditer(
         rf"(?ims)^\s*{question_marker}(.*?)(?=^\s*{question_marker}|\Z)",
         text,
@@ -270,9 +319,11 @@ def parse_questions(text: str) -> List[Dict[str, Any]]:
         if not option_matches:
             continue
         if len(option_matches) < 2:
-            raise ConversionError(f"Could not parse answer choices for question {number}.")
+            raise ConversionError(
+                f"Could not parse answer choices for question {number}."
+            )
 
-        stem = " ".join(body[: option_matches[0].start()].split())
+        stem = normalize_text_block(body[: option_matches[0].start()])
         if not stem:
             raise ConversionError(f"Question {number} has empty prompt text.")
 
@@ -280,10 +331,14 @@ def parse_questions(text: str) -> List[Dict[str, Any]]:
         for index, option_match in enumerate(option_matches):
             letter = option_match.group(1)
             start = option_match.start()
-            end = option_matches[index + 1].start() if index + 1 < len(option_matches) else len(body)
+            end = (
+                option_matches[index + 1].start()
+                if index + 1 < len(option_matches)
+                else len(body)
+            )
             chunk = body[start:end]
             chunk = re.sub(rf"(?m){OPTION_PREFIX_RE}", "", chunk, count=1)
-            chunk = " ".join(chunk.split())
+            chunk = normalize_text_block(chunk)
             if not chunk:
                 raise ConversionError(f"Question {number} option {letter} is empty.")
             options.append({"letter": letter, "text": chunk})
@@ -349,13 +404,20 @@ def parse_answers(text: str) -> Dict[int, str]:
     return answers
 
 
-def resolve_correct_letter(correct_letter: str, option_letters: List[str], number: int) -> str:
+def resolve_correct_letter(
+    correct_letter: str, option_letters: List[str], number: int
+) -> str:
     """Resolve answer-key letters against printed option labels safely."""
     if correct_letter in option_letters:
         return correct_letter
 
     # Some source files print the four choices as E/F/G/H while the key still uses A-D.
-    if option_letters == ["E", "F", "G", "H"] and correct_letter in {"A", "B", "C", "D"}:
+    if option_letters == ["E", "F", "G", "H"] and correct_letter in {
+        "A",
+        "B",
+        "C",
+        "D",
+    }:
         return option_letters[ord(correct_letter) - ord("A")]
 
     raise ConversionError(
@@ -391,7 +453,9 @@ def build_payload(
             for option in question["options"]
         ]
         if sum(1 for option in options if option["correct"]) != 1:
-            raise ConversionError(f"Question {number} does not resolve to exactly one correct option.")
+            raise ConversionError(
+                f"Question {number} does not resolve to exactly one correct option."
+            )
 
         output_questions.append(
             {

@@ -45,6 +45,14 @@ class GraphWidget(ctk.CTkFrame):
             return color[1] if ctk.get_appearance_mode() == "Dark" else color[0]
         return color
 
+    def _scaled_font_size(self, size: int) -> int:
+        """Return a matplotlib font size adjusted to the active UI scale."""
+        try:
+            scale = ctk.ScalingTracker.get_widget_scaling(self)
+        except (AttributeError, KeyError):
+            scale = 1.0
+        return max(1, round(size * scale))
+
     def _init_figure(self) -> None:
         """Create the matplotlib figure and embed in tkinter."""
         colors = self._get_theme_colors()
@@ -96,13 +104,23 @@ class GraphWidget(ctk.CTkFrame):
         ax.plot(x_data, y_data, color=colors["line"], marker="o", linewidth=2)
 
         if title:
-            ax.set_title(title, color=colors["text"], fontsize=12)
+            ax.set_title(
+                title, color=colors["text"], fontsize=self._scaled_font_size(12)
+            )
         if x_label:
-            ax.set_xlabel(x_label, color=colors["text"])
+            ax.set_xlabel(
+                x_label,
+                color=colors["text"],
+                fontsize=self._scaled_font_size(10),
+            )
         if y_label:
-            ax.set_ylabel(y_label, color=colors["text"])
+            ax.set_ylabel(
+                y_label,
+                color=colors["text"],
+                fontsize=self._scaled_font_size(10),
+            )
 
-        ax.tick_params(colors=colors["text"])
+        ax.tick_params(colors=colors["text"], labelsize=self._scaled_font_size(9))
         ax.grid(True, alpha=0.3, color=colors["grid"])
 
         for spine in ax.spines.values():
@@ -142,14 +160,25 @@ class GraphWidget(ctk.CTkFrame):
         bars = ax.bar(range(len(labels)), values, color=bar_colors)
 
         ax.set_xticks(range(len(labels)))
-        ax.set_xticklabels(labels, rotation=30, ha="right", fontsize=9)
+        ax.set_xticklabels(
+            labels,
+            rotation=30,
+            ha="right",
+            fontsize=self._scaled_font_size(9),
+        )
 
         if title:
-            ax.set_title(title, color=theme["text"], fontsize=12)
+            ax.set_title(
+                title, color=theme["text"], fontsize=self._scaled_font_size(12)
+            )
         if y_label:
-            ax.set_ylabel(y_label, color=theme["text"])
+            ax.set_ylabel(
+                y_label,
+                color=theme["text"],
+                fontsize=self._scaled_font_size(10),
+            )
 
-        ax.tick_params(colors=theme["text"])
+        ax.tick_params(colors=theme["text"], labelsize=self._scaled_font_size(9))
         ax.grid(True, axis="y", alpha=0.3, color=theme["grid"])
 
         for spine in ax.spines.values():
@@ -180,13 +209,24 @@ class GraphWidget(ctk.CTkFrame):
 
         ax.bar(range(len(dates)), counts, color=theme["bar"], alpha=0.7)
         ax.set_xticks(range(len(dates)))
-        ax.set_xticklabels(dates, rotation=45, ha="right", fontsize=8)
+        ax.set_xticklabels(
+            dates,
+            rotation=45,
+            ha="right",
+            fontsize=self._scaled_font_size(8),
+        )
 
         if title:
-            ax.set_title(title, color=theme["text"], fontsize=12)
-        ax.set_ylabel("Attempts", color=theme["text"])
+            ax.set_title(
+                title, color=theme["text"], fontsize=self._scaled_font_size(12)
+            )
+        ax.set_ylabel(
+            "Attempts",
+            color=theme["text"],
+            fontsize=self._scaled_font_size(10),
+        )
 
-        ax.tick_params(colors=theme["text"])
+        ax.tick_params(colors=theme["text"], labelsize=self._scaled_font_size(9))
         ax.grid(True, axis="y", alpha=0.3, color=theme["grid"])
 
         for spine in ax.spines.values():

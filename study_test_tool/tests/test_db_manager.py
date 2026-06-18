@@ -11,6 +11,35 @@ from models.test_result import QuestionResponse, TestAttempt
 class TestDatabaseManagerTests:
     """Test CRUD operations."""
 
+    def _save_attempt_at(
+        self,
+        db,
+        test_id,
+        completed_at,
+        mode="test",
+        score=1,
+    ):
+        """Save an attempt with a deterministic completion timestamp."""
+        attempt_id = db.save_attempt(
+            TestAttempt(
+                test_id=test_id,
+                score=score,
+                total_questions=3,
+                percentage=score / 3 * 100,
+                mode=mode,
+            )
+        )
+        conn = db._conn()
+        try:
+            conn.execute(
+                "UPDATE test_attempts SET completed_at = ? WHERE id = ?",
+                (completed_at, attempt_id),
+            )
+            conn.commit()
+        finally:
+            conn.close()
+        return attempt_id
+
     def test_create_and_get_test(self, db):
         test = Test(name="My Test", description="Desc")
         test_id = db.create_test(test)
@@ -153,6 +182,109 @@ class TestDatabaseManagerTests:
         stats = db.get_test_statistics(test_id)
         assert stats["attempts"] == 2
         assert stats["best_score"] == 100.0
+
+    def test_get_attempts_page_returns_newest_page(self, populated_db):
+        """get_attempts_page returns only the requested newest attempts."""
+        db, test_id = populated_db
+        attempt_ids = [
+            self._save_attempt_at(
+                db,
+                test_id,
+                f"2026-01-01 10:0{index}:00",
+                score=index + 1,
+            )
+            for index in range(5)
+        ]
+
+        page = db.get_attempts_page(limit=2)
+
+        assert [attempt.id for attempt in page] == [attempt_ids[4], attempt_ids[3]]
+        assert all(attempt.test_name == "Sample Test" for attempt in page)
+
+    def test_get_attempts_page_offset_returns_next_page(self, populated_db):
+        """get_attempts_page uses offset without overlapping prior rows."""
+        db, test_id = populated_db
+        attempt_ids = [
+            self._save_attempt_at(
+                db,
+                test_id,
+                f"2026-01-01 10:0{index}:00",
+                score=index + 1,
+            )
+            for index in range(5)
+        ]
+
+        first_page = db.get_attempts_page(limit=2, offset=0)
+        second_page = db.get_attempts_page(limit=2, offset=2)
+
+        assert [attempt.id for attempt in first_page] == [
+            attempt_ids[4],
+            attempt_ids[3],
+        ]
+        assert [attempt.id for attempt in second_page] == [
+            attempt_ids[2],
+            attempt_ids[1],
+        ]
+        assert {attempt.id for attempt in first_page}.isdisjoint(
+            {attempt.id for attempt in second_page}
+        )
+
+    def test_get_attempts_page_filters_by_test_and_mode(self, populated_db):
+        """Paged attempt queries apply test and mode filters in SQL."""
+        db, test_id = populated_db
+        other_test_id = db.create_test(Test(name="Other Test"))
+        self._save_attempt_at(
+            db,
+            test_id,
+            "2026-01-01 10:00:00",
+            mode="test",
+        )
+        practice_id = self._save_attempt_at(
+            db,
+            test_id,
+            "2026-01-01 10:01:00",
+            mode="practice",
+        )
+        self._save_attempt_at(
+            db,
+            other_test_id,
+            "2026-01-01 10:02:00",
+            mode="practice",
+        )
+
+        page = db.get_attempts_page(limit=10, test_id=test_id, mode="practice")
+
+        assert [attempt.id for attempt in page] == [practice_id]
+        assert page[0].test_id == test_id
+        assert page[0].mode == "practice"
+
+    def test_count_attempts_matches_filters(self, populated_db):
+        """count_attempts uses the same filters as paged history loading."""
+        db, test_id = populated_db
+        other_test_id = db.create_test(Test(name="Other Test"))
+        self._save_attempt_at(
+            db,
+            test_id,
+            "2026-01-01 10:00:00",
+            mode="test",
+        )
+        self._save_attempt_at(
+            db,
+            test_id,
+            "2026-01-01 10:01:00",
+            mode="practice",
+        )
+        self._save_attempt_at(
+            db,
+            other_test_id,
+            "2026-01-01 10:02:00",
+            mode="practice",
+        )
+
+        assert db.count_attempts() == 3
+        assert db.count_attempts(test_id=test_id) == 2
+        assert db.count_attempts(mode="practice") == 2
+        assert db.count_attempts(test_id=test_id, mode="practice") == 1
 
     def test_delete_test_cascades_everything(self, populated_db):
         db, test_id = populated_db

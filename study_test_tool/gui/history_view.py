@@ -1,5 +1,6 @@
 """History view — browsable list of past test attempts."""
 
+from collections import Counter
 import threading
 import tkinter.messagebox as messagebox
 
@@ -31,6 +32,7 @@ HISTORY_COLUMNS = (
     ("%", 70, 1),
     ("Time", 80, 1),
 )
+HISTORY_PAGE_SIZE = 50
 
 
 class HistoryViewFrame(ctk.CTkFrame):
@@ -42,8 +44,12 @@ class HistoryViewFrame(ctk.CTkFrame):
         self.scoring_service = ScoringService()
         self.test_service = TestService()
 
-        self._all_attempts = []
+        self._loaded_attempts = []
+        self._total_attempts = 0
         self._tests = []
+        self._test_filter_options = {"All Tests": None}
+        self._is_loading = False
+        self._load_generation = 0
 
         self._build_ui()
 
@@ -165,8 +171,18 @@ class HistoryViewFrame(ctk.CTkFrame):
             fill="both",
             expand=True,
             padx=SPACE_24,
-            pady=(0, SPACE_24),
+            pady=(0, SPACE_12),
         )
+
+        self.load_more_frame = ctk.CTkFrame(self, fg_color="transparent")
+        self.load_more_button = ctk.CTkButton(
+            self.load_more_frame,
+            text="Load More",
+            width=160,
+            **get_button_style("secondary"),
+            command=self._load_next_page,
+        )
+        self.load_more_button.pack(anchor="center")
 
         self.loading_state = self._build_state_surface(
             self.table_body,
@@ -231,6 +247,7 @@ class HistoryViewFrame(ctk.CTkFrame):
     def _show_loading_state(self) -> None:
         """Show the designed loading surface while background data loads."""
         self._clear_table()
+        self._hide_load_more_button()
         self.empty_state.pack_forget()
         self.loading_state.pack(fill="x", pady=SPACE_24)
         self.header_meta_label.configure(text="Loading history")
@@ -250,7 +267,7 @@ class HistoryViewFrame(ctk.CTkFrame):
 
     def _update_attempt_summary(self, visible_count: int) -> None:
         """Update count labels without changing filtering behavior."""
-        total_count = len(self._all_attempts)
+        total_count = self._total_attempts
         if total_count == 0:
             text = "No attempts"
         elif visible_count == total_count:
@@ -266,36 +283,83 @@ class HistoryViewFrame(ctk.CTkFrame):
 
     def on_show(self, **kwargs) -> None:
         """Load data using a background thread."""
-        self._show_loading_state()
+        self._load_page(reset=True, include_tests=True)
 
-        thread = threading.Thread(target=self._load_data, daemon=True)
-        thread.start()
-
-    def _load_data(self) -> None:
+    def _load_data(
+        self,
+        generation: int,
+        reset: bool,
+        include_tests: bool,
+        test_id,
+        mode,
+        offset: int,
+    ) -> None:
         """Fetch attempts and tests from the DB (runs in background thread)."""
         try:
-            attempts = self.scoring_service.get_all_attempts()
-            tests = self.test_service.get_all_tests()
-            self.after(0, lambda: self._on_data_loaded(attempts, tests))
+            attempts = self.scoring_service.get_attempts_page(
+                limit=HISTORY_PAGE_SIZE,
+                offset=offset,
+                test_id=test_id,
+                mode=mode,
+            )
+            total_count = self.scoring_service.count_attempts(
+                test_id=test_id,
+                mode=mode,
+            )
+            tests = self.test_service.get_all_tests() if include_tests else None
+            self.after(
+                0,
+                lambda: self._on_data_loaded(
+                    generation,
+                    reset,
+                    attempts,
+                    tests,
+                    total_count,
+                ),
+            )
         except Exception as e:
-            self.after(0, lambda: self._on_load_error(str(e)))
+            self.after(0, lambda: self._on_load_error(generation, str(e)))
 
-    def _on_data_loaded(self, attempts, tests) -> None:
+    def _on_data_loaded(
+        self,
+        generation: int,
+        reset: bool,
+        attempts,
+        tests,
+        total_count: int,
+    ) -> None:
         """Update the UI with loaded data (runs on main thread)."""
+        if generation != self._load_generation:
+            return
+
+        self._is_loading = False
         self.loading_state.pack_forget()
-        self._all_attempts = attempts
-        self._tests = tests
+        self._total_attempts = total_count
 
-        test_names = ["All Tests"] + [t.name for t in tests]
-        self.filter_menu.configure(values=test_names)
+        if tests is not None:
+            self._tests = tests
+            self._configure_test_filter_menu(tests)
 
-        self._apply_filters()
+        if reset:
+            self._loaded_attempts = list(attempts)
+        else:
+            self._loaded_attempts.extend(attempts)
 
-    def _on_load_error(self, error: str) -> None:
+        self._display_attempts(self._loaded_attempts)
+        self._update_load_more_button()
+
+    def _on_load_error(self, generation: int, error: str) -> None:
         """Handle loading errors."""
+        if generation != self._load_generation:
+            return
+
+        self._is_loading = False
         self.loading_state.pack_forget()
-        self.header_meta_label.configure(text="Unable to load history")
-        self.count_label.configure(text="Load failed")
+        if self._loaded_attempts:
+            self._update_load_more_button()
+        else:
+            self.header_meta_label.configure(text="Unable to load history")
+            self.count_label.configure(text="Load failed")
         messagebox.showerror("Error", f"Failed to load history: {error}")
 
     def _on_filter_change(self, value: str) -> None:
@@ -303,19 +367,99 @@ class HistoryViewFrame(ctk.CTkFrame):
         self._apply_filters()
 
     def _apply_filters(self) -> None:
-        """Filter attempts by test name and mode."""
-        filtered = self._all_attempts
+        """Reload the first page for the active filters."""
+        self._load_page(reset=True)
 
-        test_filter = self.filter_var.get()
-        if test_filter != "All Tests":
-            filtered = [a for a in filtered if a.test_name == test_filter]
+    def _load_next_page(self) -> None:
+        """Append the next page of older attempts."""
+        if self._is_loading:
+            return
+        if len(self._loaded_attempts) >= self._total_attempts:
+            return
+        self._load_page(reset=False)
 
+    def _load_page(self, reset: bool, include_tests: bool = False) -> None:
+        """Load one page using the currently selected filters."""
+        if reset:
+            self._loaded_attempts = []
+            self._total_attempts = 0
+            self._show_loading_state()
+        else:
+            self._set_load_more_loading()
+
+        self._is_loading = True
+        self._load_generation += 1
+        generation = self._load_generation
+        offset = 0 if reset else len(self._loaded_attempts)
+        test_id = self._selected_test_id()
+        mode = self._selected_mode()
+
+        thread = threading.Thread(
+            target=self._load_data,
+            args=(generation, reset, include_tests, test_id, mode, offset),
+            daemon=True,
+        )
+        thread.start()
+
+    def _selected_test_id(self):
+        """Return the selected test id, or None for all tests."""
+        return self._test_filter_options.get(self.filter_var.get())
+
+    def _selected_mode(self):
+        """Return the selected mode, or None for all modes."""
         mode_filter = self.mode_filter_var.get()
-        if mode_filter != "All Modes":
-            mode_val = mode_filter.lower()
-            filtered = [a for a in filtered if a.mode == mode_val]
+        if mode_filter == "All Modes":
+            return None
+        return mode_filter.lower()
 
-        self._display_attempts(filtered)
+    def _has_active_filters(self) -> bool:
+        """Return whether any history filters are active."""
+        return self._selected_test_id() is not None or self._selected_mode() is not None
+
+    def _configure_test_filter_menu(self, tests) -> None:
+        """Configure the test filter and disambiguate duplicate names."""
+        current_test_id = self._selected_test_id()
+        name_counts = Counter(t.name for t in tests)
+        values = ["All Tests"]
+        options = {"All Tests": None}
+        selected_label = "All Tests"
+
+        for test in tests:
+            label = test.name
+            if name_counts[test.name] > 1 and test.id is not None:
+                label = f"{test.name} (#{test.id})"
+
+            values.append(label)
+            options[label] = test.id
+            if test.id == current_test_id:
+                selected_label = label
+
+        self._test_filter_options = options
+        self.filter_menu.configure(values=values)
+        self.filter_var.set(selected_label)
+
+    def _set_load_more_loading(self) -> None:
+        """Show the Load More control in a loading state."""
+        self._show_load_more_button()
+        self.load_more_button.configure(text="Loading...", state="disabled")
+
+    def _update_load_more_button(self) -> None:
+        """Show or hide the Load More control based on remaining attempts."""
+        remaining = self._total_attempts - len(self._loaded_attempts)
+        if remaining > 0:
+            self._show_load_more_button()
+            self.load_more_button.configure(text="Load More", state="normal")
+        else:
+            self._hide_load_more_button()
+
+    def _show_load_more_button(self) -> None:
+        """Show the Load More footer."""
+        if not self.load_more_frame.winfo_ismapped():
+            self.load_more_frame.pack(fill="x", padx=SPACE_24, pady=(0, SPACE_24))
+
+    def _hide_load_more_button(self) -> None:
+        """Hide the Load More footer."""
+        self.load_more_frame.pack_forget()
 
     def _clear_table(self) -> None:
         """Remove all rows from the table."""
@@ -329,7 +473,7 @@ class HistoryViewFrame(ctk.CTkFrame):
         self._update_attempt_summary(len(attempts))
 
         if not attempts:
-            if self._all_attempts:
+            if self._has_active_filters():
                 self._show_empty_state(
                     "No matching attempts",
                     "Adjust the History filters to show more attempts.",

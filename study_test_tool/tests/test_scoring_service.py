@@ -4,6 +4,7 @@ import pytest
 
 from models.question import Question, QuestionOption
 from models.test import Test
+from models.test_result import TestAttempt
 from services.scoring_service import ScoringService
 from services.test_session import TestSession
 
@@ -139,18 +140,79 @@ class TestScoringService:
         details = db.get_attempt_details(attempt_id)
         assert len(details.responses) == 3  # all questions get a response
 
+    def test_get_attempts_page_and_count(self, populated_db):
+        """ScoringService exposes paged attempt history APIs."""
+        db, test_id = populated_db
+        db.save_attempt(
+            TestAttempt(
+                test_id=test_id,
+                score=2,
+                total_questions=3,
+                percentage=66.7,
+                mode="practice",
+            )
+        )
+        db.save_attempt(
+            TestAttempt(
+                test_id=test_id,
+                score=3,
+                total_questions=3,
+                percentage=100.0,
+                mode="test",
+            )
+        )
+        scoring = ScoringService(":memory:")
+        scoring._db = db
+
+        page = scoring.get_attempts_page(limit=1, mode="practice")
+
+        assert scoring.count_attempts(test_id=test_id) == 2
+        assert scoring.count_attempts(test_id=test_id, mode="practice") == 1
+        assert len(page) == 1
+        assert page[0].mode == "practice"
+
     def test_save_mixed_attempt_creates_per_test_attempts(self, db_path, db):
         """Mixed attempt creates one saved attempt per source test."""
         t1_id = db.create_test(Test(name="Test A"))
         t2_id = db.create_test(Test(name="Test B"))
 
-        q1_id = db.add_question(Question(test_id=t1_id, text="Q1", type="multiple_choice", correct_answer="A"))
-        q2_id = db.add_question(Question(test_id=t1_id, text="Q2", type="multiple_choice", correct_answer="B"))
-        q3_id = db.add_question(Question(test_id=t2_id, text="Q3", type="multiple_choice", correct_answer="C"))
+        q1_id = db.add_question(
+            Question(
+                test_id=t1_id, text="Q1", type="multiple_choice", correct_answer="A"
+            )
+        )
+        q2_id = db.add_question(
+            Question(
+                test_id=t1_id, text="Q2", type="multiple_choice", correct_answer="B"
+            )
+        )
+        q3_id = db.add_question(
+            Question(
+                test_id=t2_id, text="Q3", type="multiple_choice", correct_answer="C"
+            )
+        )
 
-        q1 = Question(id=q1_id, test_id=t1_id, text="Q1", type="multiple_choice", correct_answer="A")
-        q2 = Question(id=q2_id, test_id=t1_id, text="Q2", type="multiple_choice", correct_answer="B")
-        q3 = Question(id=q3_id, test_id=t2_id, text="Q3", type="multiple_choice", correct_answer="C")
+        q1 = Question(
+            id=q1_id,
+            test_id=t1_id,
+            text="Q1",
+            type="multiple_choice",
+            correct_answer="A",
+        )
+        q2 = Question(
+            id=q2_id,
+            test_id=t1_id,
+            text="Q2",
+            type="multiple_choice",
+            correct_answer="B",
+        )
+        q3 = Question(
+            id=q3_id,
+            test_id=t2_id,
+            text="Q3",
+            type="multiple_choice",
+            correct_answer="C",
+        )
 
         session = TestSession(test_id=None, questions=[q1, q2, q3])
         session.start()
@@ -167,13 +229,43 @@ class TestScoringService:
         t1_id = db.create_test(Test(name="Test A"))
         t2_id = db.create_test(Test(name="Test B"))
 
-        q1_id = db.add_question(Question(test_id=t1_id, text="Q1", type="multiple_choice", correct_answer="A"))
-        q2_id = db.add_question(Question(test_id=t1_id, text="Q2", type="multiple_choice", correct_answer="B"))
-        q3_id = db.add_question(Question(test_id=t2_id, text="Q3", type="multiple_choice", correct_answer="C"))
+        q1_id = db.add_question(
+            Question(
+                test_id=t1_id, text="Q1", type="multiple_choice", correct_answer="A"
+            )
+        )
+        q2_id = db.add_question(
+            Question(
+                test_id=t1_id, text="Q2", type="multiple_choice", correct_answer="B"
+            )
+        )
+        q3_id = db.add_question(
+            Question(
+                test_id=t2_id, text="Q3", type="multiple_choice", correct_answer="C"
+            )
+        )
 
-        q1 = Question(id=q1_id, test_id=t1_id, text="Q1", type="multiple_choice", correct_answer="A")
-        q2 = Question(id=q2_id, test_id=t1_id, text="Q2", type="multiple_choice", correct_answer="B")
-        q3 = Question(id=q3_id, test_id=t2_id, text="Q3", type="multiple_choice", correct_answer="C")
+        q1 = Question(
+            id=q1_id,
+            test_id=t1_id,
+            text="Q1",
+            type="multiple_choice",
+            correct_answer="A",
+        )
+        q2 = Question(
+            id=q2_id,
+            test_id=t1_id,
+            text="Q2",
+            type="multiple_choice",
+            correct_answer="B",
+        )
+        q3 = Question(
+            id=q3_id,
+            test_id=t2_id,
+            text="Q3",
+            type="multiple_choice",
+            correct_answer="C",
+        )
 
         session = TestSession(test_id=None, questions=[q1, q2, q3])
         session.start()

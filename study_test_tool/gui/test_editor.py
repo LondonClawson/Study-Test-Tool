@@ -1,17 +1,20 @@
 """Test editor screen — create and edit tests with questions."""
 
+import tkinter as tk
 import tkinter.messagebox as messagebox
 
 import customtkinter as ctk
 
 from gui.components.autocomplete_entry import AutocompleteEntry
+from gui.components.formatting_toolbar import FormattingToolbar
+from gui.components.formatted_text import FormattedText
 from config.settings import (
-    FONT_FAMILY,
     QUESTION_TYPE_ESSAY,
     QUESTION_TYPE_MC,
 )
 from gui.styles import (
     FONT_CARD_TITLE,
+    FONT_COMPACT_BOLD,
     RADIUS_CARD,
     RADIUS_CONTROL,
     SPACE_4,
@@ -44,6 +47,7 @@ class TestEditorFrame(ctk.CTkFrame):
         self._test_id = None
         self._editing_question_id = None
         self._clean_snapshot = None
+        self._active_format_widget = None
 
         self._build_ui()
 
@@ -230,6 +234,12 @@ class TestEditorFrame(ctk.CTkFrame):
         )
         self.form_title.grid(row=0, column=0, sticky="ew")
 
+        self.format_toolbar = FormattingToolbar(
+            form_header,
+            self._get_active_format_widget,
+        )
+        self.format_toolbar.grid(row=0, column=1, sticky="e", padx=(SPACE_8, 0))
+
         self.form_mode_badge = ctk.CTkLabel(
             form_header,
             text="New",
@@ -237,7 +247,13 @@ class TestEditorFrame(ctk.CTkFrame):
             corner_radius=RADIUS_CONTROL,
             **get_text_style("metadata"),
         )
-        self.form_mode_badge.grid(row=0, column=1, sticky="e", ipadx=SPACE_8)
+        self.form_mode_badge.grid(
+            row=0,
+            column=2,
+            sticky="e",
+            padx=(SPACE_8, 0),
+            ipadx=SPACE_8,
+        )
 
         self.form_scroll = ctk.CTkScrollableFrame(
             right_frame,
@@ -267,6 +283,8 @@ class TestEditorFrame(ctk.CTkFrame):
             fg_color=get_color("surface"),
         )
         self.question_text.pack(fill="x", pady=(0, SPACE_8))
+        self._register_format_widget(self.question_text)
+        self._active_format_widget = self.question_text
 
         details_section = self._create_form_section(
             self.form_scroll, "Question Details"
@@ -341,6 +359,7 @@ class TestEditorFrame(ctk.CTkFrame):
             fg_color=get_color("surface"),
         )
         self.essay_answer.pack(fill="x")
+        self._register_format_widget(self.essay_answer)
 
         explanation_section = self._create_form_section(self.form_scroll, "Explanation")
         self._add_field_label(explanation_section, "Explanation (optional)")
@@ -353,6 +372,7 @@ class TestEditorFrame(ctk.CTkFrame):
             fg_color=get_color("surface"),
         )
         self.explanation_text.pack(fill="x")
+        self._register_format_widget(self.explanation_text)
 
         # Add/Update actions
         self.action_frame = ctk.CTkFrame(self.form_scroll, fg_color="transparent")
@@ -466,13 +486,12 @@ class TestEditorFrame(ctk.CTkFrame):
         info = ctk.CTkFrame(card, fg_color="transparent")
         info.grid(row=0, column=1, sticky="nsew", pady=SPACE_12)
 
-        ctk.CTkLabel(
+        FormattedText(
             info,
             text=question.text,
-            anchor="w",
-            wraplength=165,
-            justify="left",
-            **get_text_style("body"),
+            text_role="body",
+            background_color=get_color("surface"),
+            max_lines=4,
         ).pack(fill="x")
 
         type_label = "MC" if question.type == QUESTION_TYPE_MC else "Essay"
@@ -529,7 +548,7 @@ class TestEditorFrame(ctk.CTkFrame):
             fg_color=color,
             corner_radius=RADIUS_CONTROL,
             text_color=get_color("text_inverse"),
-            font=(FONT_FAMILY, 11, "bold"),
+            font=FONT_COMPACT_BOLD,
         )
 
     def _on_type_change(self, value: str) -> None:
@@ -587,6 +606,7 @@ class TestEditorFrame(ctk.CTkFrame):
             entry.pack(side="left", fill="x", expand=True, pady=SPACE_8)
             if text:
                 entry.insert(0, text)
+            self._register_format_widget(entry)
 
             remove_btn = ctk.CTkButton(
                 row,
@@ -629,6 +649,27 @@ class TestEditorFrame(ctk.CTkFrame):
     def _current_option_texts(self) -> list:
         """Return the current text of every option entry, in row order."""
         return [entry.get() for entry in self.option_entries]
+
+    def _get_active_format_widget(self):
+        """Return the focused editor field for formatting actions."""
+        if self._active_format_widget is not None:
+            try:
+                if self._active_format_widget.winfo_exists():
+                    return self._active_format_widget
+            except tk.TclError:
+                pass
+        return self.question_text
+
+    def _register_format_widget(self, widget) -> None:
+        """Track a field as the target for the formatting toolbar."""
+        callback = lambda _event, target=widget: self._set_active_format_widget(target)
+        widget.bind("<FocusIn>", callback)
+        inner = getattr(widget, "_textbox", getattr(widget, "_entry", None))
+        if inner is not None:
+            inner.bind("<FocusIn>", callback)
+
+    def _set_active_format_widget(self, widget) -> None:
+        self._active_format_widget = widget
 
     def _on_add_option(self) -> None:
         """Append an empty option row."""

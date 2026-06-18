@@ -16,7 +16,9 @@ class ScoringService:
         self._db = DatabaseManager(db_path)
 
     @staticmethod
-    def score_question(question: Question, user_answer: Optional[str]) -> Optional[bool]:
+    def score_question(
+        question: Question, user_answer: Optional[str]
+    ) -> Optional[bool]:
         """Score a single question.
 
         Args:
@@ -85,9 +87,7 @@ class ScoringService:
             "responses": scored_responses,
         }
 
-    def save_attempt(
-        self, test_id: int, score_data: Dict, mode: str = "test"
-    ) -> int:
+    def save_attempt(self, test_id: int, score_data: Dict, mode: str = "test") -> int:
         """Persist a test attempt and its responses to the database.
 
         Args:
@@ -185,6 +185,27 @@ class ScoringService:
     def get_all_attempts(self):
         """Get all test attempts."""
         return self._db.get_all_attempts()
+
+    def count_attempts(
+        self, test_id: Optional[int] = None, mode: Optional[str] = None
+    ) -> int:
+        """Count attempts, optionally filtered by test and mode."""
+        return self._db.count_attempts(test_id=test_id, mode=mode)
+
+    def get_attempts_page(
+        self,
+        limit: int,
+        offset: int = 0,
+        test_id: Optional[int] = None,
+        mode: Optional[str] = None,
+    ):
+        """Get a page of attempts, optionally filtered by test and mode."""
+        return self._db.get_attempts_page(
+            limit=limit,
+            offset=offset,
+            test_id=test_id,
+            mode=mode,
+        )
 
     def get_attempts_for_test(self, test_id: int):
         """Get all attempts for a specific test."""

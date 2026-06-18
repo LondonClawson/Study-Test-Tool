@@ -4,6 +4,7 @@ from typing import Dict, List, Optional, Set
 
 import customtkinter as ctk
 
+from gui.components.formatted_text import FormattedText
 from gui.styles import (
     RADIUS_CONTROL,
     SPACE_4,
@@ -485,13 +486,11 @@ class ReviewViewFrame(ctk.CTkFrame):
             **self._checkbox_style("body"),
         ).pack(side="left", padx=(0, SPACE_8))
 
-        ctk.CTkLabel(
+        FormattedText(
             top_row,
             text=item["question_text"],
-            wraplength=680,
-            justify="left",
-            anchor="nw",
-            **get_text_style("body"),
+            text_role="body",
+            background_color=get_color("surface"),
         ).pack(side="left", fill="x", expand=True)
 
         meta_row = ctk.CTkFrame(card, fg_color="transparent")

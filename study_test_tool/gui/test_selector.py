@@ -6,6 +6,7 @@ import tkinter.messagebox as messagebox
 
 import customtkinter as ctk
 
+from config.user_preferences import TEXT_SIZE_OPTIONS
 from gui.components.collapsible_group import CollapsibleGroup
 from gui.components.import_preview_dialog import ImportPreviewDialog
 from gui.components.mix_test_dialog import MixTestDialog
@@ -124,6 +125,33 @@ class TestSelectorFrame(ctk.CTkFrame):
             width=120,
             **get_button_style("special"),
         ).pack(side="left")
+
+        text_size_frame = ctk.CTkFrame(primary_actions, fg_color="transparent")
+        text_size_frame.pack(side="right")
+
+        ctk.CTkLabel(
+            text_size_frame,
+            text="Text Size",
+            **get_text_style("metadata"),
+        ).pack(side="left", padx=(0, SPACE_8))
+
+        self._text_size_menu = ctk.CTkOptionMenu(
+            text_size_frame,
+            values=TEXT_SIZE_OPTIONS,
+            width=132,
+            height=34,
+            font=FONT_METADATA,
+            fg_color=get_color("surface_subtle"),
+            button_color=get_color("surface_muted"),
+            button_hover_color=get_color("divider"),
+            text_color=get_color("text_primary"),
+            dropdown_fg_color=get_color("surface"),
+            dropdown_hover_color=get_color("surface_subtle"),
+            dropdown_text_color=get_color("text_primary"),
+            command=self._on_text_size_changed,
+        )
+        self._text_size_menu.set(self.controller.get_text_size())
+        self._text_size_menu.pack(side="left")
 
         ctk.CTkButton(
             navigation_actions,
@@ -258,7 +286,12 @@ class TestSelectorFrame(ctk.CTkFrame):
 
     def on_show(self, **kwargs) -> None:
         """Refresh the test list when this screen is shown."""
+        self._text_size_menu.set(self.controller.get_text_size())
         self._refresh_test_list()
+
+    def _on_text_size_changed(self, value: str) -> None:
+        """Apply the selected app text size."""
+        self.controller.set_text_size(value)
 
     def _update_header_summary(self, active_count: int, archived_count: int) -> None:
         """Update the page header metadata from the current test list."""
