@@ -31,6 +31,8 @@ class FormattedText(ctk.CTkFrame):
         self._text_color = text_color or style["text_color"]
         self._background_color = background_color or get_color("surface")
         self._max_lines = max_lines
+        self._resize_callback = None
+        self._rendered_height = None
 
         self._text = tk.Text(
             self,
@@ -48,7 +50,7 @@ class FormattedText(ctk.CTkFrame):
             exportselection=False,
         )
         self._text.pack(fill="x", expand=True)
-        self._text.bind("<Configure>", self._resize_to_content)
+        self._text.bind("<Configure>", self._schedule_resize)
         self._configure_colors()
         self.set_text(text)
 
@@ -59,7 +61,7 @@ class FormattedText(ctk.CTkFrame):
         for segment in parse_markdown_lite(text or ""):
             self._insert_segment(segment)
         self._text.configure(state="disabled")
-        self.after_idle(self._resize_to_content)
+        self._schedule_resize()
 
     def configure_text_color(self, text_color: ThemeColor) -> None:
         """Update the foreground color for all formatted spans."""
@@ -128,7 +130,14 @@ class FormattedText(ctk.CTkFrame):
                 continue
             self._text.tag_configure(tag, foreground=fg, background=bg)
 
-    def _resize_to_content(self, _event=None) -> None:
+    def _schedule_resize(self, _event=None) -> None:
+        """Schedule one content-height measurement for the current idle cycle."""
+        if self._resize_callback is None:
+            self._resize_callback = self.after_idle(self._resize_to_content)
+
+    def _resize_to_content(self) -> None:
+        """Resize only when the displayed line count changes."""
+        self._resize_callback = None
         try:
             count = self._text.count("1.0", "end-1c", "displaylines")
         except tk.TclError:
@@ -136,7 +145,20 @@ class FormattedText(ctk.CTkFrame):
         lines = count[0] if count else 1
         if self._max_lines is not None:
             lines = min(lines, self._max_lines)
-        self._text.configure(height=max(lines, 1))
+        height = max(lines, 1)
+        if height != self._rendered_height:
+            self._text.configure(height=height)
+            self._rendered_height = height
+
+    def destroy(self) -> None:
+        """Cancel a queued resize before destroying this widget."""
+        if self._resize_callback is not None:
+            try:
+                self.after_cancel(self._resize_callback)
+            except tk.TclError:
+                pass
+            self._resize_callback = None
+        super().destroy()
 
 
 def _resolve_color(color: ThemeColor) -> str:

@@ -59,6 +59,8 @@ CREATE INDEX IF NOT EXISTS idx_questions_test_id ON questions (test_id);
 CREATE INDEX IF NOT EXISTS idx_question_options_question_id ON question_options (question_id);
 CREATE INDEX IF NOT EXISTS idx_test_attempts_test_id ON test_attempts (test_id);
 CREATE INDEX IF NOT EXISTS idx_test_attempts_completed_at ON test_attempts (completed_at);
+CREATE INDEX IF NOT EXISTS idx_test_attempts_mode_completed_id ON test_attempts (mode, completed_at DESC, id DESC);
+CREATE INDEX IF NOT EXISTS idx_test_attempts_test_mode_completed_id ON test_attempts (test_id, mode, completed_at DESC, id DESC);
 CREATE INDEX IF NOT EXISTS idx_question_responses_attempt_id ON question_responses (attempt_id);
 CREATE INDEX IF NOT EXISTS idx_question_responses_question_id ON question_responses (question_id);
 CREATE INDEX IF NOT EXISTS idx_question_responses_is_correct ON question_responses (is_correct);

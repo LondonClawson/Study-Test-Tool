@@ -106,13 +106,7 @@ class ScoringService:
             time_taken=score_data["time_taken"],
             mode=mode,
         )
-        attempt_id = self._db.save_attempt(attempt)
-
-        for response in score_data["responses"]:
-            response.attempt_id = attempt_id
-            self._db.save_response(response)
-
-        return attempt_id
+        return self._db.save_attempt_with_responses(attempt, score_data["responses"])
 
     def save_mixed_attempt(
         self,

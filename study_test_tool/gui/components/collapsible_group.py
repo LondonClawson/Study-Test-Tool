@@ -27,6 +27,7 @@ class CollapsibleGroup(ctk.CTkFrame):
         test_count: int,
         expanded: bool = False,
         archive_callback: Optional[Callable] = None,
+        on_expand: Optional[Callable[[], None]] = None,
         **kwargs,
     ) -> None:
         super().__init__(parent, fg_color="transparent", **kwargs)
@@ -34,6 +35,7 @@ class CollapsibleGroup(ctk.CTkFrame):
         self._group_name = group_name
         self._test_count = test_count
         self._archive_callback = archive_callback
+        self._on_expand = on_expand
 
         self._build_header()
         self._content_frame = ctk.CTkFrame(self, fg_color="transparent")
@@ -89,6 +91,8 @@ class CollapsibleGroup(ctk.CTkFrame):
         arrow = "▼" if self._is_expanded else "▶"
         self._toggle_btn.configure(text=self._make_label(arrow))
         if self._is_expanded:
+            if self._on_expand is not None:
+                self._on_expand()
             self._content_frame.pack(fill="x", padx=SPACE_12, pady=(0, SPACE_8))
         else:
             self._content_frame.pack_forget()

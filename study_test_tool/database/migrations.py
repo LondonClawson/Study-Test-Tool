@@ -38,6 +38,16 @@ MIGRATIONS: List[Tuple[int, str, List[str]]] = [
             "ALTER TABLE questions ADD COLUMN explanation TEXT DEFAULT ''",
         ],
     ),
+    (
+        5,
+        "Add History filtered-query indexes",
+        [
+            "CREATE INDEX IF NOT EXISTS idx_test_attempts_mode_completed_id "
+            "ON test_attempts (mode, completed_at DESC, id DESC)",
+            "CREATE INDEX IF NOT EXISTS idx_test_attempts_test_mode_completed_id "
+            "ON test_attempts (test_id, mode, completed_at DESC, id DESC)",
+        ],
+    ),
 ]
 
 

@@ -1,7 +1,12 @@
 """Analytics view — performance graphs and weak topic identification."""
 
+import threading
+from queue import Empty, Queue
+from typing import Dict, Optional
+
 import customtkinter as ctk
 
+from gui.analytics_loading import AnalyticsLoadState
 from gui.components.graph_widget import GraphWidget
 from gui.styles import (
     RADIUS_CONTROL,
@@ -16,7 +21,7 @@ from gui.styles import (
     get_header_style,
     get_text_style,
 )
-from services.analytics_service import AnalyticsService
+from services.analytics_service import AnalyticsService, MAX_SCORE_TREND_POINTS
 from services.test_service import TestService
 from utils.constants import SCREEN_HOME
 
@@ -31,6 +36,9 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         self.controller = controller
         self.analytics_service = AnalyticsService()
         self.test_service = TestService()
+        self._load_state = AnalyticsLoadState()
+        self._load_result_queue: Optional[Queue] = None
+        self._test_ids_by_name: Dict[str, int] = {}
 
         self._build_ui()
 
@@ -150,6 +158,7 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         )
 
         self.chart_empty_state = self._build_chart_empty_state()
+        self.loading_state = self._build_loading_state()
 
         self.weak_topics_frame = ctk.CTkScrollableFrame(
             self.content_frame,
@@ -159,6 +168,21 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         )
 
         self.weak_topics_empty_state = self._build_weak_topics_empty_state()
+
+    def _build_loading_state(self) -> ctk.CTkFrame:
+        """Create the shared loading surface for every Analytics tab."""
+        state = ctk.CTkFrame(self.content_frame, **get_card_style("default"))
+        ctk.CTkLabel(
+            state,
+            text="Loading analytics...",
+            **get_text_style("card_title"),
+        ).pack(pady=(SPACE_24, SPACE_4))
+        ctk.CTkLabel(
+            state,
+            text="Preparing your study data.",
+            **get_text_style("card_description"),
+        ).pack(padx=SPACE_24, pady=(0, SPACE_24))
+        return state
 
     def _option_menu_style(self) -> dict:
         """Return semantic option-menu styling for Analytics filters."""
@@ -230,6 +254,9 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         """Load data when shown."""
         tests = self.test_service.get_all_tests()
         test_names = ["All Tests"] + [t.name for t in tests]
+        self._test_ids_by_name = {}
+        for test in tests:
+            self._test_ids_by_name.setdefault(test.name, test.id)
         self.test_filter_menu.configure(values=test_names)
         self.test_filter_var.set("All Tests")
         self.group_by_var.set("Test")
@@ -250,11 +277,7 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         test_filter = self.test_filter_var.get()
         if test_filter == "All Tests":
             return None
-        tests = self.test_service.get_all_tests()
-        for t in tests:
-            if t.name == test_filter:
-                return t.id
-        return None
+        return self._test_ids_by_name.get(test_filter)
 
     def _render_current_tab(self) -> None:
         """Render the currently selected tab."""
@@ -265,6 +288,7 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         self.chart_empty_state.pack_forget()
         self.weak_topics_frame.pack_forget()
         self.weak_topics_empty_state.pack_forget()
+        self.loading_state.pack_forget()
 
         if tab == "Weak Topics":
             self.group_by_label.grid(
@@ -279,14 +303,107 @@ class AnalyticsViewFrame(ctk.CTkFrame):
             self.group_by_label.grid_remove()
             self.group_by_seg.grid_remove()
 
+        self._request_tab_data(
+            tab,
+            self._get_selected_test_id(),
+            {
+                "Test": "test",
+                "Group": "group",
+                "Category": "category",
+            }.get(self.group_by_var.get(), "test"),
+        )
+
+    def _request_tab_data(
+        self,
+        tab: str,
+        test_id: Optional[int],
+        group_by: str,
+    ) -> None:
+        """Fetch the selected Analytics tab outside the Tk event loop."""
+        generation = self._load_state.begin_request()
+        result_queue = Queue()
+        self._load_result_queue = result_queue
+        self.loading_state.pack(fill="both", expand=True)
+        thread = threading.Thread(
+            target=self._load_tab_data,
+            args=(tab, test_id, group_by, result_queue),
+            daemon=True,
+        )
+        thread.start()
+        self.after(20, self._poll_tab_load, generation, tab, group_by, result_queue)
+
+    def _load_tab_data(
+        self,
+        tab: str,
+        test_id: Optional[int],
+        group_by: str,
+        result_queue: Queue,
+    ) -> None:
+        """Read one Analytics payload without touching Tk widgets."""
+        try:
+            if tab == "Score Trends":
+                data = self.analytics_service.get_scores_over_time(
+                    test_id=test_id,
+                    max_points=MAX_SCORE_TREND_POINTS,
+                )
+            elif tab == "Test Comparison":
+                data = self.analytics_service.get_average_scores_by_test()
+            elif tab == "Study Activity":
+                data = self.analytics_service.get_attempt_frequency(days=30)
+            else:
+                data = self.analytics_service.get_weak_topics(
+                    test_id=test_id,
+                    group_by=group_by,
+                )
+            result_queue.put(("success", data))
+        except Exception as error:
+            result_queue.put(("error", str(error)))
+
+    def _poll_tab_load(
+        self,
+        generation: int,
+        tab: str,
+        group_by: str,
+        result_queue: Queue,
+    ) -> None:
+        """Apply the current worker result from the Tk event loop."""
+        if not self._load_state.is_current(generation):
+            return
+        try:
+            result = result_queue.get_nowait()
+        except Empty:
+            self.after(20, self._poll_tab_load, generation, tab, group_by, result_queue)
+            return
+
+        self.loading_state.pack_forget()
+        if result[0] == "success":
+            self._render_loaded_tab(tab, group_by, result[1])
+        else:
+            self._show_load_error(tab, group_by)
+
+    def _render_loaded_tab(self, tab: str, group_by: str, data: list) -> None:
+        """Render a worker payload after confirming it is still current."""
         if tab == "Score Trends":
-            self._render_score_trends()
+            self._render_score_trends(data)
         elif tab == "Test Comparison":
-            self._render_test_comparison()
+            self._render_test_comparison(data)
         elif tab == "Study Activity":
-            self._render_study_activity()
-        elif tab == "Weak Topics":
-            self._render_weak_topics()
+            self._render_study_activity(data)
+        else:
+            self._render_weak_topics(data, group_by)
+
+    def _show_load_error(self, tab: str, group_by: str) -> None:
+        """Show the existing tab-specific empty surface after a load failure."""
+        if tab == "Weak Topics":
+            self._show_weak_topics_empty(
+                "Analytics could not load",
+                "Try changing the view or returning to Analytics.",
+            )
+        else:
+            self._show_chart_empty(
+                "Analytics could not load",
+                "Try changing the view or returning to Analytics.",
+            )
 
     def _show_chart_shell(self) -> None:
         """Show the shared chart surface."""
@@ -307,11 +424,8 @@ class AnalyticsViewFrame(ctk.CTkFrame):
         self.weak_topics_empty_helper.configure(text=helper)
         self.weak_topics_empty_state.pack(fill="x", pady=SPACE_24)
 
-    def _render_score_trends(self) -> None:
+    def _render_score_trends(self, data: list) -> None:
         """Render score trends line chart."""
-        test_id = self._get_selected_test_id()
-        data = self.analytics_service.get_scores_over_time(test_id=test_id)
-
         if not data:
             self._show_chart_empty(
                 "No score trend yet",
@@ -331,10 +445,8 @@ class AnalyticsViewFrame(ctk.CTkFrame):
             y_label="Score (%)",
         )
 
-    def _render_test_comparison(self) -> None:
+    def _render_test_comparison(self, data: list) -> None:
         """Render test comparison bar chart."""
-        data = self.analytics_service.get_average_scores_by_test()
-
         if not data:
             self._show_chart_empty(
                 "No comparison data yet",
@@ -353,10 +465,8 @@ class AnalyticsViewFrame(ctk.CTkFrame):
             y_label="Average Score (%)",
         )
 
-    def _render_study_activity(self) -> None:
+    def _render_study_activity(self, data: list) -> None:
         """Render study activity chart."""
-        data = self.analytics_service.get_attempt_frequency(days=30)
-
         if not data:
             self._show_chart_empty(
                 "No study activity yet",
@@ -375,18 +485,8 @@ class AnalyticsViewFrame(ctk.CTkFrame):
             title="Study Activity (Last 30 Days)",
         )
 
-    def _render_weak_topics(self) -> None:
+    def _render_weak_topics(self, topics: list, group_by: str) -> None:
         """Render weak topics list with color-coded indicators."""
-        test_id = self._get_selected_test_id()
-        group_by = {
-            "Test": "test",
-            "Group": "group",
-            "Category": "category",
-        }.get(self.group_by_var.get(), "test")
-        topics = self.analytics_service.get_weak_topics(
-            test_id=test_id, group_by=group_by
-        )
-
         if not topics:
             if group_by == "category":
                 self._show_weak_topics_empty(

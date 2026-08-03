@@ -67,3 +67,10 @@ been split; assign the child stories instead.
 | --- | --- |
 | `STORY-016_light_dark_and_min_size_validation.md` | Completed MVP screen stories |
 | `STORY-017_mvp_visual_regression_pass.md` | Acceptance matrix, baseline audit, foundation decisions, completed handoffs |
+
+## Post-MVP Scalability Dependencies
+
+| Research/Story | Produces | Unblocks |
+| --- | --- | --- |
+| `R-010_history_benchmark_query_plan.md` | Accepted History timing and query-plan evidence in `CTX-PERFORMANCE-SCALE` | A bounded History filter-index migration; pagination remains separate |
+| `STORY-025_history_filter_index_migration.md` | Fresh-schema and compatibility History indexes | Filtered History query-plan improvement without pagination behavior changes |

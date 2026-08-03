@@ -46,6 +46,41 @@ class TestScoresOverTime:
         scores = service.get_scores_over_time()
         assert scores == []
 
+    def test_scores_over_time_cap_retains_chronological_endpoints(self, db):
+        """A capped trend is sampled by SQLite without losing its endpoints."""
+        from models.test import Test
+        from models.test_result import TestAttempt
+
+        test_id = db.create_test(Test(name="Large History"))
+        for index in range(501):
+            db.save_attempt(
+                TestAttempt(
+                    test_id=test_id,
+                    score=index % 4,
+                    total_questions=4,
+                    percentage=float(index % 101),
+                    mode="test",
+                )
+            )
+
+        service = AnalyticsService(db._db_path)
+        full_scores = service.get_scores_over_time(test_id=test_id)
+        capped_scores = service.get_scores_over_time(test_id=test_id, max_points=200)
+
+        assert len(capped_scores) == 200
+        assert capped_scores[0] == full_scores[0]
+        assert capped_scores[-1] == full_scores[-1]
+        assert [score["id"] for score in capped_scores] == sorted(
+            score["id"] for score in capped_scores
+        )
+
+    def test_scores_over_time_rejects_invalid_cap(self, db):
+        """A trend cap must keep both endpoints available for rendering."""
+        service = AnalyticsService(db._db_path)
+
+        with pytest.raises(ValueError, match="at least 2"):
+            service.get_scores_over_time(max_points=1)
+
 
 class TestAverageScoresByTest:
     """Tests for test comparison data."""

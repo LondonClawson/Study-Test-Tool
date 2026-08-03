@@ -22,6 +22,7 @@ class ProgressBar(ctk.CTkFrame):
         self._total = total
         self._on_click = on_click
         self._buttons = []
+        self._button_colors = []
         self._build_ui()
 
     def _build_ui(self) -> None:
@@ -41,6 +42,7 @@ class ProgressBar(ctk.CTkFrame):
             )
             btn.pack(side="left", padx=1, pady=2)
             self._buttons.append(btn)
+            self._button_colors.append(PROGRESS_STATUS_COLORS["unanswered"])
 
     def update_status(
         self,
@@ -67,4 +69,6 @@ class ProgressBar(ctk.CTkFrame):
                 color = PROGRESS_STATUS_COLORS["answered"]
             else:
                 color = PROGRESS_STATUS_COLORS["unanswered"]
-            btn.configure(fg_color=color)
+            if self._button_colors[i] != color:
+                btn.configure(fg_color=color)
+                self._button_colors[i] = color

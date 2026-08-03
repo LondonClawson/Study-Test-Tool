@@ -26,33 +26,36 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 
 ## Summary Status
 
-| Summary | Status | Unblocks |
-| --- | --- | --- |
-| `gui_architecture_summary.md` | Ready | Most stories |
-| `screen_inventory.md` | Ready | Most stories |
-| `current_visual_state_seed.md` | Seeded | Sprint 0 research |
-| `baseline_visual_audit.md` | Ready | `STORY-003`, validation stories; 42 scripted light/dark screenshots validate, with remaining uncaptured states documented |
-| `style_inventory.md` | Ready | `STORY-003`, `STORY-004` |
-| `home_screen_context.md` | Ready | `STORY-008`, `STORY-009` |
-| `test_taking_context.md` | Ready | `STORY-010`, `STORY-011` |
-| `results_context.md` | Ready | `STORY-012` |
-| `editor_context.md` | Ready | `STORY-013` |
-| `history_analytics_review_context.md` | Ready | `STORY-014A`, `STORY-014B`, `STORY-014C`, `STORY-015A` |
-| `dialog_context.md` | Ready | `STORY-015B`, `STORY-015C`, `STORY-015D`, `STORY-015E` |
-| `visual_foundation_decisions.md` | Ready | `STORY-004` through `STORY-017`; accepted for MVP implementation sequencing |
+| Summary                               | Status | Unblocks                                                                                                                  |
+| ------------------------------------- | ------ | ------------------------------------------------------------------------------------------------------------------------- |
+| `gui_architecture_summary.md`         | Ready  | Most stories                                                                                                              |
+| `screen_inventory.md`                 | Ready  | Most stories                                                                                                              |
+| `current_visual_state_seed.md`        | Seeded | Sprint 0 research                                                                                                         |
+| `baseline_visual_audit.md`            | Ready  | `STORY-003`, validation stories; 42 scripted light/dark screenshots validate, with remaining uncaptured states documented |
+| `style_inventory.md`                  | Ready  | `STORY-003`, `STORY-004`                                                                                                  |
+| `home_screen_context.md`              | Ready  | `STORY-008`, `STORY-009`                                                                                                  |
+| `test_taking_context.md`              | Ready  | `STORY-010`, `STORY-011`                                                                                                  |
+| `results_context.md`                  | Ready  | `STORY-012`                                                                                                               |
+| `editor_context.md`                   | Ready  | `STORY-013`                                                                                                               |
+| `history_analytics_review_context.md` | Ready  | `STORY-014A`, `STORY-014B`, `STORY-014C`, `STORY-015A`                                                                    |
+| `dialog_context.md`                   | Ready  | `STORY-015B`, `STORY-015C`, `STORY-015D`, `STORY-015E`                                                                    |
+| `visual_foundation_decisions.md`      | Ready  | `STORY-004` through `STORY-017`; accepted for MVP implementation sequencing                                               |
+| `performance_scalability_audit.md`    | Ready | R-010 benchmark refresh accepted by user authorization |
 
 ## Research Task Status
 
-| Task | Status | Output | Assignment Gate |
-| --- | --- | --- | --- |
-| `R-001_baseline_visual_audit.md` | Done | `baseline_visual_audit.md` | None |
-| `R-002_component_style_inventory.md` | Done | `style_inventory.md` | None |
-| `R-003_home_screen_context.md` | Done | `home_screen_context.md` | R-002 Done |
-| `R-004_test_taking_context.md` | Done | `test_taking_context.md` | R-002 Done |
-| `R-005_results_context.md` | Done | `results_context.md` | R-002 Done |
-| `R-006_editor_context.md` | Done | `editor_context.md` | R-002 Done |
-| `R-007_history_analytics_review_context.md` | Done | `history_analytics_review_context.md` | R-002 Done |
-| `R-008_dialog_context.md` | Done | `dialog_context.md` | R-001 Done |
+| Task                                        | Status | Output                                | Assignment Gate |
+| ------------------------------------------- | ------ | ------------------------------------- | --------------- |
+| `R-001_baseline_visual_audit.md`            | Done   | `baseline_visual_audit.md`            | None            |
+| `R-002_component_style_inventory.md`        | Done   | `style_inventory.md`                  | None            |
+| `R-003_home_screen_context.md`              | Done   | `home_screen_context.md`              | R-002 Done      |
+| `R-004_test_taking_context.md`              | Done   | `test_taking_context.md`              | R-002 Done      |
+| `R-005_results_context.md`                  | Done   | `results_context.md`                  | R-002 Done      |
+| `R-006_editor_context.md`                   | Done   | `editor_context.md`                   | R-002 Done      |
+| `R-007_history_analytics_review_context.md` | Done   | `history_analytics_review_context.md` | R-002 Done      |
+| `R-008_dialog_context.md`                   | Done   | `dialog_context.md`                   | R-001 Done      |
+| `R-009_performance_scalability_audit.md`     | Done | `performance_scalability_audit.md` | MVP closeout Done |
+| `R-010_history_benchmark_query_plan.md`      | Done | `performance_scalability_audit.md` | R-009 Done |
 
 ## Story Status
 
@@ -83,6 +86,14 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 | `STORY-015E_native_dialog_inventory_followup.md`  | Done                 | None                     |
 | `STORY-016_light_dark_and_min_size_validation.md` | Done                 | None                     |
 | `STORY-017_mvp_visual_regression_pass.md`         | Done                 | None                     |
+| `STORY-018_review_loading_scalability.md`         | Done                 | None                     |
+| `STORY-019_review_state_and_test_count_refactor.md` | Done                 | None                     |
+| `STORY-020_analytics_loading_scalability.md`      | Done                 | None                     |
+| `STORY-021_bulk_question_loading_and_historical_results.md` | Done | None |
+| `STORY-022_weighted_mix_history_scalability.md` | Done | None |
+| `STORY-023_deferred_home_group_card_construction.md` | Done | None |
+| `STORY-024_lazy_non_home_frame_construction.md` | Done | None |
+| `STORY-025_history_filter_index_migration.md` | Done | None |
 
 ## Next Recommended Work
 
@@ -144,6 +155,27 @@ Use `00_project/status_transition_rules.md` when moving items between statuses.
 
 ## Post-MVP Recommendations
 
+- `STORY-024_lazy_non_home_frame_construction.md` is accepted with lazy
+  non-Home frames, focused lifecycle coverage, and a full pytest regression
+  for Finding 7 of the accepted performance/scalability audit.
+- `R-010_history_benchmark_query_plan.md` is accepted for Finding 8. Its
+  evidence recommends a bounded History filter-index migration; do not combine
+  that story with a pagination redesign.
+- `STORY-025_history_filter_index_migration.md` is accepted for the Finding 8
+  indexes. It preserves History's current page/count interfaces and keeps
+  pagination work separate.
+- `STORY-023_deferred_home_group_card_construction.md` is accepted with
+  deferred Home cards, light/dark evidence, and full pytest coverage for
+  Finding 6 of the accepted performance/scalability audit.
+- `STORY-020_analytics_loading_scalability.md` is accepted with bounded,
+  background Analytics retrieval, stale-result protection, focused tests, and
+  light/dark screenshot evidence.
+- `STORY-018_review_loading_scalability.md` is accepted with light/dark Review
+evidence. Follow with the Analytics and shared question-loading items from
+the accepted R-009 audit.
+- `STORY-019_review_state_and_test_count_refactor.md` is accepted with shared
+  Review query helpers, pure pagination-state tests, batched test-count
+  retrieval, and light/dark Home and Review evidence.
 - Add long-content stress screenshot fixtures for Home, Test Taking, Results,
   Editor, History, Analytics Weak Topics, Review, Mix dialog, and Import
   Preview.

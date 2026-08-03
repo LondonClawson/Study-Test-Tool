@@ -1,6 +1,5 @@
 """Database manager — all SQL operations live here."""
 
-import bisect
 import sqlite3
 from typing import Dict, List, Optional
 
@@ -8,6 +7,8 @@ from config.database import get_connection
 from models.question import Question, QuestionOption
 from models.test import Test
 from models.test_result import QuestionResponse, TestAttempt
+
+QUESTION_HISTORY_CHUNK_SIZE = 900
 
 
 class DatabaseManager:
@@ -258,6 +259,19 @@ class DatabaseManager:
         finally:
             conn.close()
 
+    def get_all_question_counts(self) -> Dict[int, int]:
+        """Return question counts for every test in one grouped query."""
+        conn = self._conn()
+        try:
+            rows = conn.execute(
+                "SELECT t.id AS test_id, COUNT(q.id) AS question_count "
+                "FROM tests t LEFT JOIN questions q ON q.test_id = t.id "
+                "GROUP BY t.id"
+            ).fetchall()
+            return {row["test_id"]: row["question_count"] for row in rows}
+        finally:
+            conn.close()
+
     # ── Question CRUD ──────────────────────────────────────────
 
     def add_question(self, question: Question) -> int:
@@ -314,43 +328,66 @@ class DatabaseManager:
 
     def _load_questions(self, conn: sqlite3.Connection, test_id: int) -> List[Question]:
         """Load questions and their options from an open connection."""
-        q_rows = conn.execute(
-            "SELECT id, test_id, question_text, question_type, correct_answer, "
-            "category, explanation, created_at FROM questions "
-            "WHERE test_id = ? ORDER BY id",
+        rows = conn.execute(
+            "SELECT q.id AS question_id, q.test_id, q.question_text, "
+            "q.question_type, q.correct_answer, q.category, q.explanation, "
+            "q.created_at, qo.id AS option_id, qo.option_text, qo.is_correct "
+            "FROM questions q "
+            "LEFT JOIN question_options qo ON qo.question_id = q.id "
+            "WHERE q.test_id = ? ORDER BY q.id, qo.id",
             (test_id,),
         ).fetchall()
+        return self._rows_to_questions(rows)
 
-        questions = []
-        for q_row in q_rows:
-            question = Question(
-                id=q_row["id"],
-                test_id=q_row["test_id"],
-                text=q_row["question_text"],
-                type=q_row["question_type"],
-                correct_answer=q_row["correct_answer"],
-                category=q_row["category"],
-                explanation=q_row["explanation"] or "",
-                created_at=q_row["created_at"],
-            )
-
-            o_rows = conn.execute(
-                "SELECT id, question_id, option_text, is_correct "
-                "FROM question_options WHERE question_id = ? ORDER BY id",
-                (question.id,),
+    def get_questions_for_attempt(self, attempt_id: int) -> List[Question]:
+        """Load distinct answered questions with options in response order."""
+        conn = self._conn()
+        try:
+            rows = conn.execute(
+                "SELECT q.id AS question_id, q.test_id, q.question_text, "
+                "q.question_type, q.correct_answer, q.category, q.explanation, "
+                "q.created_at, qo.id AS option_id, qo.option_text, qo.is_correct "
+                "FROM question_responses qr "
+                "JOIN questions q ON q.id = qr.question_id "
+                "LEFT JOIN question_options qo ON qo.question_id = q.id "
+                "WHERE qr.attempt_id = ? ORDER BY qr.id, qo.id",
+                (attempt_id,),
             ).fetchall()
+            return self._rows_to_questions(rows)
+        finally:
+            conn.close()
 
-            question.options = [
-                QuestionOption(
-                    id=o_row["id"],
-                    question_id=o_row["question_id"],
-                    text=o_row["option_text"],
-                    is_correct=bool(o_row["is_correct"]),
+    @staticmethod
+    def _rows_to_questions(rows: List[sqlite3.Row]) -> List[Question]:
+        """Hydrate ordered question and option rows into question models."""
+        questions = []
+        questions_by_id = {}
+        for row in rows:
+            question_id = row["question_id"]
+            question = questions_by_id.get(question_id)
+            if question is None:
+                question = Question(
+                    id=question_id,
+                    test_id=row["test_id"],
+                    text=row["question_text"],
+                    type=row["question_type"],
+                    correct_answer=row["correct_answer"],
+                    category=row["category"],
+                    explanation=row["explanation"] or "",
+                    created_at=row["created_at"],
                 )
-                for o_row in o_rows
-            ]
-            questions.append(question)
+                questions_by_id[question_id] = question
+                questions.append(question)
 
+            if row["option_id"] is not None:
+                question.options.append(
+                    QuestionOption(
+                        id=row["option_id"],
+                        question_id=question_id,
+                        text=row["option_text"],
+                        is_correct=bool(row["is_correct"]),
+                    )
+                )
         return questions
 
     def update_question(self, question: Question) -> None:
@@ -413,6 +450,56 @@ class DatabaseManager:
             )
             conn.commit()
             return cursor.lastrowid
+        finally:
+            conn.close()
+
+    def save_attempt_with_responses(
+        self, attempt: TestAttempt, responses: List[QuestionResponse]
+    ) -> int:
+        """Save an attempt and all of its responses in one transaction."""
+        conn = self._conn()
+        try:
+            cursor = conn.execute(
+                "INSERT INTO test_attempts (test_id, score, total_questions, "
+                "percentage, time_taken, mode) VALUES (?, ?, ?, ?, ?, ?)",
+                (
+                    attempt.test_id,
+                    attempt.score,
+                    attempt.total_questions,
+                    attempt.percentage,
+                    attempt.time_taken,
+                    attempt.mode,
+                ),
+            )
+            attempt_id = cursor.lastrowid
+            for response in responses:
+                response.attempt_id = attempt_id
+            response_values = [
+                (
+                    attempt_id,
+                    response.question_id,
+                    response.user_answer,
+                    (
+                        None
+                        if response.is_correct is None
+                        else 1 if response.is_correct else 0
+                    ),
+                    1 if response.was_flagged else 0,
+                    response.time_spent,
+                )
+                for response in responses
+            ]
+            conn.executemany(
+                "INSERT INTO question_responses (attempt_id, question_id, "
+                "user_answer, is_correct, was_flagged, time_spent) "
+                "VALUES (?, ?, ?, ?, ?, ?)",
+                response_values,
+            )
+            conn.commit()
+            return attempt_id
+        except Exception:
+            conn.rollback()
+            raise
         finally:
             conn.close()
 
@@ -638,54 +725,157 @@ class DatabaseManager:
 
         Returns list of dicts with question info and miss statistics.
         """
-        if test_id is not None and test_ids is not None:
-            raise ValueError("Use either test_id or test_ids, not both.")
+        return self._get_missed_question_rows(test_id=test_id, test_ids=test_ids)
+
+    def count_missed_questions(
+        self,
+        test_id: Optional[int] = None,
+        test_ids: Optional[List[int]] = None,
+        min_attempts: Optional[int] = None,
+        miss_threshold: Optional[float] = None,
+    ) -> int:
+        """Count missed questions matching the supplied review filters."""
+        self._validate_missed_question_filters(
+            test_id, test_ids, min_attempts, miss_threshold
+        )
+        if test_ids == []:
+            return 0
+        query, params = self._build_missed_questions_query(
+            test_id, test_ids, min_attempts, miss_threshold
+        )
+        conn = self._conn()
+        try:
+            row = conn.execute(
+                "SELECT COUNT(*) AS total FROM (" + query + ")", params
+            ).fetchone()
+            return row["total"] if row else 0
+        finally:
+            conn.close()
+
+    def get_missed_questions_page(
+        self,
+        limit: int,
+        offset: int = 0,
+        test_id: Optional[int] = None,
+        test_ids: Optional[List[int]] = None,
+        min_attempts: Optional[int] = None,
+        miss_threshold: Optional[float] = None,
+    ) -> List[Dict]:
+        """Return one stable page of missed questions for Review."""
+        return self._get_missed_question_rows(
+            test_id=test_id,
+            test_ids=test_ids,
+            min_attempts=min_attempts,
+            miss_threshold=miss_threshold,
+            limit=limit,
+            offset=offset,
+        )
+
+    def _get_missed_question_rows(
+        self,
+        test_id: Optional[int] = None,
+        test_ids: Optional[List[int]] = None,
+        min_attempts: Optional[int] = None,
+        miss_threshold: Optional[float] = None,
+        limit: Optional[int] = None,
+        offset: int = 0,
+    ) -> List[Dict]:
+        """Fetch complete or paged missed-question rows with shared ordering."""
+        self._validate_missed_question_filters(
+            test_id, test_ids, min_attempts, miss_threshold
+        )
+        if test_ids == [] or limit is not None and limit <= 0:
+            return []
+
+        query, params = self._build_missed_questions_query(
+            test_id, test_ids, min_attempts, miss_threshold
+        )
+        if min_attempts is None:
+            query += " ORDER BY times_missed DESC, question_id ASC"
+        else:
+            query += (
+                " ORDER BY CAST(times_missed AS REAL) / total_attempts DESC, "
+                "times_missed DESC, question_id ASC"
+            )
+        if limit is not None:
+            query += " LIMIT ? OFFSET ?"
+            params.extend([limit, max(offset, 0)])
 
         conn = self._conn()
         try:
-            base_query = (
-                "SELECT q.id as question_id, q.question_text, q.question_type, "
-                "q.correct_answer, q.category, q.test_id, t.name as test_name, "
-                "COUNT(qr.id) as total_attempts, "
-                "SUM(CASE WHEN qr.is_correct = 0 THEN 1 ELSE 0 END) as times_missed "
-                "FROM questions q "
-                "JOIN question_responses qr ON q.id = qr.question_id "
-                "JOIN tests t ON q.test_id = t.id "
-                "WHERE qr.is_correct IS NOT NULL "
-                "AND t.is_archived = 0 "
-            )
-            params = []
-            if test_id is not None:
-                base_query += "AND q.test_id = ? "
-                params.append(test_id)
-            elif test_ids is not None:
-                if not test_ids:
-                    return []
-                placeholders = ",".join("?" * len(test_ids))
-                base_query += f"AND q.test_id IN ({placeholders}) "
-                params.extend(test_ids)
-
-            base_query += (
-                "GROUP BY q.id HAVING times_missed > 0 " "ORDER BY times_missed DESC"
-            )
-            rows = conn.execute(base_query, params).fetchall()
-
-            return [
-                {
-                    "question_id": row["question_id"],
-                    "question_text": row["question_text"],
-                    "question_type": row["question_type"],
-                    "correct_answer": row["correct_answer"],
-                    "category": row["category"],
-                    "test_id": row["test_id"],
-                    "test_name": row["test_name"],
-                    "total_attempts": row["total_attempts"],
-                    "times_missed": row["times_missed"],
-                }
-                for row in rows
-            ]
+            rows = conn.execute(query, params).fetchall()
+            return [self._row_to_missed_question(row) for row in rows]
         finally:
             conn.close()
+
+    @staticmethod
+    def _row_to_missed_question(row: sqlite3.Row) -> Dict:
+        """Convert an aggregate missed-question row to Review display data."""
+        return {
+            "question_id": row["question_id"],
+            "question_text": row["question_text"],
+            "question_type": row["question_type"],
+            "correct_answer": row["correct_answer"],
+            "category": row["category"],
+            "test_id": row["test_id"],
+            "test_name": row["test_name"],
+            "total_attempts": row["total_attempts"],
+            "times_missed": row["times_missed"],
+        }
+
+    @staticmethod
+    def _build_missed_questions_query(
+        test_id: Optional[int],
+        test_ids: Optional[List[int]],
+        min_attempts: Optional[int],
+        miss_threshold: Optional[float],
+    ) -> tuple:
+        """Build the shared aggregate query used by paged Review retrieval."""
+        DatabaseManager._validate_missed_question_filters(
+            test_id, test_ids, min_attempts, miss_threshold
+        )
+
+        query = (
+            "SELECT q.id AS question_id, q.question_text, q.question_type, "
+            "q.correct_answer, q.category, q.test_id, t.name AS test_name, "
+            "COUNT(qr.id) AS total_attempts, "
+            "SUM(CASE WHEN qr.is_correct = 0 THEN 1 ELSE 0 END) AS times_missed "
+            "FROM questions q "
+            "JOIN question_responses qr ON q.id = qr.question_id "
+            "JOIN tests t ON q.test_id = t.id "
+            "WHERE qr.is_correct IS NOT NULL AND t.is_archived = 0 "
+        )
+        params = []
+        if test_id is not None:
+            query += "AND q.test_id = ? "
+            params.append(test_id)
+        elif test_ids is not None:
+            query += "AND q.test_id IN (" + ",".join("?" * len(test_ids)) + ") "
+            params.extend(test_ids)
+
+        query += "GROUP BY q.id HAVING times_missed > 0"
+        if min_attempts is not None:
+            query += (
+                " AND total_attempts >= ? "
+                "AND CAST(times_missed AS REAL) / total_attempts >= ?"
+            )
+            params.extend([min_attempts, miss_threshold])
+        return query, params
+
+    @staticmethod
+    def _validate_missed_question_filters(
+        test_id: Optional[int],
+        test_ids: Optional[List[int]],
+        min_attempts: Optional[int],
+        miss_threshold: Optional[float],
+    ) -> None:
+        """Validate shared Review query filters before handling empty scopes."""
+        if test_id is not None and test_ids is not None:
+            raise ValueError("Use either test_id or test_ids, not both.")
+        if (min_attempts is None) != (miss_threshold is None):
+            raise ValueError(
+                "min_attempts and miss_threshold must be provided together."
+            )
 
     def get_question_history_stats(self, question_ids: List[int]) -> Dict[int, Dict]:
         """Return per-question history stats used by weighted mix selection.
@@ -712,50 +902,54 @@ class DatabaseManager:
         if not question_ids:
             return result
 
+        unique_question_ids = list(dict.fromkeys(question_ids))
         conn = self._conn()
         try:
-            # Fetch full ordered list of attempt timestamps once for bisect.
-            all_attempt_times = [
-                row["completed_at"]
-                for row in conn.execute(
-                    "SELECT completed_at FROM test_attempts "
-                    "ORDER BY completed_at ASC"
-                ).fetchall()
-            ]
-
-            placeholders = ",".join("?" * len(question_ids))
-            query = (
-                "SELECT qr.question_id, qr.is_correct, ta.completed_at "
-                "FROM question_responses qr "
-                "JOIN test_attempts ta ON ta.id = qr.attempt_id "
-                "WHERE qr.question_id IN (" + placeholders + ") "
-                "AND ta.completed_at = ("
-                "  SELECT MAX(ta2.completed_at) "
-                "  FROM question_responses qr2 "
-                "  JOIN test_attempts ta2 ON ta2.id = qr2.attempt_id "
-                "  WHERE qr2.question_id = qr.question_id"
-                ")"
-            )
-            rows = conn.execute(query, tuple(question_ids)).fetchall()
-
-            for row in rows:
-                qid = row["question_id"]
-                last_completed_at = row["completed_at"]
-                # bisect_right gives count of items <= value; anything strictly
-                # after is "since".
-                attempts_since = len(all_attempt_times) - bisect.bisect_right(
-                    all_attempt_times, last_completed_at
+            for start in range(
+                0, len(unique_question_ids), QUESTION_HISTORY_CHUNK_SIZE
+            ):
+                question_id_chunk = unique_question_ids[
+                    start : start + QUESTION_HISTORY_CHUNK_SIZE
+                ]
+                placeholders = ",".join("?" * len(question_id_chunk))
+                query = (
+                    "WITH latest_times AS ("
+                    "  SELECT qr.question_id, MAX(ta.completed_at) AS completed_at "
+                    "  FROM question_responses qr "
+                    "  JOIN test_attempts ta ON ta.id = qr.attempt_id "
+                    f"  WHERE qr.question_id IN ({placeholders}) "
+                    "  GROUP BY qr.question_id"
+                    "), latest_attempts AS ("
+                    "  SELECT lt.question_id, MAX(ta.id) AS attempt_id "
+                    "  FROM latest_times lt "
+                    "  JOIN question_responses qr ON qr.question_id = lt.question_id "
+                    "  JOIN test_attempts ta ON ta.id = qr.attempt_id "
+                    "  WHERE ta.completed_at = lt.completed_at "
+                    "  GROUP BY lt.question_id"
+                    "), latest_responses AS ("
+                    "  SELECT la.question_id, MAX(qr.id) AS response_id "
+                    "  FROM latest_attempts la "
+                    "  JOIN question_responses qr ON qr.question_id = la.question_id "
+                    "      AND qr.attempt_id = la.attempt_id "
+                    "  GROUP BY la.question_id"
+                    ") SELECT qr.question_id, qr.is_correct, ta.completed_at, "
+                    "  (SELECT COUNT(*) FROM test_attempts newer "
+                    "   WHERE newer.completed_at > ta.completed_at) AS attempts_since "
+                    "FROM latest_responses lr "
+                    "JOIN question_responses qr ON qr.id = lr.response_id "
+                    "JOIN test_attempts ta ON ta.id = qr.attempt_id"
                 )
-                is_correct_raw = row["is_correct"]
-                if is_correct_raw is None:
-                    last_is_correct: Optional[bool] = None
-                else:
-                    last_is_correct = bool(is_correct_raw)
-                result[qid] = {
-                    "last_is_correct": last_is_correct,
-                    "last_completed_at": last_completed_at,
-                    "attempts_since": attempts_since,
-                }
+                rows = conn.execute(query, tuple(question_id_chunk)).fetchall()
+
+                for row in rows:
+                    is_correct_raw = row["is_correct"]
+                    result[row["question_id"]] = {
+                        "last_is_correct": (
+                            None if is_correct_raw is None else bool(is_correct_raw)
+                        ),
+                        "last_completed_at": row["completed_at"],
+                        "attempts_since": row["attempts_since"],
+                    }
             return result
         finally:
             conn.close()
@@ -774,59 +968,12 @@ class DatabaseManager:
             min_attempts: Minimum attempts before considering frequency.
             miss_threshold: Minimum miss rate (0.0-1.0) to be 'frequent'.
         """
-        if test_id is not None and test_ids is not None:
-            raise ValueError("Use either test_id or test_ids, not both.")
-
-        conn = self._conn()
-        try:
-            base_query = (
-                "SELECT q.id as question_id, q.question_text, q.question_type, "
-                "q.correct_answer, q.category, q.test_id, t.name as test_name, "
-                "COUNT(qr.id) as total_attempts, "
-                "SUM(CASE WHEN qr.is_correct = 0 THEN 1 ELSE 0 END) as times_missed "
-                "FROM questions q "
-                "JOIN question_responses qr ON q.id = qr.question_id "
-                "JOIN tests t ON q.test_id = t.id "
-                "WHERE qr.is_correct IS NOT NULL "
-                "AND t.is_archived = 0 "
-            )
-            params = []
-            if test_id is not None:
-                base_query += "AND q.test_id = ? "
-                params.append(test_id)
-            elif test_ids is not None:
-                if not test_ids:
-                    return []
-                placeholders = ",".join("?" * len(test_ids))
-                base_query += f"AND q.test_id IN ({placeholders}) "
-                params.extend(test_ids)
-
-            base_query += (
-                "GROUP BY q.id "
-                "HAVING total_attempts >= ? "
-                "AND CAST(times_missed AS REAL) / total_attempts >= ? "
-                "ORDER BY CAST(times_missed AS REAL) / total_attempts DESC"
-            )
-            params.extend([min_attempts, miss_threshold])
-
-            rows = conn.execute(base_query, params).fetchall()
-
-            return [
-                {
-                    "question_id": row["question_id"],
-                    "question_text": row["question_text"],
-                    "question_type": row["question_type"],
-                    "correct_answer": row["correct_answer"],
-                    "category": row["category"],
-                    "test_id": row["test_id"],
-                    "test_name": row["test_name"],
-                    "total_attempts": row["total_attempts"],
-                    "times_missed": row["times_missed"],
-                }
-                for row in rows
-            ]
-        finally:
-            conn.close()
+        return self._get_missed_question_rows(
+            test_id=test_id,
+            test_ids=test_ids,
+            min_attempts=min_attempts,
+            miss_threshold=miss_threshold,
+        )
 
     def get_question_by_id(self, question_id: int) -> Optional[Question]:
         """Get a single question with its options."""
@@ -874,28 +1021,50 @@ class DatabaseManager:
     # ── Analytics ─────────────────────────────────────────────
 
     def get_scores_over_time(
-        self, test_id: Optional[int] = None, mode: str = "test"
+        self,
+        test_id: Optional[int] = None,
+        mode: str = "test",
+        max_points: Optional[int] = None,
     ) -> List[Dict]:
         """Get chronological score list for trend charts."""
+        if max_points is not None and max_points < 2:
+            raise ValueError("max_points must be at least 2")
+
         conn = self._conn()
         try:
+            filters = "a.mode = ?"
+            params: List = [mode]
             if test_id is not None:
-                rows = conn.execute(
-                    "SELECT a.id, a.percentage, a.completed_at, "
-                    "t.name as test_name "
+                filters += " AND a.test_id = ?"
+                params.append(test_id)
+
+            if max_points is None:
+                query = (
+                    "SELECT a.id, a.percentage, a.completed_at, t.name as test_name "
                     "FROM test_attempts a JOIN tests t ON a.test_id = t.id "
-                    "WHERE a.mode = ? AND a.test_id = ? "
-                    "ORDER BY a.completed_at ASC",
-                    (mode, test_id),
-                ).fetchall()
+                    f"WHERE {filters} ORDER BY a.completed_at ASC, a.id ASC"
+                )
             else:
-                rows = conn.execute(
-                    "SELECT a.id, a.percentage, a.completed_at, "
-                    "t.name as test_name "
-                    "FROM test_attempts a JOIN tests t ON a.test_id = t.id "
-                    "WHERE a.mode = ? ORDER BY a.completed_at ASC",
-                    (mode,),
-                ).fetchall()
+                query = (
+                    "WITH numbered AS ("
+                    "  SELECT a.id, a.percentage, a.completed_at, t.name AS test_name, "
+                    "         ROW_NUMBER() OVER (ORDER BY a.completed_at ASC, a.id ASC) AS row_num, "
+                    "         COUNT(*) OVER () AS total_rows "
+                    "  FROM test_attempts a JOIN tests t ON a.test_id = t.id "
+                    f"  WHERE {filters}"
+                    "), bucketed AS ("
+                    "  SELECT *, CASE WHEN total_rows <= ? THEN row_num "
+                    "       ELSE CAST((row_num - 1) * (? - 1) / (total_rows - 1) AS INTEGER) END AS bucket "
+                    "  FROM numbered"
+                    "), sampled AS ("
+                    "  SELECT *, ROW_NUMBER() OVER (PARTITION BY bucket ORDER BY row_num) AS bucket_row "
+                    "  FROM bucketed"
+                    ") SELECT id, percentage, completed_at, test_name FROM sampled "
+                    "WHERE bucket_row = 1 ORDER BY completed_at ASC, id ASC"
+                )
+                params.extend([max_points, max_points])
+
+            rows = conn.execute(query, tuple(params)).fetchall()
             return [
                 {
                     "id": row["id"],

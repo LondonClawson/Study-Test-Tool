@@ -28,6 +28,32 @@ class ReviewService:
         """
         return self._db.get_missed_questions(test_id, test_ids)
 
+    def get_missed_questions_page(
+        self,
+        limit: int,
+        offset: int = 0,
+        test_id: Optional[int] = None,
+        test_ids: Optional[List[int]] = None,
+    ) -> List[Dict]:
+        """Return one page of missed questions for the Review screen."""
+        return self._db.get_missed_questions_page(
+            limit=limit,
+            offset=offset,
+            test_id=test_id,
+            test_ids=test_ids,
+        )
+
+    def count_missed_questions(
+        self,
+        test_id: Optional[int] = None,
+        test_ids: Optional[List[int]] = None,
+    ) -> int:
+        """Return the total number of missed questions for the Review screen."""
+        return self._db.count_missed_questions(
+            test_id=test_id,
+            test_ids=test_ids,
+        )
+
     def get_frequently_missed(
         self,
         test_id: Optional[int] = None,
@@ -51,6 +77,40 @@ class ReviewService:
             min_attempts=min_attempts,
             miss_threshold=miss_threshold,
             test_ids=test_ids,
+        )
+
+    def get_frequently_missed_page(
+        self,
+        limit: int,
+        offset: int = 0,
+        test_id: Optional[int] = None,
+        min_attempts: int = 3,
+        miss_threshold: float = 0.5,
+        test_ids: Optional[List[int]] = None,
+    ) -> List[Dict]:
+        """Return one page of frequently missed questions for Review."""
+        return self._db.get_missed_questions_page(
+            limit=limit,
+            offset=offset,
+            test_id=test_id,
+            test_ids=test_ids,
+            min_attempts=min_attempts,
+            miss_threshold=miss_threshold,
+        )
+
+    def count_frequently_missed(
+        self,
+        test_id: Optional[int] = None,
+        min_attempts: int = 3,
+        miss_threshold: float = 0.5,
+        test_ids: Optional[List[int]] = None,
+    ) -> int:
+        """Return the total frequently missed questions for Review."""
+        return self._db.count_missed_questions(
+            test_id=test_id,
+            test_ids=test_ids,
+            min_attempts=min_attempts,
+            miss_threshold=miss_threshold,
         )
 
     def create_review_session_questions(

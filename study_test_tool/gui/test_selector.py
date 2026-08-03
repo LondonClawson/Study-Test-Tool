@@ -61,6 +61,8 @@ class TestSelectorFrame(ctk.CTkFrame):
 
         self._sort_by = "Last Updated"
         self._group_widgets: dict[str, CollapsibleGroup] = {}
+        self._deferred_group_cards: dict[str, tuple[list, bool]] = {}
+        self._rendered_group_keys: set[str] = set()
 
         self._build_ui()
 
@@ -352,9 +354,12 @@ class TestSelectorFrame(ctk.CTkFrame):
             if widget != self.empty_state_frame:
                 widget.destroy()
         self._group_widgets = {}
+        self._deferred_group_cards = {}
+        self._rendered_group_keys = set()
 
         tests = self.test_service.get_all_tests()
         archived_tests = self.test_service.get_archived_tests()
+        question_counts = self.test_service.get_all_question_counts()
         self._update_header_summary(len(tests), len(archived_tests))
 
         if not tests and not archived_tests:
@@ -394,11 +399,16 @@ class TestSelectorFrame(ctk.CTkFrame):
                 test_count=len(group_tests),
                 expanded=was_expanded,
                 archive_callback=archive_cb,
+                on_expand=lambda key=group: self._render_group_cards(key),
             )
             group_widget.pack(fill="x", pady=(0, SPACE_8))
             self._group_widgets[group] = group_widget
-            for test in group_tests:
-                self._create_test_card(test, parent=group_widget.content_frame)
+            self._deferred_group_cards[group] = (
+                [(test, question_counts.get(test.id, 0)) for test in group_tests],
+                False,
+            )
+            if was_expanded:
+                self._render_group_cards(group)
 
         if archived_tests:
             archived_widget = CollapsibleGroup(
@@ -406,22 +416,51 @@ class TestSelectorFrame(ctk.CTkFrame):
                 group_name="Archived Tests",
                 test_count=len(archived_tests),
                 expanded=old_group_states.get("__archived__", False),
+                on_expand=lambda: self._render_group_cards("__archived__"),
             )
             archived_widget.pack(fill="x", pady=(SPACE_8, 0))
             self._group_widgets["__archived__"] = archived_widget
-            for test in archived_tests:
-                self._create_archived_test_card(
-                    test, parent=archived_widget.content_frame
-                )
+            self._deferred_group_cards["__archived__"] = (
+                [(test, question_counts.get(test.id, 0)) for test in archived_tests],
+                True,
+            )
+            if archived_widget.is_expanded:
+                self._render_group_cards("__archived__")
 
-    def _create_test_card(self, test, parent: ctk.CTkFrame = None) -> None:
+    def _render_group_cards(self, group_key: str) -> None:
+        """Create a group's cards the first time its content is displayed."""
+        if group_key in self._rendered_group_keys:
+            return
+
+        group_widget = self._group_widgets.get(group_key)
+        card_data = self._deferred_group_cards.get(group_key)
+        if group_widget is None or card_data is None:
+            return
+
+        cards, archived = card_data
+        for test, question_count in cards:
+            if archived:
+                self._create_archived_test_card(
+                    test,
+                    question_count,
+                    parent=group_widget.content_frame,
+                )
+            else:
+                self._create_test_card(
+                    test,
+                    question_count,
+                    parent=group_widget.content_frame,
+                )
+        self._rendered_group_keys.add(group_key)
+
+    def _create_test_card(
+        self, test, q_count: int, parent: ctk.CTkFrame = None
+    ) -> None:
         """Create a card widget for a single test."""
         if parent is None:
             parent = self.test_list_frame
         card = ctk.CTkFrame(parent, **get_card_style("default"))
         card.pack(fill="x", pady=SPACE_4, padx=SPACE_4)
-
-        q_count = self.test_service.get_question_count(test.id)
 
         card_body = ctk.CTkFrame(card, fg_color="transparent")
         card_body.pack(fill="x", padx=SPACE_16, pady=SPACE_16)
@@ -513,14 +552,14 @@ class TestSelectorFrame(ctk.CTkFrame):
             **get_button_style("danger"),
         ).grid(row=2, column=1, sticky="ew", padx=SPACE_2)
 
-    def _create_archived_test_card(self, test, parent: ctk.CTkFrame = None) -> None:
+    def _create_archived_test_card(
+        self, test, q_count: int, parent: ctk.CTkFrame = None
+    ) -> None:
         """Create a dimmed card widget for an archived test."""
         if parent is None:
             parent = self.test_list_frame
         card = ctk.CTkFrame(parent, **get_card_style("muted"))
         card.pack(fill="x", pady=SPACE_4, padx=SPACE_4)
-
-        q_count = self.test_service.get_question_count(test.id)
 
         card_body = ctk.CTkFrame(card, fg_color="transparent")
         card_body.pack(fill="x", padx=SPACE_16, pady=SPACE_16)
@@ -847,9 +886,10 @@ class TestSelectorFrame(ctk.CTkFrame):
     def _on_mix_test(self) -> None:
         """Open mix test dialog, then start a mixed test."""
         tests = self.test_service.get_all_tests()
+        question_counts = self.test_service.get_all_question_counts()
         tests_with_counts = []
         for test in tests:
-            q_count = self.test_service.get_question_count(test.id)
+            q_count = question_counts.get(test.id, 0)
             if q_count > 0:
                 tests_with_counts.append((test, q_count))
 

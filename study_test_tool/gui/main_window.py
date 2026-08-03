@@ -37,6 +37,17 @@ from utils.constants import (
 )
 
 
+FRAME_CLASSES = {
+    SCREEN_HOME: TestSelectorFrame,
+    SCREEN_EDITOR: TestEditorFrame,
+    SCREEN_TEST_TAKING: TestTakingFrame,
+    SCREEN_RESULTS: ResultsViewFrame,
+    SCREEN_HISTORY: HistoryViewFrame,
+    SCREEN_REVIEW: ReviewViewFrame,
+    SCREEN_ANALYTICS: AnalyticsViewFrame,
+}
+
+
 class App(ctk.CTk):
     """Main application window managing screen navigation."""
 
@@ -59,20 +70,10 @@ class App(ctk.CTk):
         self.container.grid_rowconfigure(0, weight=1)
         self.container.grid_columnconfigure(0, weight=1)
 
-        # Create all screens
+        # Register screens, then construct Home only. Other screens are created
+        # on their first navigation so unused views do not delay startup.
         self.frames = {}
-        for name, FrameClass in [
-            (SCREEN_HOME, TestSelectorFrame),
-            (SCREEN_EDITOR, TestEditorFrame),
-            (SCREEN_TEST_TAKING, TestTakingFrame),
-            (SCREEN_RESULTS, ResultsViewFrame),
-            (SCREEN_HISTORY, HistoryViewFrame),
-            (SCREEN_REVIEW, ReviewViewFrame),
-            (SCREEN_ANALYTICS, AnalyticsViewFrame),
-        ]:
-            frame = FrameClass(self.container, self)
-            frame.grid(row=0, column=0, sticky="nsew")
-            self.frames[name] = frame
+        self._create_frame(SCREEN_HOME)
 
         # Track the current screen for close confirmation
         self._current_screen = SCREEN_HOME
@@ -121,6 +122,16 @@ class App(ctk.CTk):
             # Some Tk builds/platforms may reject PNG window icons.
             return
 
+    def _create_frame(self, name: str) -> ctk.CTkFrame:
+        """Create and register a screen frame when it has not been built."""
+        frame = self.frames.get(name)
+        if frame is None:
+            frame_class = FRAME_CLASSES[name]
+            frame = frame_class(self.container, self)
+            frame.grid(row=0, column=0, sticky="nsew")
+            self.frames[name] = frame
+        return frame
+
     def show_frame(self, name: str, **kwargs) -> None:
         """Raise a screen to the front and call its on_show method.
 
@@ -129,7 +140,7 @@ class App(ctk.CTk):
             **kwargs: Data to pass to the screen's on_show method.
         """
         self._current_screen = name
-        frame = self.frames[name]
+        frame = self._create_frame(name)
         frame.tkraise()
         if hasattr(frame, "on_show"):
             frame.on_show(**kwargs)

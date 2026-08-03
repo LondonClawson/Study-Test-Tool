@@ -113,6 +113,66 @@ class TestMigrations:
         finally:
             conn.close()
 
+    def test_fresh_schema_includes_history_filter_indexes(self, db_path):
+        """Fresh installs create the History filter-order indexes."""
+        initialize_database(db_path)
+
+        conn = sqlite3.connect(db_path)
+        try:
+            index_names = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'index'"
+                ).fetchall()
+            }
+            assert "idx_test_attempts_mode_completed_id" in index_names
+            assert "idx_test_attempts_test_mode_completed_id" in index_names
+        finally:
+            conn.close()
+
+    def test_migration_adds_history_filter_indexes_and_preserves_attempts(
+        self, db_path
+    ):
+        """Migration 5 restores both indexes for an existing attempt database."""
+        initialize_database(db_path)
+        conn = sqlite3.connect(db_path)
+        try:
+            conn.execute(
+                "INSERT INTO tests (name, description) VALUES (?, ?)",
+                ("History Test", "migration coverage"),
+            )
+            conn.execute(
+                "INSERT INTO test_attempts "
+                "(test_id, score, total_questions, percentage, mode) "
+                "VALUES (?, ?, ?, ?, ?)",
+                (1, 8, 10, 80.0, "practice"),
+            )
+            conn.execute("DROP INDEX idx_test_attempts_mode_completed_id")
+            conn.execute("DROP INDEX idx_test_attempts_test_mode_completed_id")
+            conn.execute("PRAGMA user_version = 4")
+            conn.commit()
+        finally:
+            conn.close()
+
+        assert run_migrations(db_path) == 5
+
+        conn = sqlite3.connect(db_path)
+        try:
+            index_names = {
+                row[0]
+                for row in conn.execute(
+                    "SELECT name FROM sqlite_master WHERE type = 'index'"
+                ).fetchall()
+            }
+            attempt = conn.execute(
+                "SELECT score, mode FROM test_attempts WHERE id = 1"
+            ).fetchone()
+            assert "idx_test_attempts_mode_completed_id" in index_names
+            assert "idx_test_attempts_test_mode_completed_id" in index_names
+            assert attempt == (8, "practice")
+        finally:
+            conn.close()
+
     def test_set_and_get_schema_version(self, db_path):
         """Can set and get schema version."""
         initialize_database(db_path)

@@ -1577,7 +1577,7 @@ def set_review_scope(frame, selected_test_ids: Sequence[int]) -> None:
         frame._group_scope_vars[group_name].set(
             bool(test_ids) and all(test_id in selected for test_id in test_ids)
         )
-    frame._load_questions()
+    frame._load_questions(reset_selection=True)
 
 
 def show_review_selected_scope(
@@ -1601,9 +1601,9 @@ def show_review_selected_questions(
     harness.show_frame(SCREEN_REVIEW)
     frame = app.frames[SCREEN_REVIEW]
     if frame._checkboxes:
-        first_var = next(iter(frame._checkboxes.values()))
+        question_id, first_var = next(iter(frame._checkboxes.items()))
         first_var.set(True)
-        frame._update_selected_count()
+        frame._on_question_selection_changed(question_id, first_var)
     harness._settle()
 
 

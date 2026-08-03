@@ -1,6 +1,9 @@
 """Results view — displays score and question-by-question review."""
 
 from collections import defaultdict
+from dataclasses import dataclass
+import tkinter as tk
+from typing import Optional
 
 import customtkinter as ctk
 
@@ -21,17 +24,36 @@ from gui.styles import (
     get_header_style,
     get_text_style,
 )
+from services.question_service import QuestionService
 from services.scoring_service import ScoringService
 from services.test_service import TestService
 from utils.constants import SCREEN_HOME, SCREEN_TEST_TAKING
 
 
+@dataclass
+class ReviewItem:
+    """All display data required to render one question review card."""
+
+    num: int
+    question_text: str
+    question_type: str
+    user_answer: str
+    correct_answer: str
+    explanation: str
+    is_correct: Optional[bool]
+    was_flagged: bool
+    options: Optional[list] = None
+
+
 class ResultsViewFrame(ctk.CTkFrame):
     """Displays test results with score and per-question review."""
+
+    REVIEW_BATCH_SIZE = 5
 
     def __init__(self, parent: ctk.CTkFrame, controller) -> None:
         super().__init__(parent)
         self.controller = controller
+        self.question_service = QuestionService()
         self.scoring_service = ScoringService()
         self.test_service = TestService()
         self._test_id = None
@@ -39,6 +61,10 @@ class ResultsViewFrame(ctk.CTkFrame):
         self._mix_questions = None
         self._mix_name = None
         self._mix_subtitle = None
+        self._review_items = []
+        self._review_cursor = 0
+        self._review_callback = None
+        self._source_breakdown_data = None
 
         self._build_ui()
 
@@ -103,7 +129,7 @@ class ResultsViewFrame(ctk.CTkFrame):
             btn_frame,
             text="Back to Home",
             width=120,
-            command=lambda: self.controller.show_frame(SCREEN_HOME),
+            command=self._on_home,
             **get_button_style("secondary"),
         ).pack(fill="x", pady=(0, SPACE_8))
 
@@ -132,6 +158,12 @@ class ResultsViewFrame(ctk.CTkFrame):
             padx=SPACE_24,
             pady=(0, SPACE_24),
         )
+        canvas = getattr(self.review_frame, "_parent_canvas", None)
+        if canvas is not None:
+            canvas.bind("<Configure>", self._on_review_view_changed, add="+")
+            canvas.bind("<MouseWheel>", self._on_review_view_changed, add="+")
+            canvas.bind("<Button-4>", self._on_review_view_changed, add="+")
+            canvas.bind("<Button-5>", self._on_review_view_changed, add="+")
 
     def on_show(
         self,
@@ -147,6 +179,7 @@ class ResultsViewFrame(ctk.CTkFrame):
             session: The TestSession (available if coming from test-taking).
             score_data: Score dict (available if coming from test-taking).
         """
+        self._cancel_pending_review_render()
         self._reset_retake_state()
 
         # Clear previous review
@@ -193,32 +226,29 @@ class ResultsViewFrame(ctk.CTkFrame):
             metrics.append(("Essays", f"{essays} self-evaluate"))
         self._set_score_summary(score, total, pct, metrics)
 
-        # Build question review
-        self._add_review_section_title("Question Review")
+        response_map = {
+            response.question_id: response for response in score_data["responses"]
+        }
+        review_items = []
         for i, question in enumerate(session.questions, 1):
-            user_answer = session.responses.get(question.id)
-            response = next(
-                (r for r in score_data["responses"] if r.question_id == question.id),
-                None,
-            )
-            is_correct = response.is_correct if response else None
-            was_flagged = question.id in session.flagged
-
-            self._create_review_card(
-                num=i,
-                question_text=question.text,
-                question_type=question.type,
-                user_answer=user_answer,
-                correct_answer=question.correct_answer,
-                explanation=question.explanation,
-                is_correct=is_correct,
-                was_flagged=was_flagged,
-                options=question.options,
+            response = response_map.get(question.id)
+            review_items.append(
+                ReviewItem(
+                    num=i,
+                    question_text=question.text,
+                    question_type=question.type,
+                    user_answer=session.responses.get(question.id),
+                    correct_answer=question.correct_answer,
+                    explanation=question.explanation,
+                    is_correct=response.is_correct if response else None,
+                    was_flagged=question.id in session.flagged,
+                    options=question.options,
+                )
             )
 
-        # Per-source-test breakdown for mix tests
-        if session.is_mix_test:
-            self._show_source_breakdown(session, score_data)
+        self._add_review_section_title("Question Review")
+        source_breakdown_data = (session, score_data) if session.is_mix_test else None
+        self._begin_review_render(review_items, source_breakdown_data)
 
     def _show_source_breakdown(self, session, score_data: dict) -> None:
         """Show per-source-test score breakdown for mix tests."""
@@ -295,31 +325,84 @@ class ResultsViewFrame(ctk.CTkFrame):
             [("Time", time_str)],
         )
 
-        # Load test for question details
-        test = self.test_service.get_test_by_id(attempt.test_id)
-        if not test:
+        questions = self.question_service.get_questions_for_attempt(attempt_id)
+        if attempt.responses and not questions:
             self._add_empty_review_message("The test for this attempt is unavailable.")
             return
 
-        q_map = {q.id: q for q in test.questions}
+        q_map = {q.id: q for q in questions}
 
         self._add_review_section_title("Question Review")
+        review_items = []
         for i, response in enumerate(attempt.responses, 1):
             question = q_map.get(response.question_id)
             if not question:
                 continue
-
-            self._create_review_card(
-                num=i,
-                question_text=question.text,
-                question_type=question.type,
-                user_answer=response.user_answer,
-                correct_answer=question.correct_answer,
-                explanation=question.explanation,
-                is_correct=response.is_correct,
-                was_flagged=response.was_flagged,
-                options=question.options,
+            review_items.append(
+                ReviewItem(
+                    num=i,
+                    question_text=question.text,
+                    question_type=question.type,
+                    user_answer=response.user_answer,
+                    correct_answer=question.correct_answer,
+                    explanation=question.explanation,
+                    is_correct=response.is_correct,
+                    was_flagged=response.was_flagged,
+                    options=question.options,
+                )
             )
+        self._begin_review_render(review_items)
+
+    def _begin_review_render(self, review_items, source_breakdown_data=None) -> None:
+        """Queue visible review cards so the score summary can paint first."""
+        self._review_items = review_items
+        self._review_cursor = 0
+        self._source_breakdown_data = source_breakdown_data
+        if review_items:
+            self._review_callback = self.after_idle(self._render_review_batch)
+        elif source_breakdown_data:
+            self._show_source_breakdown(*source_breakdown_data)
+
+    def _render_review_batch(self) -> None:
+        """Render one visible review-card batch, then yield to Tk's event loop."""
+        self._review_callback = None
+        end = min(self._review_cursor + self.REVIEW_BATCH_SIZE, len(self._review_items))
+        for item in self._review_items[self._review_cursor : end]:
+            self._create_review_card(**item.__dict__)
+        self._review_cursor = end
+
+        if self._review_cursor < len(self._review_items):
+            self._review_callback = self.after_idle(self._request_more_review_cards)
+        elif self._source_breakdown_data:
+            self._show_source_breakdown(*self._source_breakdown_data)
+            self._source_breakdown_data = None
+
+    def _on_review_view_changed(self, _event=None) -> None:
+        """Check whether scrolling or resizing reveals the next card batch."""
+        if self._review_callback is None and self._review_cursor < len(
+            self._review_items
+        ):
+            self._review_callback = self.after_idle(self._request_more_review_cards)
+
+    def _request_more_review_cards(self) -> None:
+        """Render another batch only when the user is near the review bottom."""
+        self._review_callback = None
+        canvas = getattr(self.review_frame, "_parent_canvas", None)
+        is_near_bottom = canvas is None or canvas.yview()[1] >= 0.92
+        if is_near_bottom and self._review_cursor < len(self._review_items):
+            self._review_callback = self.after(1, self._render_review_batch)
+
+    def _cancel_pending_review_render(self) -> None:
+        """Cancel queued review work before replacing or leaving results."""
+        if self._review_callback is not None:
+            try:
+                self.after_cancel(self._review_callback)
+            except tk.TclError:
+                pass
+        self._review_callback = None
+        self._review_items = []
+        self._review_cursor = 0
+        self._source_breakdown_data = None
 
     def _create_review_card(
         self,
@@ -583,13 +666,13 @@ class ResultsViewFrame(ctk.CTkFrame):
 
     def _reset_review_scroll(self) -> None:
         """Reset CTkScrollableFrame after rebuilding result content."""
-        self.update_idletasks()
         canvas = getattr(self.review_frame, "_parent_canvas", None)
         if canvas is not None:
             canvas.yview_moveto(0.0)
 
     def _on_retake(self) -> None:
         """Navigate to retake the same test (mix or regular)."""
+        self._cancel_pending_review_render()
         if self._mix_questions is not None:
             self.controller.show_frame(
                 SCREEN_TEST_TAKING,
@@ -604,6 +687,11 @@ class ResultsViewFrame(ctk.CTkFrame):
                 test_id=self._test_id,
                 mode=self._mode,
             )
+
+    def _on_home(self) -> None:
+        """Return home without allowing queued cards to render in the background."""
+        self._cancel_pending_review_render()
+        self.controller.show_frame(SCREEN_HOME)
 
     @staticmethod
     def _format_time(seconds: int) -> str:

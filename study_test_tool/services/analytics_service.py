@@ -4,6 +4,8 @@ from typing import Dict, List, Optional
 
 from database.db_manager import DatabaseManager
 
+MAX_SCORE_TREND_POINTS = 200
+
 
 class AnalyticsService:
     """Business logic for analytics, graphs, and weak topic identification."""
@@ -15,17 +17,20 @@ class AnalyticsService:
         self,
         test_id: Optional[int] = None,
         mode: str = "test",
+        max_points: Optional[int] = None,
     ) -> List[Dict]:
         """Get chronological scores for line chart.
 
         Args:
             test_id: Optional filter by test.
             mode: Filter by mode ("test" or "practice").
+            max_points: Optional maximum number of chronologically sampled
+                points to return. ``None`` preserves the full result set.
 
         Returns:
             List of dicts with id, percentage, completed_at, test_name.
         """
-        return self._db.get_scores_over_time(test_id, mode)
+        return self._db.get_scores_over_time(test_id, mode, max_points)
 
     def get_average_scores_by_test(self, mode: str = "test") -> List[Dict]:
         """Get average/best/count per test for bar chart.

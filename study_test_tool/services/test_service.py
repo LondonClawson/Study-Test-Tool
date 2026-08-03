@@ -55,6 +55,10 @@ class TestService:
         """Get the number of questions in a test."""
         return self._db.get_question_count(test_id)
 
+    def get_all_question_counts(self) -> Dict[int, int]:
+        """Get question counts for every test in one database query."""
+        return self._db.get_all_question_counts()
+
     def get_group_names(self) -> List[str]:
         """Get all distinct group names."""
         return self._db.get_distinct_group_names()

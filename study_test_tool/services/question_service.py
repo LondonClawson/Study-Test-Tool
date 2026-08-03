@@ -30,6 +30,10 @@ class QuestionService:
             questions = RandomizerService.shuffle_all(questions)
         return questions
 
+    def get_questions_for_attempt(self, attempt_id: int) -> List[Question]:
+        """Get only the questions represented by a saved attempt's responses."""
+        return self._db.get_questions_for_attempt(attempt_id)
+
     def add_question(self, question: Question) -> int:
         """Add a question with its options and return its id."""
         return self._db.add_question(question)
