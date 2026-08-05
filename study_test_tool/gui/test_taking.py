@@ -55,7 +55,7 @@ class TestTakingFrame(ctk.CTkFrame):
 
         # Top bar
         self.top_frame = ctk.CTkFrame(self, **get_header_style("page"))
-        self.top_frame.pack(fill="x", padx=SPACE_24, pady=(SPACE_24, SPACE_12))
+        self.top_frame.pack(fill="x", padx=SPACE_24, pady=(SPACE_16, SPACE_8))
         self.top_frame.grid_columnconfigure(0, weight=1)
 
         title_frame = ctk.CTkFrame(self.top_frame, fg_color="transparent")
@@ -64,7 +64,7 @@ class TestTakingFrame(ctk.CTkFrame):
             column=0,
             sticky="ew",
             padx=SPACE_24,
-            pady=(SPACE_16, SPACE_16),
+            pady=(SPACE_12, SPACE_12),
         )
 
         self.test_name_label = ctk.CTkLabel(
@@ -93,9 +93,9 @@ class TestTakingFrame(ctk.CTkFrame):
             column=1,
             sticky="e",
             padx=(SPACE_8, SPACE_24),
-            pady=(SPACE_16, SPACE_16),
+            pady=(SPACE_12, SPACE_12),
         )
-        status_frame.grid_columnconfigure((0, 1), weight=1)
+        status_frame.grid_columnconfigure(1, weight=1)
 
         self.timer_widget = TimerWidget(
             status_frame,
@@ -108,7 +108,6 @@ class TestTakingFrame(ctk.CTkFrame):
             column=0,
             sticky="ew",
             padx=(0, SPACE_8),
-            pady=(0, SPACE_8),
         )
 
         # Progress text
@@ -123,20 +122,19 @@ class TestTakingFrame(ctk.CTkFrame):
             row=0,
             column=1,
             sticky="ew",
-            padx=(0, 0),
-            pady=(0, SPACE_8),
+            padx=(0, SPACE_8),
         )
 
         # Flag button
         self.flag_btn = ctk.CTkButton(
             status_frame,
             text="Flag",
-            width=172,
+            width=86,
             height=34,
             command=self._on_flag,
             **get_button_style("tertiary"),
         )
-        self.flag_btn.grid(row=1, column=0, columnspan=2, sticky="ew")
+        self.flag_btn.grid(row=0, column=2, sticky="ew")
 
         # Center: question area
         self.question_area = ctk.CTkScrollableFrame(
@@ -174,7 +172,7 @@ class TestTakingFrame(ctk.CTkFrame):
         self.progress_container.pack(
             fill="x",
             padx=SPACE_16,
-            pady=(SPACE_16, SPACE_8),
+            pady=(SPACE_8, SPACE_4),
         )
 
         nav_frame = ctk.CTkFrame(bottom_frame, fg_color="transparent")
@@ -322,7 +320,7 @@ class TestTakingFrame(ctk.CTkFrame):
             total=len(self._session.questions),
             on_click=self._on_progress_click,
         )
-        self._progress_bar.pack(anchor="center", pady=SPACE_8)
+        self._progress_bar.pack(anchor="center", pady=SPACE_4)
 
         self.timer_widget.start()
         self._display_question()
@@ -372,8 +370,8 @@ class TestTakingFrame(ctk.CTkFrame):
             pady=SPACE_12,
         )
 
-        # Reset scroll to top for the new question
-        self.question_area._parent_canvas.yview_moveto(0.0)
+        # Reset scroll to top for the new question.
+        self._scroll_question_area_to(0.0)
 
         # Restore saved answer
         saved = self._session.responses.get(question.id)
@@ -570,7 +568,13 @@ class TestTakingFrame(ctk.CTkFrame):
     def _scroll_feedback_into_view(self) -> None:
         """Scroll the practice feedback surface into the visible question area."""
         self.question_area.update_idletasks()
-        self.question_area._parent_canvas.yview_moveto(1.0)
+        self._scroll_question_area_to(1.0)
+
+    def _scroll_question_area_to(self, position: float) -> None:
+        """Move the question area's viewport when its canvas is available."""
+        canvas = getattr(self.question_area, "_parent_canvas", None)
+        if canvas is not None:
+            canvas.yview_moveto(position)
 
     def _feedback_text_style(self, role: str, text_color=None):
         """Return a text style with an optional feedback status color."""

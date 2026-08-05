@@ -1208,6 +1208,27 @@ def show_test_minimum_unanswered(
     harness.show_frame(SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_TEST)
 
 
+def show_test_long_question(
+    app: App, seed: Optional[SeedData], harness: ScreenshotHarness
+) -> None:
+    """Show a multi-paragraph prompt at the normal test-taking window size."""
+    harness.show_frame(SCREEN_TEST_TAKING, test_id=seed.active_test_id, mode=MODE_TEST)
+    frame = app.frames[SCREEN_TEST_TAKING]
+    question = frame._session.get_current_question()
+    question.text = (
+        "A 68-year-old patient with a history of heart failure presents with "
+        "three days of worsening shortness of breath, orthopnea, and bilateral "
+        "leg swelling. Their weight is 3 kg above baseline, and they report "
+        "missing several doses of their prescribed medication.\n\n"
+        "On examination, the patient has elevated jugular venous pressure, "
+        "bibasilar crackles, and pitting edema to both knees. Chest imaging "
+        "shows pulmonary vascular congestion. Which finding most strongly "
+        "supports acute decompensated heart failure?\n\n"
+        "Select the single best answer using the clinical details above."
+    )
+    frame._display_question()
+
+
 def show_practice_feedback(
     app: App, seed: Optional[SeedData], harness: ScreenshotHarness
 ) -> None:
@@ -1831,6 +1852,12 @@ CAPTURE_STATES = [
         "test-taking",
         "seeded",
         show_test_minimum_unanswered,
+    ),
+    CaptureState(
+        "test_taking_long_question",
+        "test-taking",
+        "seeded",
+        show_test_long_question,
     ),
     CaptureState(
         "test_taking_practice_incorrect_feedback",
